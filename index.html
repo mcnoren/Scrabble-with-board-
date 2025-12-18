@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pro Scrabble PeerJS</title>
+    <title>Scrabble Pro</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -11,9 +11,11 @@
     <style>
         :root {
             --bg: #121212;
-            --panel: #1e1e1e;
-            --accent: #27ae60;
-            --wood: #6d4c41;
+            --sidebar-bg: #1e1e1e;
+            --accent: #27ae60; /* Green */
+            --danger: #c0392b; /* Red */
+            --wood: #5d4037;
+            --board-border: #3e2723;
             --tile-face: #fdf5e6;
             --board-bg: #d7ccc8;
         }
@@ -21,59 +23,104 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: white; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
-        /* SCREENS */
-        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; position: absolute; top:0; left:0; background: var(--bg); z-index: 10; }
+        /* --- SCREENS --- */
+        .screen { display: none; width: 100%; height: 100%; position: absolute; top:0; left:0; background: var(--bg); z-index: 10; }
         .active { display: flex; z-index: 20; }
+        
+        /* Flex centring for Home/Lobby/Player */
+        .center-screen { flex-direction: column; align-items: center; justify-content: center; }
 
-        /* UI ELEMENTS */
+        /* --- INPUTS & BUTTONS --- */
         input { padding: 15px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #333; background: #222; color: white; margin-bottom: 10px; text-transform: uppercase; text-align: center; width: 300px; }
         input:focus { border-color: var(--accent); outline: none; }
         
-        button { background: var(--accent); color: white; border: none; padding: 15px 30px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin: 10px; font-weight: 600; transition: transform 0.1s; }
-        button:active { transform: scale(0.96); }
-        button:disabled { background: #444; color: #888; cursor: not-allowed; }
-        
-        /* IPAD LANDSCAPE LAYOUT (Host) */
-        #host-ui { flex-direction: row; padding: 10px; align-items: center; justify-content: space-between; }
-        
-        .sidebar { 
-            width: 250px; height: 100%; background: var(--panel); border-radius: 12px; padding: 15px; 
-            display: flex; flex-direction: column; border: 1px solid #333;
+        button { background: var(--accent); color: white; border: none; padding: 15px 30px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin: 10px; font-weight: 600; transition: transform 0.1s; box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
+        button:active { transform: scale(0.96); box-shadow: none; }
+        button:disabled { background: #444; color: #888; cursor: not-allowed; box-shadow: none; }
+        button.btn-lg { font-size: 1.5rem; padding: 20px 40px; width: 300px; }
+
+        /* --- HOST LAYOUT (Sidebar + Board) --- */
+        #screen-host { flex-direction: row; } /* Side by Side */
+
+        .sidebar {
+            width: 320px; /* Fixed width sidebar */
+            height: 100%;
+            background: var(--sidebar-bg);
+            border-right: 2px solid #333;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+            z-index: 50;
         }
 
-        /* THE BOARD - VMIN Ensures it never cuts off */
-        .board-container {
-            flex-grow: 1; display: flex; align-items: center; justify-content: center; height: 100%;
+        .board-wrapper {
+            flex-grow: 1;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            position: relative;
         }
+
+        /* --- SIDEBAR COMPONENTS --- */
+        .room-info { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #333; }
+        .room-code-display { font-size: 2.5rem; font-weight: 800; color: var(--accent); letter-spacing: 2px; line-height: 1; }
+        .turn-box { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #444; }
+        .turn-name { font-size: 1.8rem; font-weight: bold; color: #fff; margin-top: 5px; }
+        
+        .inbox-area {
+            margin-top: auto; /* Pushes to bottom */
+            background: #111;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+        .inbox-rack {
+            display: flex; gap: 5px; flex-wrap: wrap; 
+            min-height: 60px; margin-bottom: 10px;
+            align-items: center; justify-content: center;
+        }
+        
+        .action-row { display: flex; gap: 10px; }
+        .return-zone {
+            flex: 1; height: 60px; background: var(--danger); border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.7rem; font-weight: bold; text-align: center;
+            border: 2px dashed rgba(255,255,255,0.3);
+        }
+        .confirm-btn { flex: 2; margin: 0; font-size: 1rem; }
+
+        /* --- THE BOARD --- */
+        /* Sized with vmin to never cutoff */
         .scrabble-board {
             display: grid;
             grid-template-columns: repeat(15, 1fr);
             grid-template-rows: repeat(15, 1fr);
             gap: 1px;
             background: #000;
-            border: 8px solid var(--wood);
+            border: 10px solid var(--wood);
             border-radius: 4px;
-            /* Key to fitting perfectly on iPad Landscape */
-            width: 92vh; height: 92vh;
-            max-width: 92vw; max-height: 92vw; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            /* Key Sizing Logic: 96% of the smallest viewport dimension */
+            width: 96vmin; 
+            height: 96vmin; 
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
         }
 
         .cell {
             background: var(--board-bg);
             display: flex; justify-content: center; align-items: center;
             font-size: 0.65rem; font-weight: 700; color: #555;
-            position: relative;
-            text-transform: uppercase;
+            position: relative; text-transform: uppercase;
         }
-        /* Special Squares */
         .tw { background: #ff7675; color: #fff; }
         .dw { background: #fab1a0; }
         .tl { background: #74b9ff; color: #fff; }
         .dl { background: #81ecec; }
         .star { background: #fab1a0; font-size: 1.5rem; color: #d63031; }
 
-        /* TILE APPEARANCE */
+        /* --- TILES --- */
         .tile {
             width: 90%; height: 90%;
             background: var(--tile-face);
@@ -81,136 +128,111 @@
             box-shadow: 0 3px 0 #bcaaa4;
             color: #2d3436;
             display: flex; justify-content: center; align-items: center;
-            font-weight: bold; font-size: 1.4rem; /* Adjusted for scaling */
-            position: relative;
-            user-select: none;
-            cursor: grab;
-            z-index: 100;
-            touch-action: none;
+            font-weight: bold; font-size: 1.3rem; 
+            position: relative; user-select: none; cursor: grab; z-index: 100; touch-action: none;
         }
-        /* When dropped on board, tile looks flush */
-        .cell .tile {
-            width: 100%; height: 100%;
-            border-radius: 0;
-            box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
-        }
-        .tile span.score { font-size: 0.5rem; position: absolute; bottom: 2px; right: 2px; }
+        .cell .tile { width: 100%; height: 100%; border-radius: 0; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); font-size: 1.1rem; }
+        .tile span.score { font-size: 0.5rem; position: absolute; bottom: 1px; right: 2px; }
         
-        /* DRAGGING VISUALS */
         .tile.dragging { 
             position: fixed; pointer-events: none; z-index: 9999; 
-            width: 50px !important; height: 50px !important; /* Fixed size while dragging */
-            opacity: 0.9; transform: scale(1.2); box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            width: 50px !important; height: 50px !important; 
+            opacity: 0.9; transform: scale(1.2); box-shadow: 0 10px 20px rgba(0,0,0,0.5);
         }
 
-        /* HOST BOTTOM BAR */
-        .bottom-dock {
-            position: absolute; bottom: 10px; left: 280px; right: 10px; height: 80px;
-            background: var(--panel); border-radius: 12px;
-            display: flex; align-items: center; padding: 0 20px; gap: 15px;
-            border: 1px solid #444; z-index: 50;
-        }
-        .inbox { flex-grow: 1; height: 60px; background: #000; border-radius: 8px; display: flex; align-items: center; padding: 0 10px; overflow-x: auto; }
-        .return-zone {
-            width: 100px; height: 60px; background: #c0392b; border-radius: 8px;
-            color: white; font-size: 0.7rem; font-weight: bold; text-align: center;
-            display: flex; align-items: center; justify-content: center;
-            border: 2px dashed rgba(255,255,255,0.3);
-        }
-
-        /* PLAYER UI */
+        /* --- PLAYER UI --- */
         #player-ui { background: #2d3436; justify-content: space-between; }
-        .rack-area {
-            flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center;
-        }
-        .player-rack {
-            background: var(--wood); padding: 15px; border-radius: 8px; min-width: 320px; min-height: 80px;
-            display: flex; justify-content: center; gap: 5px; box-shadow: inset 0 5px 10px rgba(0,0,0,0.5);
-        }
-        /* Mobile Tiles */
+        .rack-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .player-rack { background: var(--wood); padding: 15px; border-radius: 8px; min-width: 320px; min-height: 80px; display: flex; justify-content: center; gap: 5px; box-shadow: inset 0 5px 10px rgba(0,0,0,0.5); }
         .player-rack .tile { width: 45px; height: 45px; font-size: 1.8rem; border-radius: 4px; }
         .tile.selected { border: 3px solid var(--accent); transform: translateY(-5px); }
         
+        /* Landscape Warning */
         .rotate-msg { display: none; position: absolute; top:0; left:0; width:100%; height:100%; background: #000; z-index: 999; color: white; align-items: center; justify-content: center; text-align: center; }
-        @media (orientation: portrait) and (max-width: 1000px) {
-            .rotate-msg { display: flex; }
-        }
-
+        @media (orientation: portrait) and (max-width: 1000px) { .rotate-msg { display: flex; } }
+        
         .hidden { display: none !important; }
+        .lobby-list { text-align: left; background: #222; padding: 20px; border-radius: 8px; width: 300px; min-height: 200px; margin: 20px 0; border: 1px solid #444; }
+        .lobby-item { padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
 
-    <div class="rotate-msg">
-        <h1>Please Rotate Device ↻</h1>
-        <p>This game is designed for Landscape mode.</p>
-    </div>
+    <div class="rotate-msg"><h1>Rotate Device ↻</h1></div>
 
-    <div id="screen-home" class="screen active">
+    <div id="screen-home" class="screen active center-screen">
         <h1 style="font-size:3rem; margin-bottom:10px;">Scrabble<span style="color:var(--accent)">Pro</span></h1>
         <div style="color:#888; margin-bottom:30px;" id="dict-status">Loading Dictionary...</div>
         
-        <button onclick="startHost()">Host on iPad</button>
-        <div style="margin-top:20px; border-top:1px solid #333; padding-top:20px;">
-            <input type="text" id="join-name" placeholder="YOUR NICKNAME" maxlength="10">
-            <input type="text" id="join-code" placeholder="ROOM CODE">
-            <br>
+        <button onclick="initHost()" class="btn-lg">Host Game</button>
+        
+        <div style="margin-top:40px; border-top:1px solid #333; padding-top:20px; text-align: center;">
+            <input type="text" id="join-name" placeholder="NICKNAME" maxlength="10"><br>
+            <input type="text" id="join-code" placeholder="ROOM CODE"><br>
             <button id="btn-join" onclick="joinGame()" disabled>Join Game</button>
         </div>
     </div>
 
-    <div id="screen-host" class="screen" id="host-ui">
+    <div id="screen-lobby" class="screen center-screen">
+        <h2 style="color:#aaa; margin:0;">ROOM CODE</h2>
+        <div id="lobby-code-big" style="font-size: 4rem; font-weight: 800; color: var(--accent); letter-spacing: 5px;">...</div>
+        
+        <div class="lobby-list" id="lobby-player-list">
+            <div style="color:#666; font-style:italic;">Waiting for players...</div>
+        </div>
+
+        <button onclick="startGame()" class="btn-lg">START GAME</button>
+    </div>
+
+    <div id="screen-host" class="screen">
         <div class="sidebar">
-            <h2 style="color:var(--accent); margin:0;">Room: <span id="room-code">...</span></h2>
-            <hr style="border:0; border-top:1px solid #444; width:100%; margin: 15px 0;">
-            
-            <div style="font-size:0.8rem; color:#aaa; text-transform:uppercase;">Current Turn</div>
-            <div id="turn-indicator" style="font-size:1.5rem; font-weight:bold; color:#fff; margin-bottom:20px;">Waiting...</div>
-            
-            <div id="player-list" style="flex-grow:1; overflow-y:auto;"></div>
-            
-            <div style="background:#000; padding:10px; border-radius:6px; text-align:center; font-size:0.9rem;">
-                Bag: <span id="bag-count" style="color:var(--accent)">100</span> tiles
+            <div class="room-info">
+                <div style="font-size:0.7rem; color:#aaa;">ROOM CODE</div>
+                <div id="sidebar-code" class="room-code-display"></div>
             </div>
-        </div>
 
-        <div class="board-container">
-            <div class="scrabble-board" id="board-grid"></div>
-        </div>
+            <div class="turn-box">
+                <div style="font-size:0.7rem; color:#aaa; text-transform:uppercase;">Current Turn</div>
+                <div id="turn-indicator" class="turn-name">...</div>
+            </div>
 
-        <div class="bottom-dock">
-            <div class="inbox" id="host-inbox">
+            <div style="flex-grow:1; overflow-y:auto; margin-bottom:10px;" id="sidebar-player-list">
                 </div>
-            
-            <div class="return-zone" id="return-zone">
-                DROP HERE<br>TO RETURN
-            </div>
 
-            <button onclick="confirmTurn()" style="padding: 10px 20px; font-size: 1rem;">Confirm Turn</button>
+            <div class="inbox-area">
+                <div style="font-size:0.7rem; color:#aaa; margin-bottom:5px;">INCOMING TILES</div>
+                <div class="inbox-rack" id="host-inbox"></div>
+                
+                <div class="action-row">
+                    <div class="return-zone" id="return-zone">DROP TO<br>RETURN</div>
+                    <button onclick="confirmTurn()" class="confirm-btn">Confirm Turn</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="board-wrapper">
+            <div class="scrabble-board" id="board-grid"></div>
         </div>
     </div>
 
-    <div id="screen-player" class="screen" id="player-ui">
-        <div style="padding:15px; background:#000; width:100%; display:flex; justify-content:space-between;">
-            <span id="my-display-name" style="font-weight:bold; color:var(--accent)">Me</span>
-            <span id="wait-msg" style="color:#aaa; font-size:0.8rem;">Wait for your turn</span>
-        </div>
+    <div id="screen-player" class="screen center-screen" id="player-ui">
+        <div style="position:absolute; top:10px; left:10px; font-weight:bold; color:var(--accent);" id="my-display-name">Me</div>
+        <div style="position:absolute; top:10px; right:10px; color:#aaa; font-size:0.8rem;" id="wait-msg">Wait for turn</div>
 
         <div class="rack-area">
             <div id="my-rack" class="player-rack"></div>
         </div>
 
-        <div style="padding:20px; width:100%; background:#000; display:flex; gap:10px;">
+        <div style="padding:20px; width:100%; background:#111; display:flex; gap:10px;">
             <button onclick="shuffleRack()" style="flex:1; background:#e67e22">Shuffle</button>
             <button onclick="playSelected()" style="flex:2;">Send Selected</button>
         </div>
     </div>
 
     <script>
-        // --- DATA ---
+        // --- DATA & CONFIG ---
         const SCORES = {'A':1,'B':3,'C':3,'D':2,'E':1,'F':4,'G':2,'H':4,'I':1,'J':8,'K':5,'L':1,'M':3,'N':1,'O':1,'P':3,'Q':10,'R':1,'S':1,'T':1,'U':1,'V':4,'W':4,'X':8,'Y':4,'Z':10,'_':0};
         const BAG_INIT = {'A':9,'B':2,'C':2,'D':4,'E':12,'F':2,'G':3,'H':2,'I':9,'J':1,'K':1,'L':4,'M':2,'N':6,'O':8,'P':2,'Q':1,'R':6,'S':4,'T':6,'U':4,'V':2,'W':2,'X':1,'Y':2,'Z':1,'_':2};
-        // 0=Normal, 1=TW, 2=DW, 3=TL, 4=DL, 5=Star
         const LAYOUT = [
             [1,0,0,4,0,0,0,1,0,0,0,4,0,0,1],
             [0,2,0,0,0,3,0,0,0,3,0,0,0,2,0],
@@ -219,7 +241,7 @@
             [0,0,0,0,2,0,0,0,0,0,2,0,0,0,0],
             [0,3,0,0,0,3,0,0,0,3,0,0,0,3,0],
             [0,0,4,0,0,0,4,0,4,0,0,0,4,0,0],
-            [1,0,0,4,0,0,0,5,0,0,0,4,0,0,1], // Center
+            [1,0,0,4,0,0,0,5,0,0,0,4,0,0,1],
             [0,0,4,0,0,0,4,0,4,0,0,0,4,0,0],
             [0,3,0,0,0,3,0,0,0,3,0,0,0,3,0],
             [0,0,0,0,2,0,0,0,0,0,2,0,0,0,0],
@@ -229,338 +251,242 @@
             [1,0,0,4,0,0,0,1,0,0,0,4,0,0,1]
         ];
 
-        // --- STATE ---
-        let peer, conn;
-        let dictionary = new Set();
-        let bag = [];
-        let players = []; // {id, name, score, conn}
-        let turnIndex = 0;
-        let tilesPlacedThisTurn = []; // Track tiles for counting score/refill
+        let peer, conn, dictionary = new Set(), bag = [], players = [], turnIndex = 0;
 
         // --- INIT ---
-        // Fetch Dictionary
         fetch('https://raw.githubusercontent.com/redbo/scrabble/master/dictionary.txt')
             .then(r=>r.text()).then(t => {
                 t.toUpperCase().split(/\s+/).forEach(w => dictionary.add(w));
-                document.getElementById('dict-status').innerText = "Dictionary Loaded.";
+                document.getElementById('dict-status').innerText = "Dictionary Ready";
                 document.getElementById('dict-status').style.color = "#2ecc71";
             });
 
-        // Input Validation Listener
-        document.querySelectorAll('input').forEach(i => i.addEventListener('keyup', validateInputs));
-        function validateInputs() {
-            const name = document.getElementById('join-name').value.trim();
-            const code = document.getElementById('join-code').value.trim();
-            document.getElementById('btn-join').disabled = !(name && code);
-        }
+        document.querySelectorAll('input').forEach(i => i.addEventListener('keyup', () => {
+            const n = document.getElementById('join-name').value.trim();
+            const c = document.getElementById('join-code').value.trim();
+            document.getElementById('btn-join').disabled = !(n && c);
+        }));
 
         function showScreen(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(id).classList.add('active');
         }
 
-        // --- HOST LOGIC ---
-        function startHost() {
-            peer = new Peer(generateId());
+        // --- HOST ---
+        function initHost() {
+            peer = new Peer(genId());
             peer.on('open', id => {
-                showScreen('screen-host');
-                document.getElementById('room-code').innerText = id;
+                showScreen('screen-lobby');
+                document.getElementById('lobby-code-big').innerText = id;
+                document.getElementById('sidebar-code').innerText = id; // Set sidebar code too
                 initBag();
                 renderBoard();
             });
             peer.on('connection', c => {
                 c.on('data', d => handleHostData(c, d));
-                c.on('close', () => removePlayer(c.peer));
+                c.on('close', () => { /* Handle disconnect */ });
             });
         }
 
-        function generateId() { return Math.random().toString(36).substring(2,6).toUpperCase(); }
-
-        function initBag() {
-            bag = [];
-            for(let l in BAG_INIT) for(let i=0; i<BAG_INIT[l]; i++) bag.push(l);
-            bag.sort(()=>Math.random()-0.5);
-            updateBagUI();
+        function startGame() {
+            if(players.length === 0) return alert("Wait for players!");
+            showScreen('screen-host');
+            updateTurnUI();
+            players.forEach(p => deal(p.conn, 7));
         }
+
+        function genId() { return Math.random().toString(36).substring(2,6).toUpperCase(); }
 
         function handleHostData(c, data) {
             if(data.type === 'join') {
                 players.push({ id:c.peer, name:data.name, score:0, conn:c });
-                updatePlayerList();
-                // Send initial hand of 7
-                deal(c, 7);
-                if(players.length === 1) updateTurnUI(); // First player sets turn
+                updateLobbyList();
+                updateSidebarList();
             }
             if(data.type === 'play') {
-                // Check if it's actually their turn
-                if(players[turnIndex].id !== c.peer) {
-                    // Ideally warn them, but for now just accept into inbox (Host moderates)
-                }
-                data.tiles.forEach(l => createHostTile(l, c.peer)); // Tag tile with owner ID
+                data.tiles.forEach(l => createHostTile(l, c.peer)); 
             }
         }
 
-        function deal(c, num) {
-            let hand = [];
-            for(let i=0; i<num; i++) if(bag.length) hand.push(bag.pop());
-            if(hand.length) c.send({type:'hand', tiles:hand});
-            updateBagUI();
+        function updateLobbyList() {
+            const div = document.getElementById('lobby-player-list');
+            div.innerHTML = players.map(p => `<div class="lobby-item"><span>${p.name}</span><span style="color:var(--accent)">Joined</span></div>`).join('');
         }
 
-        function returnTilesToPlayer(letter, ownerId) {
-            const p = players.find(x => x.id === ownerId);
-            if(p) {
-                p.conn.send({type:'return', tile: letter});
-            } else {
-                // If player gone, put back in bag
-                bag.push(letter);
-                updateBagUI();
-            }
-        }
-
-        function confirmTurn() {
-            // 1. Validate Words
-            const grid = getGridState();
-            const words = getWords(grid);
-            
-            if(words.length === 0) return alert("No words on board.");
-            
-            const invalid = words.filter(w => !dictionary.has(w) && dictionary.size > 0);
-            if(invalid.length > 0) return alert("Invalid: " + invalid.join(', '));
-
-            // 2. Replenish Current Player
-            const currentPlayer = players[turnIndex];
-            const tilesUsed = document.querySelectorAll('.cell .tile[data-new="true"]').length;
-            
-            // Mark tiles as permanent (not new)
-            document.querySelectorAll('.cell .tile').forEach(t => {
-                t.removeAttribute('data-new');
-                t.dataset.locked = "true"; // Prevent moving locked tiles
-                t.style.cursor = "default";
-            });
-
-            if(tilesUsed > 0) deal(currentPlayer.conn, tilesUsed);
-
-            // 3. Next Turn
-            turnIndex = (turnIndex + 1) % players.length;
-            updateTurnUI();
-            
-            // Clear Inbox (should be empty if played correctly, otherwise return leftovers)
-            const inbox = document.getElementById('host-inbox');
-            while(inbox.firstChild) {
-                const t = inbox.firstChild;
-                returnTilesToPlayer(t.dataset.letter, t.dataset.owner);
-                t.remove();
-            }
-        }
-
-        function updateTurnUI() {
-            document.getElementById('turn-indicator').innerText = players[turnIndex].name;
-            updatePlayerList();
-        }
-
-        function updatePlayerList() {
-            const list = document.getElementById('player-list');
-            list.innerHTML = players.map((p, i) => `
-                <div style="padding:10px; border-bottom:1px solid #333; ${i===turnIndex ? 'background:#333; border-left:4px solid var(--accent);' : ''}">
+        function updateSidebarList() {
+            const div = document.getElementById('sidebar-player-list');
+            div.innerHTML = players.map((p, i) => `
+                <div style="padding:10px; border-bottom:1px solid #333; ${i===turnIndex ? 'background:#222; border-left:3px solid var(--accent);' : ''}">
                     <strong>${p.name}</strong> <span style="float:right; color:#f1c40f">${p.score}</span>
                 </div>
             `).join('');
         }
 
-        function updateBagUI() { document.getElementById('bag-count').innerText = bag.length; }
+        function updateTurnUI() {
+            if(players[turnIndex]) document.getElementById('turn-indicator').innerText = players[turnIndex].name;
+            updateSidebarList();
+        }
 
-        // --- BOARD RENDERING ---
+        function initBag() {
+            bag = []; for(let l in BAG_INIT) for(let i=0; i<BAG_INIT[l]; i++) bag.push(l);
+            bag.sort(()=>Math.random()-0.5);
+        }
+
+        function deal(c, n) {
+            let h = []; for(let i=0; i<n; i++) if(bag.length) h.push(bag.pop());
+            if(h.length) c.send({type:'hand', tiles:h});
+        }
+
+        function returnTile(l, ownerId) {
+            const p = players.find(x=>x.id===ownerId);
+            if(p) p.conn.send({type:'return', tile:l});
+        }
+
+        function confirmTurn() {
+            const grid = getGrid();
+            const words = getWords(grid);
+            if(!words.length) return alert("No words!");
+            const bad = words.filter(w => !dictionary.has(w) && dictionary.size);
+            if(bad.length) return alert("Invalid: " + bad.join(', '));
+
+            // Lock tiles
+            const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
+            const count = newTiles.length;
+            newTiles.forEach(t => {
+                t.removeAttribute('data-new');
+                t.dataset.locked = "true";
+                t.style.cursor = "default";
+            });
+
+            // Refill & Next
+            if(count > 0) deal(players[turnIndex].conn, count);
+            turnIndex = (turnIndex + 1) % players.length;
+            updateTurnUI();
+
+            // Clear inbox leftovers
+            const inbox = document.getElementById('host-inbox');
+            while(inbox.firstChild) {
+                returnTile(inbox.firstChild.dataset.letter, inbox.firstChild.dataset.owner);
+                inbox.firstChild.remove();
+            }
+        }
+
+        // --- BOARD & DRAG ---
         function renderBoard() {
-            const board = document.getElementById('board-grid');
-            board.innerHTML = '';
+            const b = document.getElementById('board-grid');
+            b.innerHTML = '';
             for(let r=0; r<15; r++) {
                 for(let c=0; c<15; c++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'cell';
-                    cell.dataset.r = r; cell.dataset.c = c;
+                    const d = document.createElement('div');
+                    d.className = 'cell'; d.dataset.r=r; d.dataset.c=c;
                     const t = LAYOUT[r][c];
-                    if(t===1) { cell.classList.add('tw'); cell.innerText="TW"; }
-                    if(t===2) { cell.classList.add('dw'); cell.innerText="DW"; }
-                    if(t===3) { cell.classList.add('tl'); cell.innerText="TL"; }
-                    if(t===4) { cell.classList.add('dl'); cell.innerText="DL"; }
-                    if(t===5) { cell.classList.add('star'); cell.innerHTML="★"; }
-                    board.appendChild(cell);
+                    if(t===1) {d.classList.add('tw'); d.innerText='TW';}
+                    if(t===2) {d.classList.add('dw'); d.innerText='DW';}
+                    if(t===3) {d.classList.add('tl'); d.innerText='TL';}
+                    if(t===4) {d.classList.add('dl'); d.innerText='DL';}
+                    if(t===5) {d.classList.add('star'); d.innerHTML='★';}
+                    b.appendChild(d);
                 }
             }
         }
 
-        // --- HOST DRAG & DROP (POINTER EVENTS) ---
-        // Custom logic to handle touch dragging smoothly on iPad
-        let dragEl = null, clone = null, startX=0, startY=0, ownerId=null;
-
-        function createHostTile(letter, owner) {
+        function createHostTile(l, owner) {
             const t = document.createElement('div');
-            t.className = 'tile';
-            t.dataset.letter = letter;
-            t.dataset.owner = owner;
-            t.dataset.new = "true"; // Mark as new for this turn
-            t.innerHTML = `${letter}<span class="score">${SCORES[letter]}</span>`;
-            
+            t.className = 'tile'; t.dataset.letter = l; t.dataset.owner = owner; t.dataset.new = "true";
+            t.innerHTML = `${l}<span class="score">${SCORES[l]}</span>`;
             t.addEventListener('pointerdown', onDragStart);
             document.getElementById('host-inbox').appendChild(t);
         }
 
+        let dragEl=null, clone=null, startX=0, startY=0;
         function onDragStart(e) {
-            const t = e.currentTarget;
-            if(t.dataset.locked === "true") return; // Can't move locked tiles
-
+            if(e.currentTarget.dataset.locked === "true") return;
             e.preventDefault();
-            dragEl = t;
-            
-            // Visual Clone
-            clone = t.cloneNode(true);
+            dragEl = e.currentTarget;
+            clone = dragEl.cloneNode(true);
             clone.classList.add('dragging');
             document.body.appendChild(clone);
-            
-            const rect = t.getBoundingClientRect();
-            // Offset to center finger on tile
-            startX = e.clientX - rect.left;
-            startY = e.clientY - rect.top;
-            
+            const r = dragEl.getBoundingClientRect();
+            startX = e.clientX - r.left; startY = e.clientY - r.top;
             moveClone(e.clientX, e.clientY);
-            t.style.opacity = '0.3'; // Dim original
-
+            dragEl.style.opacity = '0.3';
             document.addEventListener('pointermove', onDragMove);
             document.addEventListener('pointerup', onDragEnd);
         }
-
-        function onDragMove(e) {
-            e.preventDefault();
-            moveClone(e.clientX, e.clientY);
-        }
-
-        function moveClone(x, y) {
-            if(clone) {
-                clone.style.left = (x - 25) + 'px'; // Center roughly
-                clone.style.top = (y - 25) + 'px';
-            }
-        }
-
+        function onDragMove(e) { e.preventDefault(); moveClone(e.clientX, e.clientY); }
+        function moveClone(x, y) { if(clone) { clone.style.left=(x-25)+'px'; clone.style.top=(y-25)+'px'; } }
         function onDragEnd(e) {
             document.removeEventListener('pointermove', onDragMove);
             document.removeEventListener('pointerup', onDragEnd);
+            dragEl.style.opacity = '1'; clone.remove(); clone=null;
             
-            dragEl.style.opacity = '1';
-            clone.remove();
-            clone = null;
+            const el = document.elementFromPoint(e.clientX, e.clientY);
+            if(!el) return;
+            const cell = el.closest('.cell');
+            const ret = el.closest('.return-zone');
+            const inbox = el.closest('.inbox-area');
 
-            // Hit Detection
-            const elBelow = document.elementFromPoint(e.clientX, e.clientY);
-            if(!elBelow) return;
-
-            const cell = elBelow.closest('.cell');
-            const returnBox = elBelow.closest('.return-zone');
-            const inbox = elBelow.closest('.inbox');
-
-            if(returnBox) {
-                // Return Logic
-                returnTilesToPlayer(dragEl.dataset.letter, dragEl.dataset.owner);
-                dragEl.remove();
-            } else if(cell && !cell.hasChildNodes()) {
-                // Place on board
-                cell.appendChild(dragEl);
-                cell.innerText = ''; // Clear TW/DL text
-                cell.className = 'cell'; // Remove color classes for clean look
-            } else if(inbox) {
-                inbox.appendChild(dragEl);
-            }
-            
+            if(ret) { returnTile(dragEl.dataset.letter, dragEl.dataset.owner); dragEl.remove(); }
+            else if(cell && !cell.hasChildNodes()) { cell.appendChild(dragEl); cell.innerText=''; cell.className='cell'; }
+            else if(inbox) { document.getElementById('host-inbox').appendChild(dragEl); }
             dragEl = null;
         }
 
-        // --- VALIDATION UTILS ---
-        function getGridState() {
-            let g = [];
-            document.querySelectorAll('.cell').forEach(c => {
-                const r = +c.dataset.r; const col = +c.dataset.c;
-                if(!g[r]) g[r]=[];
-                const t = c.querySelector('.tile');
-                g[r][col] = t ? t.dataset.letter : null;
-            });
-            return g;
+        function getGrid() {
+            let g=[]; document.querySelectorAll('.cell').forEach(c=>{
+                if(!g[c.dataset.r]) g[c.dataset.r]=[];
+                g[c.dataset.r][c.dataset.c] = c.querySelector('.tile')?.dataset.letter || null;
+            }); return g;
+        }
+        function getWords(g) {
+            let w=[];
+            for(let i=0; i<15; i++) {
+                let r="", c="";
+                for(let j=0; j<15; j++) {
+                    r += g[i][j] || " "; c += g[j][i] || " ";
+                }
+                r.split(" ").forEach(x=>{if(x.length>1) w.push(x)});
+                c.split(" ").forEach(x=>{if(x.length>1) w.push(x)});
+            }
+            return w;
         }
 
-        function getWords(grid) {
-            let words = [];
-            // Horizontal
-            for(let r=0; r<15; r++) {
-                let s = "";
-                for(let c=0; c<15; c++) {
-                    if(grid[r][c]) s+=grid[r][c];
-                    else { if(s.length>1) words.push(s); s=""; }
-                }
-                if(s.length>1) words.push(s);
-            }
-            // Vertical
-            for(let c=0; c<15; c++) {
-                let s = "";
-                for(let r=0; r<15; r++) {
-                    if(grid[r][c]) s+=grid[r][c];
-                    else { if(s.length>1) words.push(s); s=""; }
-                }
-                if(s.length>1) words.push(s);
-            }
-            return words;
-        }
-
-        // --- PLAYER LOGIC ---
+        // --- PLAYER ---
         function joinGame() {
-            const name = document.getElementById('join-name').value;
-            const code = document.getElementById('join-code').value;
-            
+            const n = document.getElementById('join-name').value;
+            const c = document.getElementById('join-code').value;
             peer = new Peer();
             peer.on('open', () => {
-                conn = peer.connect(code);
+                conn = peer.connect(c.toUpperCase());
                 conn.on('open', () => {
-                    conn.send({type:'join', name:name});
+                    conn.send({type:'join', name:n});
                     showScreen('screen-player');
-                    document.getElementById('my-display-name').innerText = name;
-                    
-                    // Sortable Rack
-                    Sortable.create(document.getElementById('my-rack'), { animation:150 });
+                    document.getElementById('my-display-name').innerText = n;
+                    Sortable.create(document.getElementById('my-rack'), {animation:150});
                 });
                 conn.on('data', d => {
-                    if(d.type==='hand') addTilesToRack(d.tiles);
-                    if(d.type==='return') addTilesToRack([d.tile]);
+                    if(d.type==='hand') addRack(d.tiles);
+                    if(d.type==='return') addRack([d.tile]);
                 });
             });
         }
-
-        function addTilesToRack(tiles) {
-            const rack = document.getElementById('my-rack');
-            tiles.forEach(l => {
-                const t = document.createElement('div');
-                t.className = 'tile';
-                t.dataset.letter = l;
-                t.innerHTML = `${l}<span class="score">${SCORES[l]}</span>`;
-                t.onclick = () => t.classList.toggle('selected');
-                rack.appendChild(t);
+        function addRack(t) {
+            t.forEach(l=>{
+                const d=document.createElement('div'); d.className='tile'; d.dataset.letter=l;
+                d.innerHTML=`${l}<span class="score">${SCORES[l]}</span>`;
+                d.onclick=()=>d.classList.toggle('selected');
+                document.getElementById('my-rack').appendChild(d);
             });
         }
-
         function playSelected() {
-            const rack = document.getElementById('my-rack');
-            const selected = rack.querySelectorAll('.tile.selected');
-            if(!selected.length) return;
-            
-            const toSend = [];
-            selected.forEach(t => {
-                toSend.push(t.dataset.letter);
-                t.remove();
-            });
-            conn.send({type:'play', tiles:toSend});
+            const s = document.querySelectorAll('.selected');
+            if(!s.length) return;
+            const t=[]; s.forEach(x=>{t.push(x.dataset.letter); x.remove();});
+            conn.send({type:'play', tiles:t});
         }
-
         function shuffleRack() {
-            const rack = document.getElementById('my-rack');
-            const tiles = Array.from(rack.children);
-            for(let i=tiles.length; i>=0; i--) rack.appendChild(tiles[Math.random()*i|0]);
+            const r=document.getElementById('my-rack');
+            Array.from(r.children).sort(()=>Math.random()-0.5).forEach(x=>r.appendChild(x));
         }
     </script>
 </body>
