@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PeerJS Scrabble Board</title>
+    
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+    <style>
+        :root {
+            --wood-color: #eecfa1;
+            --wood-dark: #d4b483;
+            --tile-color: #fbf3d5;
+            --board-bg: #1a472a; /* Classic Scrabble Green */
+            --highlight: #60a3bc;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #222; color: white; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+
+        /* --- Screens --- */
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
+        .active { display: flex; }
+
+        /* --- Menu --- */
+        .menu-box { background: white; color: #333; padding: 2rem; border-radius: 12px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-width: 400px; width: 90%; }
+        button { background: #2ecc71; color: white; border: none; padding: 12px 24px; font-size: 1.1rem; border-radius: 6px; cursor: pointer; margin: 5px; transition: transform 0.1s; }
+        button:active { transform: scale(0.96); }
+        input { padding: 10px; font-size: 1rem; border: 2px solid #ddd; border-radius: 6px; margin-bottom: 10px; width: 100%; }
+
+        /* --- Components: Tile --- */
+        .tile {
+            width: 45px; height: 45px;
+            background: var(--tile-color);
+            border-radius: 6px;
+            box-shadow: 0 4px 0 #baa680, 0 5px 5px rgba(0,0,0,0.2);
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.4rem;
+            position: relative;
+            cursor: grab;
+            user-select: none;
+            touch-action: none; /* Critical for simple drag events */
+            margin: 4px;
+        }
+        .tile span.score {
+            font-size: 0.6rem;
+            position: absolute;
+            bottom: 3px;
+            right: 4px;
+            color: #666;
+        }
+        .tile.selected {
+            background: #a8e6cf;
+            box-shadow: 0 4px 0 #6ba891, 0 5px 5px rgba(0,0,0,0.2);
+            transform: translateY(-2px);
+        }
+
+        /* --- HOST View --- */
+        #host-ui { justify-content: flex-start; padding: 10px; overflow: hidden; }
+        .header-bar { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: 50px; background: #333; }
+        
+        /* Board Area */
+        .board-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: auto;
+            width: 100%;
+            padding: 20px;
+        }
+        .scrabble-board {
+            display: grid;
+            grid-template-columns: repeat(15, 1fr);
+            grid-template-rows: repeat(15, 1fr);
+            gap: 2px;
+            background: var(--board-bg);
+            border: 5px solid #444;
+            width: 650px; /* Fixed size for host */
+            height: 650px;
+            padding: 5px;
+        }
+        .board-cell {
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        /* Special Squares */
+        .tw { background-color: #ff9f43; } /* Triple Word */
+        .dw { background-color: #ff9ff3; } /* Double Word */
+        .tl { background-color: #54a0ff; } /* Triple Letter */
+        .dl { background-color: #81ecec; } /* Double Letter */
+        .center-star { background-color: #ff9ff3; }
+        
+        .board-cell .tile {
+            width: 90%; height: 90%;
+            margin: 0;
+            box-shadow: 0 2px 0 #baa680;
+            font-size: 1.1rem;
+            cursor: grab;
+        }
+
+        /* Host Staging Rack */
+        .staging-area {
+            width: 100%;
+            height: 100px;
+            background: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-top: 4px solid #555;
+            gap: 10px;
+            padding: 10px;
+        }
+        .staging-rack {
+            background: var(--wood-color);
+            min-width: 300px;
+            height: 70px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            box-shadow: inset 0 5px 10px rgba(0,0,0,0.3);
+        }
+
+        /* --- PLAYER View (Mobile) --- */
+        #player-ui { background: #333; justify-content: space-between; padding-bottom: 20px; }
+        .mobile-header { padding: 20px; text-align: center; }
+        
+        .rack-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .player-rack {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            background: var(--wood-color);
+            padding: 15px;
+            border-radius: 8px;
+            width: 100%;
+            min-height: 80px;
+            gap: 10px;
+            box-shadow: inset 0 4px 8px rgba(0,0,0,0.3);
+        }
+        /* Player specific tile styles */
+        .player-rack .tile {
+            width: 55px; height: 65px; /* Taller tiles for mobile */
+            font-size: 2rem;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .btn-send { background: #3498db; width: 100%; padding: 15px; font-size: 1.2rem; }
+        .ghost-tile { opacity: 0.5; background: #ccc; }
+
+        /* Utilities */
+        .hidden { display: none; }
+        .log-msg { font-size: 0.8rem; color: #aaa; margin-left: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="screen-login" class="screen active">
+        <div class="menu-box">
+            <h1>Scrabble Connect</h1>
+            <p>Choose your role</p>
+            <button onclick="startHost()">Host Board</button>
+            <hr>
+            <input type="text" id="join-id" placeholder="Enter Room ID" style="text-transform: uppercase;">
+            <button onclick="joinGame()" style="background:#3498db">Join Game (Phone)</button>
+        </div>
+    </div>
+
+    <div id="screen-host" class="screen" id="host-ui">
+        <div class="header-bar">
+            <div>Room ID: <strong id="display-id" style="color:#2ecc71; font-size:1.2rem;">...</strong></div>
+            <div id="host-log" class="log-msg">Waiting for players...</div>
+            <button onclick="dealTilesToAll()" style="font-size:0.8rem; padding:5px 10px;">Deal 7 Tiles</button>
+        </div>
+
+        <div class="board-container">
+            <div class="scrabble-board" id="main-board">
+                </div>
+        </div>
+
+        <div class="staging-area">
+            <div style="color:#aaa; font-size:0.9rem; margin-right:10px;">INCOMING TILES:</div>
+            <div class="staging-rack" id="staging-rack">
+                </div>
+        </div>
+    </div>
+
+    <div id="screen-player" class="screen" id="player-ui">
+        <div class="mobile-header">
+            <h3>Your Rack</h3>
+            <p style="font-size:0.8rem; color:#aaa;">Drag to rearrange. Tap to select. Send to board.</p>
+        </div>
+
+        <div class="rack-container">
+            <div id="my-rack" class="player-rack">
+                </div>
+            
+            <div class="controls">
+                <button class="btn-send" onclick="sendSelectedTiles()">Send Selected to Board</button>
+            </div>
+            <div style="margin-top:10px;">
+                <button onclick="requestTiles()" style="background:transparent; border:1px solid #555; color:#aaa;">Request Tiles</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA ---
+        const TILE_SCORES = {
+            'A':1, 'B':3, 'C':3, 'D':2, 'E':1, 'F':4, 'G':2, 'H':4, 'I':1, 'J':8, 'K':5, 'L':1, 'M':3, 
+            'N':1, 'O':1, 'P':3, 'Q':10,'R':1, 'S':1, 'T':1, 'U':1, 'V':4, 'W':4, 'X':8, 'Y':4, 'Z':10, '_':0
+        };
+        
+        const TILE_DISTRIBUTION = {
+            'A':9, 'B':2, 'C':2, 'D':4, 'E':12, 'F':2, 'G':3, 'H':2, 'I':9, 'J':1, 'K':1, 'L':4, 'M':2, 
+            'N':6, 'O':8, 'P':2, 'Q':1, 'R':6, 'S':4, 'T':6, 'U':4, 'V':2, 'W':2, 'X':1, 'Y':2, 'Z':1, '_':2
+        };
+
+        const BOARD_LAYOUT = [
+            ['tw',0,0,'dl',0,0,0,'tw',0,0,0,'dl',0,0,'tw'],
+            [0,'dw',0,0,0,'tl',0,0,0,'tl',0,0,0,'dw',0],
+            [0,0,'dw',0,0,0,'dl',0,'dl',0,0,0,'dw',0,0],
+            ['dl',0,0,'dw',0,0,0,'dl',0,0,0,'dw',0,0,'dl'],
+            [0,0,0,0,'dw',0,0,0,0,0,'dw',0,0,0,0],
+            [0,'tl',0,0,0,'tl',0,0,0,'tl',0,0,0,'tl',0],
+            [0,0,'dl',0,0,0,'dl',0,'dl',0,0,0,'dl',0,0],
+            ['tw',0,0,'dl',0,0,0,'center-star',0,0,0,'dl',0,0,'tw'],
+            // Mirror top half roughly for simplicity or full map
+            [0,0,'dl',0,0,0,'dl',0,'dl',0,0,0,'dl',0,0],
+            [0,'tl',0,0,0,'tl',0,0,0,'tl',0,0,0,'tl',0],
+            [0,0,0,0,'dw',0,0,0,0,0,'dw',0,0,0,0],
+            ['dl',0,0,'dw',0,0,0,'dl',0,0,0,'dw',0,0,'dl'],
+            [0,0,'dw',0,0,0,'dl',0,'dl',0,0,0,'dw',0,0],
+            [0,'dw',0,0,0,'tl',0,0,0,'tl',0,0,0,'dw',0],
+            ['tw',0,0,'dl',0,0,0,'tw',0,0,0,'dl',0,0,'tw']
+        ];
+
+        // --- GLOBAL STATE ---
+        let peer = null;
+        let conn = null; // For player
+        let connections = []; // For host
+        let tileBag = [];
+        let draggedTile = null;
+
+        // --- UTILS ---
+        function generateBag() {
+            let bag = [];
+            for(let letter in TILE_DISTRIBUTION) {
+                for(let i=0; i<TILE_DISTRIBUTION[letter]; i++) bag.push(letter);
+            }
+            return bag.sort(() => Math.random() - 0.5);
+        }
+
+        function createTileElement(letter) {
+            const el = document.createElement('div');
+            el.className = 'tile';
+            el.dataset.letter = letter;
+            el.innerHTML = `${letter === '_' ? '' : letter}<span class="score">${TILE_SCORES[letter]}</span>`;
+            return el;
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        // --- HOST LOGIC ---
+        function startHost() {
+            tileBag = generateBag();
+            peer = new Peer(generateShortId()); // Helper for short ID
+
+            peer.on('open', (id) => {
+                document.getElementById('display-id').innerText = id;
+                showScreen('screen-host');
+                initBoard();
+            });
+
+            peer.on('connection', (c) => {
+                connections.push(c);
+                document.getElementById('host-log').innerText = "Player joined!";
+                
+                c.on('data', (data) => {
+                    if(data.type === 'tiles_played') {
+                        receiveTiles(data.tiles);
+                    } else if (data.type === 'request_tiles') {
+                        dealTilesToConn(c, 7); // Simplified deal logic
+                    }
+                });
+
+                // Auto deal initial hand
+                setTimeout(() => dealTilesToConn(c, 7), 1000);
+            });
+        }
+
+        function generateShortId() {
+            // Generate a random 4 letter code
+            return Math.random().toString(36).substring(2, 6).toUpperCase();
+        }
+
+        function initBoard() {
+            const board = document.getElementById('main-board');
+            board.innerHTML = '';
+            
+            for(let r=0; r<15; r++) {
+                for(let c=0; c<15; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'board-cell';
+                    const type = BOARD_LAYOUT[r] ? BOARD_LAYOUT[r][c] : 0;
+                    if(type) cell.classList.add(type);
+                    
+                    // Allow Drop on Board Cells
+                    cell.addEventListener('dragover', e => e.preventDefault());
+                    cell.addEventListener('drop', handleBoardDrop);
+                    
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        function receiveTiles(tiles) {
+            const rack = document.getElementById('staging-rack');
+            tiles.forEach(letter => {
+                const t = createTileElement(letter);
+                t.setAttribute('draggable', true);
+                t.addEventListener('dragstart', handleDragStart);
+                rack.appendChild(t);
+            });
+        }
+
+        function handleDragStart(e) {
+            draggedTile = e.target;
+            // Necessary for Firefox
+            e.dataTransfer.effectAllowed = 'move'; 
+            e.dataTransfer.setData('text/html', e.target.outerHTML);
+        }
+
+        function handleBoardDrop(e) {
+            e.preventDefault();
+            const cell = e.target.closest('.board-cell');
+            if(cell && !cell.hasChildNodes()) {
+                // If dragging from staging or another cell
+                if (draggedTile && draggedTile.parentNode) {
+                    draggedTile.parentNode.removeChild(draggedTile);
+                }
+                cell.appendChild(draggedTile);
+                draggedTile = null;
+            }
+        }
+
+        function dealTilesToAll() {
+            connections.forEach(c => dealTilesToConn(c, 7));
+        }
+
+        function dealTilesToConn(c, count) {
+            const hand = [];
+            for(let i=0; i<count; i++) {
+                if(tileBag.length > 0) hand.push(tileBag.pop());
+            }
+            if(hand.length > 0) {
+                c.send({ type: 'hand', tiles: hand });
+            }
+        }
+
+
+        // --- PLAYER LOGIC ---
+        function joinGame() {
+            const hostId = document.getElementById('join-id').value.toUpperCase();
+            if(!hostId) return alert("Enter Host ID");
+
+            peer = new Peer();
+            peer.on('open', (id) => {
+                conn = peer.connect(hostId);
+                
+                conn.on('open', () => {
+                    showScreen('screen-player');
+                    setupPlayerRack();
+                });
+
+                conn.on('data', (data) => {
+                    if(data.type === 'hand') {
+                        addTilesToRack(data.tiles);
+                    }
+                });
+
+                conn.on('error', (err) => alert("Connection Error: " + err));
+            });
+        }
+
+        let playerSortable;
+
+        function setupPlayerRack() {
+            const el = document.getElementById('my-rack');
+            // Init SortableJS for fluid animation
+            playerSortable = Sortable.create(el, {
+                animation: 200,
+                ghostClass: 'ghost-tile',
+                delay: 100, // Slight delay to prevent drag when tapping
+                delayOnTouchOnly: true
+            });
+        }
+
+        function addTilesToRack(tiles) {
+            const rack = document.getElementById('my-rack');
+            tiles.forEach(letter => {
+                const t = createTileElement(letter);
+                // Selection Logic
+                t.addEventListener('click', (e) => {
+                    // Prevent selection if we just finished dragging (Sortable handles this mostly, but good safety)
+                    t.classList.toggle('selected');
+                });
+                rack.appendChild(t);
+            });
+        }
+
+        function sendSelectedTiles() {
+            const rack = document.getElementById('my-rack');
+            const selected = rack.querySelectorAll('.tile.selected');
+            
+            if(selected.length === 0) return;
+
+            const lettersToSend = [];
+            selected.forEach(el => {
+                lettersToSend.push(el.dataset.letter);
+                el.remove(); // Remove from phone
+            });
+
+            // Send to Host
+            conn.send({
+                type: 'tiles_played',
+                tiles: lettersToSend
+            });
+        }
+
+        function requestTiles() {
+            conn.send({ type: 'request_tiles' });
+        }
+
+    </script>
+</body>
+</html>
