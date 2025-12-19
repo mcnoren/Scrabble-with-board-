@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Live Score</title>
+    <title>Scrabble Pro - Final Fix</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -15,6 +15,7 @@
             --sidebar: #1e1e1e;
             --accent: #27ae60;
             --danger: #c0392b;
+            --warning: #f39c12;
             --wood: #5d4037;
             --tile-face: #fdf5e6;
             --board-bg: #d7ccc8;
@@ -28,16 +29,17 @@
         .active { display: flex; z-index: 20; }
         .center-screen { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 
-        /* UI ELEMENTS */
+        /* INPUTS & BUTTONS */
         input { padding: 15px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #333; background: #222; color: white; margin-bottom: 10px; text-transform: uppercase; text-align: center; width: 300px; }
         button { background: var(--accent); color: white; border: none; padding: 15px 30px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin: 10px; font-weight: 600; box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
         button:active { transform: scale(0.96); box-shadow: none; }
         button:disabled { background: #333; color: #888; cursor: not-allowed; }
+        .btn-warning { background: var(--warning); color: #222; }
 
         /* HOST LAYOUT */
         #screen-host { flex-direction: row; }
         .sidebar { 
-            width: 300px; height: 100%; background: var(--sidebar); border-right: 1px solid #333; 
+            width: 320px; height: 100%; background: var(--sidebar); border-right: 1px solid #333; 
             display: flex; flex-direction: column; padding: 15px; z-index: 50; 
             box-shadow: 5px 0 15px rgba(0,0,0,0.5);
         }
@@ -57,7 +59,6 @@
             user-select: none;
         }
         
-        /* Multiplier Colors */
         .tw { background: #ff7675; color: white; } 
         .dw { background: #fab1a0; }
         .tl { background: #74b9ff; color: white; } 
@@ -69,21 +70,22 @@
             width: 100%; height: 100%;
             background: var(--tile-face); 
             border-radius: 3px; 
-            box-shadow: inset 0 -3px 0 #bcaaa4; /* Inset shadow keeps it contained */
+            box-shadow: inset 0 -3px 0 #bcaaa4; 
             color: #2d3436;
             display: flex; justify-content: center; align-items: center; 
             font-weight: bold; font-size: 1.2rem; 
             position: relative; 
             cursor: grab; 
-            z-index: 10; /* Ensure tile sits above cell text */
+            z-index: 100; /* Always on top */
+            touch-action: none; /* Critical for iPad drag */
         }
         
-        /* When dragging, it pops out */
+        /* Dragging Clone */
         .tile.dragging { 
-            position: fixed; z-index: 9999; 
+            position: fixed; z-index: 99999; 
             width: 50px !important; height: 50px !important; 
             opacity: 0.9; transform: scale(1.1); pointer-events: none; 
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
             border: 2px solid var(--accent);
         }
 
@@ -92,9 +94,10 @@
         /* SIDEBAR COMPONENTS */
         .info-box { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; margin-bottom: 10px; text-align: center; }
         .turn-score { color: var(--accent); font-size: 2rem; font-weight: bold; }
+        
         .inbox-area { margin-top: auto; background: #111; padding: 10px; border-radius: 8px; border: 1px solid #444; }
         .inbox-rack { display: flex; gap: 5px; flex-wrap: wrap; min-height: 55px; margin-bottom: 10px; align-items: center; justify-content: center; }
-        .inbox-rack .tile { width: 40px; height: 40px; font-size: 1.1rem; } /* Specific size for inbox */
+        .inbox-rack .tile { width: 40px; height: 40px; font-size: 1.1rem; }
 
         .return-zone { flex: 1; height: 50px; background: var(--danger); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; text-align: center; cursor: pointer; border: 2px dashed rgba(255,255,255,0.3); }
 
@@ -102,29 +105,20 @@
         #player-ui { background: #2d3436; justify-content: space-between; flex-direction: column; }
         .rack-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; }
         
-        /* NEW IPHONE RACK STYLE */
+        /* IPHONE RACK */
         .player-rack { 
-            background: var(--wood); 
-            padding: 10px; 
-            border-radius: 8px; 
-            width: 95%; 
-            display: flex; 
-            justify-content: center; /* Center tiles */
-            gap: 2vw; /* Gap based on screen width */
+            background: var(--wood); padding: 10px; border-radius: 8px; width: 95%; 
+            display: flex; justify-content: center; gap: 2vw; 
         }
         .player-rack .tile { 
-            width: 11vw; height: 11vw; /* Responsive squares */
-            max-width: 60px; max-height: 60px;
-            font-size: 1.5rem;
-            box-shadow: 0 4px 0 #bcaaa4;
+            width: 11vw; height: 11vw; max-width: 60px; max-height: 60px;
+            font-size: 1.5rem; box-shadow: 0 4px 0 #bcaaa4;
         }
         .tile.selected { border: 3px solid var(--accent); transform: translateY(-5px); }
 
-        /* QR & NOTIFICATIONS */
-        #qrcode { background: white; padding: 10px; border-radius: 8px; margin: 20px auto; display: inline-block; }
+        /* TOAST */
         #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); color: white; padding: 12px 24px; border-radius: 30px; font-size: 1rem; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         #toast.show { opacity: 1; }
-        
         .hidden { display: none !important; }
     </style>
 </head>
@@ -147,36 +141,33 @@
         <h2 style="color:#aaa; margin:0; font-size:1rem;">JOIN CODE</h2>
         <div id="lobby-code-display" style="font-size:3.5rem; font-weight:800; color:var(--accent); letter-spacing:5px;">...</div>
         <div id="qrcode"></div>
-        <div class="lobby-list" id="lobby-player-list" style="margin-top:20px;">Waiting for players...</div>
+        <div class="lobby-list" id="lobby-player-list" style="margin-top:20px;">Waiting...</div>
         <button onclick="hostStartGame()" style="margin-top:20px;">START GAME</button>
     </div>
 
     <div id="screen-host" class="screen">
         <div class="sidebar">
-            <div style="border-bottom:1px solid #444; padding-bottom:10px; margin-bottom:10px;">
-                <div style="color:#aaa; font-size:0.7rem;">ROOM CODE</div>
-                <div id="sidebar-code" style="font-size:1.5rem; font-weight:bold; color:var(--accent); font-family:monospace;"></div>
-            </div>
-
             <div class="info-box">
                 <div style="font-size:0.7rem; color:#aaa;">CURRENT TURN</div>
                 <div id="turn-indicator" style="font-size:1.4rem; font-weight:bold;">...</div>
             </div>
 
             <div class="info-box" style="border:1px solid var(--accent);">
-                <div style="font-size:0.7rem; color:#aaa;">TURN SCORE</div>
+                <div style="font-size:0.7rem; color:#aaa;">POTENTIAL SCORE</div>
                 <div id="live-score" class="turn-score">0</div>
             </div>
 
             <div id="sidebar-list" style="flex-grow:1; overflow-y:auto; margin-bottom:10px;"></div>
 
             <div class="inbox-area">
-                <div style="font-size:0.7rem; color:#aaa; margin-bottom:5px;">INBOX (Drag to Board)</div>
+                <div style="font-size:0.7rem; color:#aaa; margin-bottom:5px;">INBOX</div>
                 <div class="inbox-rack" id="host-inbox"></div>
-                <div style="display:flex; gap:10px;">
-                    <div class="return-zone" id="return-zone">DROP TO<br>RETURN</div>
-                    <button onclick="confirmTurn()" style="flex:2; margin:0; font-size:0.9rem;">Confirm</button>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-bottom:5px;">
+                    <button onclick="recallTiles()" class="btn-warning" style="margin:0; padding:10px; font-size:0.8rem;">Recall All</button>
+                    <div class="return-zone" id="return-zone">Drag to Return</div>
                 </div>
+                <button onclick="confirmTurn()" style="width:100%; margin:0; padding:12px;">Confirm Turn</button>
             </div>
         </div>
         <div class="board-wrapper">
@@ -199,10 +190,9 @@
     </div>
 
     <script>
-        // CONFIG
+        // --- CONSTANTS ---
         const SCORES = {'A':1,'B':3,'C':3,'D':2,'E':1,'F':4,'G':2,'H':4,'I':1,'J':8,'K':5,'L':1,'M':3,'N':1,'O':1,'P':3,'Q':10,'R':1,'S':1,'T':1,'U':1,'V':4,'W':4,'X':8,'Y':4,'Z':10,'_':0};
         const BAG_INIT = {'A':9,'B':2,'C':2,'D':4,'E':12,'F':2,'G':3,'H':2,'I':9,'J':1,'K':1,'L':4,'M':2,'N':6,'O':8,'P':2,'Q':1,'R':6,'S':4,'T':6,'U':4,'V':2,'W':2,'X':1,'Y':2,'Z':1,'_':2};
-        // 1=TW, 2=DW, 3=TL, 4=DL, 5=Star
         const LAYOUT = [
             [1,0,0,4,0,0,0,1,0,0,0,4,0,0,1],[0,2,0,0,0,3,0,0,0,3,0,0,0,2,0],[0,0,2,0,0,0,4,0,4,0,0,0,2,0,0],[4,0,0,2,0,0,0,4,0,0,0,2,0,0,4],
             [0,0,0,0,2,0,0,0,0,0,2,0,0,0,0],[0,3,0,0,0,3,0,0,0,3,0,0,0,3,0],[0,0,4,0,0,0,4,0,4,0,0,0,4,0,0],[1,0,0,4,0,0,0,5,0,0,0,4,0,0,1],
@@ -230,20 +220,21 @@
         function toast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
         function genId() { const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let r=""; for(let i=0;i<4;i++) r+=c.charAt(Math.floor(Math.random()*c.length)); return r; }
 
-        // --- DRAG ENGINE (THE FIXES) ---
+        // --- FIXED DRAG ENGINE ---
         let dragEl=null, clone=null;
 
         function onDragStart(e) {
             if(e.currentTarget.dataset.locked==="true") return;
             e.preventDefault();
             dragEl = e.currentTarget;
+            
             clone = dragEl.cloneNode(true);
             clone.classList.add('dragging');
             document.body.appendChild(clone);
             updateClonePos(e.clientX, e.clientY);
             
-            // HIDE ORIGINAL BUT KEEP IN DOM
-            dragEl.style.opacity = '0'; 
+            // KEY: Don't remove it, just make it invisible but taking up space
+            dragEl.style.opacity = '0';
             
             document.addEventListener('pointermove', onDragMove);
             document.addEventListener('pointerup', onDragEnd);
@@ -258,13 +249,13 @@
             document.removeEventListener('pointermove', onDragMove);
             document.removeEventListener('pointerup', onDragEnd);
             
-            clone.hidden = true; // Hide to find element below
+            clone.hidden = true; 
             const el = document.elementFromPoint(e.clientX, e.clientY);
             clone.hidden = false;
             clone.remove(); clone=null;
 
-            // RESET ORIGINAL STYLE so it shows up
-            dragEl.style.opacity = '';
+            // NUCLEAR RESET: Ensure tile is visible again
+            dragEl.removeAttribute('style'); // Removes opacity, position, everything
             
             if(el) {
                 const cell = el.closest('.cell');
@@ -276,55 +267,20 @@
                     dragEl.remove();
                 } else if(cell && !cell.hasChildNodes()) {
                     cell.appendChild(dragEl);
-                } else if(inbox) {
+                } else {
+                    // Fallback: Send to inbox if dropped in void or occupied cell
                     document.getElementById('host-inbox').appendChild(dragEl);
                 }
+            } else {
+                // Dropped outside window
+                document.getElementById('host-inbox').appendChild(dragEl);
             }
             dragEl = null;
-            calculateLiveScore(); // UPDATE SCORE ON DROP
+            calculateLiveScore();
         }
 
         function updateClonePos(x, y) {
             if(clone) { clone.style.left=(x-25)+'px'; clone.style.top=(y-25)+'px'; }
-        }
-
-        // --- LIVE SCORING LOGIC ---
-        function calculateLiveScore() {
-            let score = 0;
-            const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
-            
-            if(newTiles.length === 0) {
-                document.getElementById('live-score').innerText = "0";
-                return;
-            }
-
-            // Simple heuristic calculation: Sum(Tile * Multiplier)
-            // Real Scrabble validation is complex, we'll calculate "placed points" including multipliers
-            newTiles.forEach(t => {
-                const cell = t.parentElement;
-                const r = parseInt(cell.dataset.r);
-                const c = parseInt(cell.dataset.c);
-                const type = LAYOUT[r][c];
-                let val = SCORES[t.dataset.letter];
-                
-                // Letter Multipliers
-                if(type === 3) val *= 3; // TL
-                if(type === 4) val *= 2; // DL
-
-                // Word multipliers applied later (simplified here: add to total)
-                score += val;
-            });
-
-            // Check for Word Multipliers covered by new tiles
-            let wordMult = 1;
-            newTiles.forEach(t => {
-                const cell = t.parentElement;
-                const type = LAYOUT[parseInt(cell.dataset.r)][parseInt(cell.dataset.c)];
-                if(type === 1) wordMult *= 3; // TW
-                if(type === 2 || type === 5) wordMult *= 2; // DW
-            });
-
-            document.getElementById('live-score').innerText = score * wordMult;
         }
 
         // --- HOST LOGIC ---
@@ -335,7 +291,6 @@
             peer.on('open', id => {
                 showScreen('screen-lobby');
                 document.getElementById('lobby-code-display').innerText = id;
-                document.getElementById('sidebar-code').innerText = id;
                 document.getElementById('qrcode').innerHTML = "";
                 new QRCode(document.getElementById("qrcode"), { text: id, width: 128, height: 128 });
                 initBag(); renderBoard(); players=[]; updateHostUI();
@@ -351,11 +306,8 @@
                 if(existing) { existing.conn = c; existing.id = c.peer; toast(`${data.name} reconnected`); }
                 else { players.push({ id:c.peer, name:data.name, score:0, conn:c }); toast(`${data.name} joined`); }
                 
-                if(document.getElementById('screen-host').classList.contains('active')) {
-                     c.send({type:'gamestart'});
-                } else {
-                     c.send({type:'joined_lobby', name: data.name});
-                }
+                if(document.getElementById('screen-host').classList.contains('active')) c.send({type:'gamestart'});
+                else c.send({type:'joined_lobby', name: data.name});
                 updateHostUI();
             }
             if(data.type === 'play') {
@@ -376,12 +328,47 @@
             list.innerHTML = players.map(p => `<div>${p.name} <span style="color:var(--accent)">Ready</span></div>`).join('');
             const sideList = document.getElementById('sidebar-list');
             sideList.innerHTML = players.map((p, i) => `<div style="padding:5px; border-bottom:1px solid #333; ${i===turnIndex?'border-left:3px solid var(--accent); background:#222':''}"><strong>${p.name}</strong> <span>${p.score}</span></div>`).join('');
-            if(players[turnIndex]) document.getElementById('turn-indicator').innerText = players[turnIndex].name;
         }
 
         function initBag() { bag=[]; for(let l in BAG_INIT) for(let i=0; i<BAG_INIT[l]; i++) bag.push(l); bag.sort(()=>Math.random()-0.5); }
         function deal(c,n) { let h=[]; for(let i=0; i<n; i++) if(bag.length) h.push(bag.pop()); if(h.length) c.send({type:'hand', tiles:h}); }
         function returnTile(l,oid) { const p=players.find(x=>x.id===oid); if(p) p.conn.send({type:'return', tile:l}); calculateLiveScore(); }
+
+        function recallTiles() {
+            const inbox = document.getElementById('host-inbox');
+            const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
+            newTiles.forEach(t => {
+                inbox.appendChild(t);
+            });
+            calculateLiveScore();
+        }
+
+        function calculateLiveScore() {
+            let score = 0;
+            const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
+            if(newTiles.length === 0) { document.getElementById('live-score').innerText = "0"; return; }
+
+            newTiles.forEach(t => {
+                const cell = t.parentElement;
+                const r = parseInt(cell.dataset.r);
+                const c = parseInt(cell.dataset.c);
+                const type = LAYOUT[r][c];
+                let val = SCORES[t.dataset.letter];
+                if(type === 3) val *= 3; // TL
+                if(type === 4) val *= 2; // DL
+                score += val;
+            });
+
+            let wordMult = 1;
+            newTiles.forEach(t => {
+                const cell = t.parentElement;
+                const type = LAYOUT[parseInt(cell.dataset.r)][parseInt(cell.dataset.c)];
+                if(type === 1) wordMult *= 3; // TW
+                if(type === 2 || type === 5) wordMult *= 2; // DW
+            });
+
+            document.getElementById('live-score').innerText = score * wordMult;
+        }
 
         function confirmTurn() {
             const grid=getGrid(); const words=getWords(grid);
@@ -392,7 +379,6 @@
             const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
             if(newTiles.length===0) return alert("Place tiles first.");
             
-            // Add Score
             const points = parseInt(document.getElementById('live-score').innerText);
             players[turnIndex].score += points;
             
@@ -400,7 +386,7 @@
             deal(players[turnIndex].conn, newTiles.length);
             turnIndex = (turnIndex + 1) % players.length;
             
-            document.getElementById('live-score').innerText = "0"; // Reset live score
+            document.getElementById('live-score').innerText = "0";
             notifyTurn();
             
             const inbox = document.getElementById('host-inbox');
@@ -414,7 +400,6 @@
             });
         }
 
-        // --- BOARD RENDERING ---
         function renderBoard() {
             const b = document.getElementById('board-grid'); b.innerHTML = '';
             for(let r=0; r<15; r++) for(let c=0; c<15; c++) {
