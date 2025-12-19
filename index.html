@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Host Board</title>
+    <title>Scrabble Pro - Live Score</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -14,7 +14,6 @@
             --bg: #121212;
             --sidebar: #1e1e1e;
             --accent: #27ae60;
-            --highlight: #2ecc71; /* Green highlight for drop targets */
             --danger: #c0392b;
             --wood: #5d4037;
             --tile-face: #fdf5e6;
@@ -29,7 +28,7 @@
         .active { display: flex; z-index: 20; }
         .center-screen { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 
-        /* UI COMPONENTS */
+        /* UI ELEMENTS */
         input { padding: 15px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #333; background: #222; color: white; margin-bottom: 10px; text-transform: uppercase; text-align: center; width: 300px; }
         button { background: var(--accent); color: white; border: none; padding: 15px 30px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin: 10px; font-weight: 600; box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
         button:active { transform: scale(0.96); box-shadow: none; }
@@ -37,13 +36,17 @@
 
         /* HOST LAYOUT */
         #screen-host { flex-direction: row; }
-        .sidebar { width: 320px; height: 100%; background: var(--sidebar); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 15px; box-shadow: 5px 0 15px rgba(0,0,0,0.3); z-index: 50; }
+        .sidebar { 
+            width: 300px; height: 100%; background: var(--sidebar); border-right: 1px solid #333; 
+            display: flex; flex-direction: column; padding: 15px; z-index: 50; 
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+        }
         .board-wrapper { flex-grow: 1; height: 100%; display: flex; align-items: center; justify-content: center; background: #000; position: relative; }
 
         /* THE BOARD */
         .scrabble-board {
-            display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); gap: 1px;
-            background: #000; border: 10px solid var(--wood); border-radius: 4px;
+            display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); gap: 2px;
+            background: #000; border: 8px solid var(--wood); border-radius: 4px;
             width: 96vmin; height: 96vmin; 
         }
         .cell { 
@@ -51,30 +54,31 @@
             display: flex; justify-content: center; align-items: center; 
             font-size: 0.65rem; font-weight: 700; color: #555; 
             position: relative; text-transform: uppercase; 
-            transition: background 0.1s;
+            user-select: none;
         }
-        /* VISUAL FEEDBACK FOR DRAGGING */
-        .cell.drop-target {
-            background-color: var(--highlight) !important;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-            cursor: copy;
-        }
-
-        .tw { background: #ff7675; color: white; } .dw { background: #fab1a0; }
-        .tl { background: #74b9ff; color: white; } .dl { background: #81ecec; }
+        
+        /* Multiplier Colors */
+        .tw { background: #ff7675; color: white; } 
+        .dw { background: #fab1a0; }
+        .tl { background: #74b9ff; color: white; } 
+        .dl { background: #81ecec; }
         .star { background: #fab1a0; font-size: 1.5rem; color: #d63031; }
 
         /* TILES */
         .tile {
-            width: 100%; height: 100%; aspect-ratio: 1/1;
-            background: var(--tile-face); border-radius: 4px; box-shadow: 0 3px 0 #bcaaa4; color: #2d3436;
-            display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.3rem; 
-            position: relative; user-select: none; cursor: grab; z-index: 100; touch-action: none;
+            width: 100%; height: 100%;
+            background: var(--tile-face); 
+            border-radius: 3px; 
+            box-shadow: inset 0 -3px 0 #bcaaa4; /* Inset shadow keeps it contained */
+            color: #2d3436;
+            display: flex; justify-content: center; align-items: center; 
+            font-weight: bold; font-size: 1.2rem; 
+            position: relative; 
+            cursor: grab; 
+            z-index: 10; /* Ensure tile sits above cell text */
         }
-        .cell .tile { width: 100%; height: 100%; border-radius: 0; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
-        .tile span.score { font-size: 0.5rem; position: absolute; bottom: 1px; right: 2px; }
         
-        /* DRAGGING CLONE STYLE */
+        /* When dragging, it pops out */
         .tile.dragging { 
             position: fixed; z-index: 9999; 
             width: 50px !important; height: 50px !important; 
@@ -83,29 +87,44 @@
             border: 2px solid var(--accent);
         }
 
-        /* INBOX & ACTIONS */
-        .player-row { padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
-        .player-row.active-turn { background: #222; border-left: 4px solid var(--accent); }
-        
+        .tile span.score { font-size: 0.5rem; position: absolute; bottom: 2px; right: 2px; }
+
+        /* SIDEBAR COMPONENTS */
+        .info-box { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; margin-bottom: 10px; text-align: center; }
+        .turn-score { color: var(--accent); font-size: 2rem; font-weight: bold; }
         .inbox-area { margin-top: auto; background: #111; padding: 10px; border-radius: 8px; border: 1px solid #444; }
         .inbox-rack { display: flex; gap: 5px; flex-wrap: wrap; min-height: 55px; margin-bottom: 10px; align-items: center; justify-content: center; }
-        .inbox-rack .tile { width: 45px; height: 45px; font-size: 1.2rem; }
+        .inbox-rack .tile { width: 40px; height: 40px; font-size: 1.1rem; } /* Specific size for inbox */
 
-        .action-row { display: flex; gap: 10px; }
-        .return-zone { flex: 1; height: 50px; background: var(--danger); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; text-align: center; border: 2px dashed rgba(255,255,255,0.3); }
+        .return-zone { flex: 1; height: 50px; background: var(--danger); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; text-align: center; cursor: pointer; border: 2px dashed rgba(255,255,255,0.3); }
 
         /* PLAYER MOBILE UI */
         #player-ui { background: #2d3436; justify-content: space-between; flex-direction: column; }
-        .rack-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; background: #2d3436; }
-        .player-rack { background: var(--wood); padding: 10px; border-radius: 4px; display: flex; overflow-x: auto; gap: 8px; width: 95%; max-width: 600px; height: 80px; align-items: center; }
-        .player-rack .tile { flex: 0 0 auto; width: 60px; height: 60px; font-size: 1.8rem; }
-        .tile.selected { border: 3px solid var(--accent); transform: translateY(-3px); }
+        .rack-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; }
+        
+        /* NEW IPHONE RACK STYLE */
+        .player-rack { 
+            background: var(--wood); 
+            padding: 10px; 
+            border-radius: 8px; 
+            width: 95%; 
+            display: flex; 
+            justify-content: center; /* Center tiles */
+            gap: 2vw; /* Gap based on screen width */
+        }
+        .player-rack .tile { 
+            width: 11vw; height: 11vw; /* Responsive squares */
+            max-width: 60px; max-height: 60px;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 0 #bcaaa4;
+        }
+        .tile.selected { border: 3px solid var(--accent); transform: translateY(-5px); }
 
         /* QR & NOTIFICATIONS */
         #qrcode { background: white; padding: 10px; border-radius: 8px; margin: 20px auto; display: inline-block; }
         #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); color: white; padding: 12px 24px; border-radius: 30px; font-size: 1rem; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         #toast.show { opacity: 1; }
-
+        
         .hidden { display: none !important; }
     </style>
 </head>
@@ -117,10 +136,9 @@
         <h1 style="font-size:3rem; margin-bottom:5px;">Scrabble<span style="color:var(--accent)">Pro</span></h1>
         <div id="dict-status" style="color:#888; margin-bottom:30px;">Dictionary Loading...</div>
         <button onclick="initHost()" style="width:260px; padding:18px;">Host New Game</button>
-        <div style="margin-top:40px; border-top:1px solid #333; padding-top:20px; width: 100%; max-width: 320px;">
-            <input type="text" id="join-name" placeholder="NICKNAME" maxlength="10">
-            <input type="text" id="join-code" placeholder="ROOM CODE" maxlength="4">
-            <br>
+        <div style="margin-top:40px; border-top:1px solid #333; padding-top:20px;">
+            <input type="text" id="join-name" placeholder="NICKNAME" maxlength="10"><br>
+            <input type="text" id="join-code" placeholder="ROOM CODE" maxlength="4"><br>
             <button id="btn-join" onclick="joinGame()" disabled>Join Room</button>
         </div>
     </div>
@@ -129,13 +147,8 @@
         <h2 style="color:#aaa; margin:0; font-size:1rem;">JOIN CODE</h2>
         <div id="lobby-code-display" style="font-size:3.5rem; font-weight:800; color:var(--accent); letter-spacing:5px;">...</div>
         <div id="qrcode"></div>
-        <div class="lobby-list" id="lobby-player-list" style="width:300px; min-height:100px; background:#222; margin:20px; padding:10px; border-radius:8px;">Waiting for players...</div>
-        <button onclick="hostStartGame()">START GAME</button>
-    </div>
-
-    <div id="screen-waiting" class="screen center-screen">
-        <h2 style="color:var(--accent); font-size:2rem;">Waiting for Host...</h2>
-        <div style="margin-top:20px; font-size:1.2rem; font-weight:bold;" id="waiting-player-name"></div>
+        <div class="lobby-list" id="lobby-player-list" style="margin-top:20px;">Waiting for players...</div>
+        <button onclick="hostStartGame()" style="margin-top:20px;">START GAME</button>
     </div>
 
     <div id="screen-host" class="screen">
@@ -144,15 +157,23 @@
                 <div style="color:#aaa; font-size:0.7rem;">ROOM CODE</div>
                 <div id="sidebar-code" style="font-size:1.5rem; font-weight:bold; color:var(--accent); font-family:monospace;"></div>
             </div>
-            <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; text-align:center; margin-bottom:15px;">
+
+            <div class="info-box">
                 <div style="font-size:0.7rem; color:#aaa;">CURRENT TURN</div>
                 <div id="turn-indicator" style="font-size:1.4rem; font-weight:bold;">...</div>
             </div>
+
+            <div class="info-box" style="border:1px solid var(--accent);">
+                <div style="font-size:0.7rem; color:#aaa;">TURN SCORE</div>
+                <div id="live-score" class="turn-score">0</div>
+            </div>
+
             <div id="sidebar-list" style="flex-grow:1; overflow-y:auto; margin-bottom:10px;"></div>
+
             <div class="inbox-area">
-                <div style="font-size:0.7rem; color:#aaa; margin-bottom:5px;">INBOX</div>
+                <div style="font-size:0.7rem; color:#aaa; margin-bottom:5px;">INBOX (Drag to Board)</div>
                 <div class="inbox-rack" id="host-inbox"></div>
-                <div class="action-row">
+                <div style="display:flex; gap:10px;">
                     <div class="return-zone" id="return-zone">DROP TO<br>RETURN</div>
                     <button onclick="confirmTurn()" style="flex:2; margin:0; font-size:0.9rem;">Confirm</button>
                 </div>
@@ -164,9 +185,9 @@
     </div>
 
     <div id="screen-player" class="screen" id="player-ui">
-        <div style="padding:15px; background:#111; display:flex; justify-content:space-between; align-items:center;">
+        <div style="padding:15px; background:#111; display:flex; justify-content:space-between;">
             <span id="my-display-name" style="color:var(--accent); font-weight:bold;">Me</span>
-            <span id="status-msg" style="color:#888; font-size:0.8rem;">Game Active</span>
+            <span id="status-msg" style="color:#888;">Waiting...</span>
         </div>
         <div class="rack-area">
             <div id="my-rack" class="player-rack"></div>
@@ -181,6 +202,7 @@
         // CONFIG
         const SCORES = {'A':1,'B':3,'C':3,'D':2,'E':1,'F':4,'G':2,'H':4,'I':1,'J':8,'K':5,'L':1,'M':3,'N':1,'O':1,'P':3,'Q':10,'R':1,'S':1,'T':1,'U':1,'V':4,'W':4,'X':8,'Y':4,'Z':10,'_':0};
         const BAG_INIT = {'A':9,'B':2,'C':2,'D':4,'E':12,'F':2,'G':3,'H':2,'I':9,'J':1,'K':1,'L':4,'M':2,'N':6,'O':8,'P':2,'Q':1,'R':6,'S':4,'T':6,'U':4,'V':2,'W':2,'X':1,'Y':2,'Z':1,'_':2};
+        // 1=TW, 2=DW, 3=TL, 4=DL, 5=Star
         const LAYOUT = [
             [1,0,0,4,0,0,0,1,0,0,0,4,0,0,1],[0,2,0,0,0,3,0,0,0,3,0,0,0,2,0],[0,0,2,0,0,0,4,0,4,0,0,0,2,0,0],[4,0,0,2,0,0,0,4,0,0,0,2,0,0,4],
             [0,0,0,0,2,0,0,0,0,0,2,0,0,0,0],[0,3,0,0,0,3,0,0,0,3,0,0,0,3,0],[0,0,4,0,0,0,4,0,4,0,0,0,4,0,0],[1,0,0,4,0,0,0,5,0,0,0,4,0,0,1],
@@ -188,7 +210,7 @@
             [0,0,2,0,0,0,4,0,4,0,0,0,2,0,0],[0,2,0,0,0,3,0,0,0,3,0,0,0,2,0],[1,0,0,4,0,0,0,1,0,0,0,4,0,0,1]
         ];
 
-        let peer, conn, dictionary = new Set(), bag=[], players=[], turnIndex=0, joining=false, myTurn=false;
+        let peer, conn, dictionary = new Set(), bag=[], players=[], turnIndex=0, myTurn=false;
 
         // INIT
         fetch('https://raw.githubusercontent.com/redbo/scrabble/master/dictionary.txt')
@@ -208,30 +230,21 @@
         function toast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
         function genId() { const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let r=""; for(let i=0;i<4;i++) r+=c.charAt(Math.floor(Math.random()*c.length)); return r; }
 
-        // --- DRAG AND DROP ENGINE (THE FIX) ---
-        let dragEl = null;
-        let clone = null;
-        let lastHighlight = null;
+        // --- DRAG ENGINE (THE FIXES) ---
+        let dragEl=null, clone=null;
 
         function onDragStart(e) {
-            // Check if locked
-            if(e.currentTarget.dataset.locked === "true") return;
+            if(e.currentTarget.dataset.locked==="true") return;
             e.preventDefault();
-            
             dragEl = e.currentTarget;
-            
-            // Create Visual Clone
             clone = dragEl.cloneNode(true);
             clone.classList.add('dragging');
             document.body.appendChild(clone);
-            
-            // Position Clone
             updateClonePos(e.clientX, e.clientY);
             
-            // Hide Original Tile (keep in DOM but invisible)
-            dragEl.style.opacity = '0';
-
-            // Global Listeners
+            // HIDE ORIGINAL BUT KEEP IN DOM
+            dragEl.style.opacity = '0'; 
+            
             document.addEventListener('pointermove', onDragMove);
             document.addEventListener('pointerup', onDragEnd);
         }
@@ -239,82 +252,79 @@
         function onDragMove(e) {
             e.preventDefault();
             updateClonePos(e.clientX, e.clientY);
-
-            // Hit Testing logic
-            clone.hidden = true; // Temporarily hide clone to see what's underneath
-            const el = document.elementFromPoint(e.clientX, e.clientY);
-            clone.hidden = false;
-
-            // Clear old highlight
-            if(lastHighlight) {
-                lastHighlight.classList.remove('drop-target');
-                lastHighlight = null;
-            }
-
-            if(el) {
-                const cell = el.closest('.cell');
-                // Only highlight if it's a valid empty board cell
-                if(cell && !cell.hasChildNodes()) {
-                    cell.classList.add('drop-target');
-                    lastHighlight = cell;
-                }
-            }
         }
 
         function onDragEnd(e) {
-            // Remove listeners
             document.removeEventListener('pointermove', onDragMove);
             document.removeEventListener('pointerup', onDragEnd);
-
-            // Cleanup Highlight
-            if(lastHighlight) {
-                lastHighlight.classList.remove('drop-target');
-                lastHighlight = null;
-            }
-
-            // Detect Drop Target
-            clone.hidden = true;
+            
+            clone.hidden = true; // Hide to find element below
             const el = document.elementFromPoint(e.clientX, e.clientY);
             clone.hidden = false;
+            clone.remove(); clone=null;
 
-            // Destroy Clone
-            clone.remove();
-            clone = null;
-
-            // Restore Original Visibility
-            dragEl.style.opacity = '1';
-
+            // RESET ORIGINAL STYLE so it shows up
+            dragEl.style.opacity = '';
+            
             if(el) {
                 const cell = el.closest('.cell');
                 const ret = el.closest('.return-zone');
                 const inbox = el.closest('.inbox-area');
 
                 if(ret) {
-                    // Return to Player
                     returnTile(dragEl.dataset.letter, dragEl.dataset.owner);
                     dragEl.remove();
-                } 
-                else if (cell && !cell.hasChildNodes()) {
-                    // Valid Board Drop
+                } else if(cell && !cell.hasChildNodes()) {
                     cell.appendChild(dragEl);
-                    cell.innerText = ''; // Clear "TW/DL" text
-                    cell.className = 'cell'; // Remove special colors
-                }
-                else if (inbox) {
-                    // Return to Inbox
+                } else if(inbox) {
                     document.getElementById('host-inbox').appendChild(dragEl);
                 }
-                // If dropped elsewhere, dragEl stays in its original parent (no change)
             }
-
             dragEl = null;
+            calculateLiveScore(); // UPDATE SCORE ON DROP
         }
 
         function updateClonePos(x, y) {
-            if(clone) {
-                clone.style.left = (x - 25) + 'px'; // Center clone (50px width / 2)
-                clone.style.top = (y - 25) + 'px';
+            if(clone) { clone.style.left=(x-25)+'px'; clone.style.top=(y-25)+'px'; }
+        }
+
+        // --- LIVE SCORING LOGIC ---
+        function calculateLiveScore() {
+            let score = 0;
+            const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
+            
+            if(newTiles.length === 0) {
+                document.getElementById('live-score').innerText = "0";
+                return;
             }
+
+            // Simple heuristic calculation: Sum(Tile * Multiplier)
+            // Real Scrabble validation is complex, we'll calculate "placed points" including multipliers
+            newTiles.forEach(t => {
+                const cell = t.parentElement;
+                const r = parseInt(cell.dataset.r);
+                const c = parseInt(cell.dataset.c);
+                const type = LAYOUT[r][c];
+                let val = SCORES[t.dataset.letter];
+                
+                // Letter Multipliers
+                if(type === 3) val *= 3; // TL
+                if(type === 4) val *= 2; // DL
+
+                // Word multipliers applied later (simplified here: add to total)
+                score += val;
+            });
+
+            // Check for Word Multipliers covered by new tiles
+            let wordMult = 1;
+            newTiles.forEach(t => {
+                const cell = t.parentElement;
+                const type = LAYOUT[parseInt(cell.dataset.r)][parseInt(cell.dataset.c)];
+                if(type === 1) wordMult *= 3; // TW
+                if(type === 2 || type === 5) wordMult *= 2; // DW
+            });
+
+            document.getElementById('live-score').innerText = score * wordMult;
         }
 
         // --- HOST LOGIC ---
@@ -327,12 +337,11 @@
                 document.getElementById('lobby-code-display').innerText = id;
                 document.getElementById('sidebar-code').innerText = id;
                 document.getElementById('qrcode').innerHTML = "";
-                new QRCode(document.getElementById("qrcode"), { text: id, width: 128, height: 128, colorDark:"#000", colorLight:"#fff", correctLevel:QRCode.CorrectLevel.H });
+                new QRCode(document.getElementById("qrcode"), { text: id, width: 128, height: 128 });
                 initBag(); renderBoard(); players=[]; updateHostUI();
             });
             peer.on('connection', c => {
                 c.on('data', d => handleHostData(c, d));
-                c.on('open', () => {});
             });
         }
 
@@ -342,7 +351,6 @@
                 if(existing) { existing.conn = c; existing.id = c.peer; toast(`${data.name} reconnected`); }
                 else { players.push({ id:c.peer, name:data.name, score:0, conn:c }); toast(`${data.name} joined`); }
                 
-                // Route player to correct screen based on game state
                 if(document.getElementById('screen-host').classList.contains('active')) {
                      c.send({type:'gamestart'});
                 } else {
@@ -365,15 +373,15 @@
 
         function updateHostUI() {
             const list = document.getElementById('lobby-player-list');
-            list.innerHTML = players.map(p => `<div style="border-bottom:1px solid #333; padding:5px; display:flex; justify-content:space-between;"><span>${p.name}</span><span style="color:var(--accent)">Ready</span></div>`).join('');
+            list.innerHTML = players.map(p => `<div>${p.name} <span style="color:var(--accent)">Ready</span></div>`).join('');
             const sideList = document.getElementById('sidebar-list');
-            sideList.innerHTML = players.map((p, i) => `<div class="player-row ${i===turnIndex?'active-turn':''}"><strong>${p.name}</strong> <span>${p.score}</span></div>`).join('');
+            sideList.innerHTML = players.map((p, i) => `<div style="padding:5px; border-bottom:1px solid #333; ${i===turnIndex?'border-left:3px solid var(--accent); background:#222':''}"><strong>${p.name}</strong> <span>${p.score}</span></div>`).join('');
             if(players[turnIndex]) document.getElementById('turn-indicator').innerText = players[turnIndex].name;
         }
 
         function initBag() { bag=[]; for(let l in BAG_INIT) for(let i=0; i<BAG_INIT[l]; i++) bag.push(l); bag.sort(()=>Math.random()-0.5); }
         function deal(c,n) { let h=[]; for(let i=0; i<n; i++) if(bag.length) h.push(bag.pop()); if(h.length) c.send({type:'hand', tiles:h}); }
-        function returnTile(l,oid) { const p=players.find(x=>x.id===oid); if(p) p.conn.send({type:'return', tile:l}); }
+        function returnTile(l,oid) { const p=players.find(x=>x.id===oid); if(p) p.conn.send({type:'return', tile:l}); calculateLiveScore(); }
 
         function confirmTurn() {
             const grid=getGrid(); const words=getWords(grid);
@@ -384,9 +392,15 @@
             const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
             if(newTiles.length===0) return alert("Place tiles first.");
             
+            // Add Score
+            const points = parseInt(document.getElementById('live-score').innerText);
+            players[turnIndex].score += points;
+            
             newTiles.forEach(t => { t.removeAttribute('data-new'); t.dataset.locked="true"; t.style.cursor="default"; });
             deal(players[turnIndex].conn, newTiles.length);
             turnIndex = (turnIndex + 1) % players.length;
+            
+            document.getElementById('live-score').innerText = "0"; // Reset live score
             notifyTurn();
             
             const inbox = document.getElementById('host-inbox');
@@ -415,29 +429,21 @@
         function createHostTile(l, owner) {
             const t=document.createElement('div'); t.className='tile'; t.dataset.letter=l; t.dataset.owner=owner; t.dataset.new="true";
             t.innerHTML=`${l}<span class="score">${SCORES[l]}</span>`;
-            // ATTACH DRAG LISTENER
             t.addEventListener('pointerdown', onDragStart);
             document.getElementById('host-inbox').appendChild(t);
         }
 
         // --- PLAYER ---
         function joinGame() {
-            if(joining) return;
             const n = document.getElementById('join-name').value.trim();
             const c = document.getElementById('join-code').value.trim().toUpperCase();
-            joining = true; document.getElementById('btn-join').innerText = "Connecting...";
+            document.getElementById('btn-join').innerText = "Connecting...";
 
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(c);
-                peer.on('error', err => { alert("Room not found"); joining=false; document.getElementById('btn-join').innerText="Join Room"; });
-
-                conn.on('open', () => {
-                    conn.send({type:'join', name:n});
-                    showScreen('screen-waiting');
-                    document.getElementById('waiting-player-name').innerText = n;
-                });
-
+                peer.on('error', err => { alert("Room not found"); document.getElementById('btn-join').innerText="Join Room"; });
+                conn.on('open', () => { conn.send({type:'join', name:n}); });
                 conn.on('data', d => {
                     if(d.type==='gamestart') { 
                         showScreen('screen-player'); 
@@ -478,14 +484,12 @@
             if(!s.length) return;
             const t=[]; s.forEach(x=>{t.push(x.dataset.letter); x.remove();});
             conn.send({type:'play', tiles:t});
-            toast("Tiles sent!");
         }
         function shuffleRack() {
             const r=document.getElementById('my-rack');
             Array.from(r.children).sort(()=>Math.random()-0.5).forEach(x=>r.appendChild(x));
         }
 
-        // Utils
         function getGrid(){ let g=[]; document.querySelectorAll('.cell').forEach(c=>{ if(!g[c.dataset.r])g[c.dataset.r]=[]; g[c.dataset.r][c.dataset.c]=c.querySelector('.tile')?.dataset.letter||null; }); return g; }
         function getWords(g){ let w=[]; for(let i=0;i<15;i++){ let r="",c=""; for(let j=0;j<15;j++){ r+=g[i][j]||" "; c+=g[j][i]||" "; } r.split(" ").forEach(x=>{if(x.length>1)w.push(x)}); c.split(" ").forEach(x=>{if(x.length>1)w.push(x)}); } return w; }
     </script>
