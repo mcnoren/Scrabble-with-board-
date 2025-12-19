@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro</title>
+    <title>Scrabble Pro - Reconnect</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -11,11 +11,10 @@
     <style>
         :root {
             --bg: #121212;
-            --sidebar-bg: #1e1e1e;
-            --accent: #27ae60; /* Green */
-            --danger: #c0392b; /* Red */
+            --sidebar: #1e1e1e;
+            --accent: #27ae60;
+            --danger: #c0392b;
             --wood: #5d4037;
-            --board-border: #3e2723;
             --tile-face: #fdf5e6;
             --board-bg: #d7ccc8;
         }
@@ -23,150 +22,92 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: white; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
-        /* --- SCREENS --- */
+        /* SCREENS */
         .screen { display: none; width: 100%; height: 100%; position: absolute; top:0; left:0; background: var(--bg); z-index: 10; }
         .active { display: flex; z-index: 20; }
-        
-        /* Flex centring for Home/Lobby/Player */
         .center-screen { flex-direction: column; align-items: center; justify-content: center; }
 
-        /* --- INPUTS & BUTTONS --- */
+        /* UI ELEMENTS */
         input { padding: 15px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #333; background: #222; color: white; margin-bottom: 10px; text-transform: uppercase; text-align: center; width: 300px; }
-        input:focus { border-color: var(--accent); outline: none; }
-        
-        button { background: var(--accent); color: white; border: none; padding: 15px 30px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin: 10px; font-weight: 600; transition: transform 0.1s; box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
-        button:active { transform: scale(0.96); box-shadow: none; }
-        button:disabled { background: #444; color: #888; cursor: not-allowed; box-shadow: none; }
-        button.btn-lg { font-size: 1.5rem; padding: 20px 40px; width: 300px; }
+        button { background: var(--accent); color: white; border: none; padding: 15px 30px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin: 10px; font-weight: 600; transition: transform 0.1s; }
+        button:active { transform: scale(0.96); }
+        button:disabled { background: #444; color: #888; cursor: not-allowed; }
+        .btn-danger { background: var(--danger); }
+        .btn-sm { padding: 5px 10px; font-size: 0.9rem; margin: 0 0 0 10px; }
 
-        /* --- HOST LAYOUT (Sidebar + Board) --- */
-        #screen-host { flex-direction: row; } /* Side by Side */
+        /* HOST LAYOUT */
+        #screen-host { flex-direction: row; }
+        .sidebar { width: 320px; height: 100%; background: var(--sidebar); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 15px; box-shadow: 5px 0 15px rgba(0,0,0,0.3); z-index: 50; }
+        .board-wrapper { flex-grow: 1; height: 100%; display: flex; align-items: center; justify-content: center; background: #000; position: relative; }
 
-        .sidebar {
-            width: 320px; /* Fixed width sidebar */
-            height: 100%;
-            background: var(--sidebar-bg);
-            border-right: 2px solid #333;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            box-shadow: 5px 0 15px rgba(0,0,0,0.3);
-            z-index: 50;
-        }
-
-        .board-wrapper {
-            flex-grow: 1;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #000;
-            position: relative;
-        }
-
-        /* --- SIDEBAR COMPONENTS --- */
-        .room-info { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #333; }
-        .room-code-display { font-size: 2.5rem; font-weight: 800; color: var(--accent); letter-spacing: 2px; line-height: 1; }
-        .turn-box { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #444; }
-        .turn-name { font-size: 1.8rem; font-weight: bold; color: #fff; margin-top: 5px; }
-        
-        .inbox-area {
-            margin-top: auto; /* Pushes to bottom */
-            background: #111;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #444;
-        }
-        .inbox-rack {
-            display: flex; gap: 5px; flex-wrap: wrap; 
-            min-height: 60px; margin-bottom: 10px;
-            align-items: center; justify-content: center;
-        }
-        
-        .action-row { display: flex; gap: 10px; }
-        .return-zone {
-            flex: 1; height: 60px; background: var(--danger); border-radius: 8px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.7rem; font-weight: bold; text-align: center;
-            border: 2px dashed rgba(255,255,255,0.3);
-        }
-        .confirm-btn { flex: 2; margin: 0; font-size: 1rem; }
-
-        /* --- THE BOARD --- */
-        /* Sized with vmin to never cutoff */
+        /* BOARD */
         .scrabble-board {
-            display: grid;
-            grid-template-columns: repeat(15, 1fr);
-            grid-template-rows: repeat(15, 1fr);
-            gap: 1px;
-            background: #000;
-            border: 10px solid var(--wood);
-            border-radius: 4px;
-            /* Key Sizing Logic: 96% of the smallest viewport dimension */
-            width: 96vmin; 
-            height: 96vmin; 
-            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); gap: 1px;
+            background: #000; border: 10px solid var(--wood); border-radius: 4px;
+            width: 96vmin; height: 96vmin; 
         }
-
-        .cell {
-            background: var(--board-bg);
-            display: flex; justify-content: center; align-items: center;
-            font-size: 0.65rem; font-weight: 700; color: #555;
-            position: relative; text-transform: uppercase;
-        }
-        .tw { background: #ff7675; color: #fff; }
-        .dw { background: #fab1a0; }
-        .tl { background: #74b9ff; color: #fff; }
-        .dl { background: #81ecec; }
+        .cell { background: var(--board-bg); display: flex; justify-content: center; align-items: center; font-size: 0.65rem; font-weight: 700; color: #555; position: relative; text-transform: uppercase; }
+        .tw { background: #ff7675; color: white; } .dw { background: #fab1a0; }
+        .tl { background: #74b9ff; color: white; } .dl { background: #81ecec; }
         .star { background: #fab1a0; font-size: 1.5rem; color: #d63031; }
 
-        /* --- TILES --- */
+        /* TILES */
         .tile {
-            width: 90%; height: 90%;
-            background: var(--tile-face);
-            border-radius: 4px;
-            box-shadow: 0 3px 0 #bcaaa4;
-            color: #2d3436;
-            display: flex; justify-content: center; align-items: center;
-            font-weight: bold; font-size: 1.3rem; 
+            width: 90%; height: 90%; background: var(--tile-face); border-radius: 4px; box-shadow: 0 3px 0 #bcaaa4; color: #2d3436;
+            display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.3rem; 
             position: relative; user-select: none; cursor: grab; z-index: 100; touch-action: none;
         }
-        .cell .tile { width: 100%; height: 100%; border-radius: 0; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); font-size: 1.1rem; }
+        .cell .tile { width: 100%; height: 100%; border-radius: 0; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
         .tile span.score { font-size: 0.5rem; position: absolute; bottom: 1px; right: 2px; }
-        
-        .tile.dragging { 
-            position: fixed; pointer-events: none; z-index: 9999; 
-            width: 50px !important; height: 50px !important; 
-            opacity: 0.9; transform: scale(1.2); box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-        }
+        .tile.dragging { position: fixed; z-index: 9999; width: 50px !important; height: 50px !important; opacity: 0.9; transform: scale(1.2); pointer-events: none; }
 
-        /* --- PLAYER UI --- */
-        #player-ui { background: #2d3436; justify-content: space-between; }
-        .rack-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .player-rack { background: var(--wood); padding: 15px; border-radius: 8px; min-width: 320px; min-height: 80px; display: flex; justify-content: center; gap: 5px; box-shadow: inset 0 5px 10px rgba(0,0,0,0.5); }
-        .player-rack .tile { width: 45px; height: 45px; font-size: 1.8rem; border-radius: 4px; }
+        /* HOST SIDEBAR ITEMS */
+        .player-row { padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+        .player-row.active-turn { background: #222; border-left: 4px solid var(--accent); }
+        .kick-btn { background: var(--danger); border-radius: 50%; width: 25px; height: 25px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; margin-left: 10px; }
+
+        /* INBOX & ACTIONS */
+        .inbox-area { margin-top: auto; background: #111; padding: 10px; border-radius: 8px; border: 1px solid #444; }
+        .inbox-rack { display: flex; gap: 5px; flex-wrap: wrap; min-height: 50px; margin-bottom: 10px; align-items: center; justify-content: center; }
+        .action-row { display: flex; gap: 10px; }
+        .return-zone { flex: 1; height: 50px; background: var(--danger); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; text-align: center; border: 2px dashed rgba(255,255,255,0.3); }
+
+        /* PLAYER PHONE UI */
+        #player-ui { background: #2d3436; justify-content: space-between; flex-direction: column; }
+        .rack-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; padding: 20px; }
+        
+        /* Responsive Rack: Wraps tiles if in Portrait */
+        .player-rack { 
+            background: var(--wood); padding: 15px; border-radius: 8px; 
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; 
+            box-shadow: inset 0 5px 10px rgba(0,0,0,0.5); width: 100%; max-width: 500px;
+        }
+        .player-rack .tile { width: 45px; height: 45px; font-size: 1.8rem; }
         .tile.selected { border: 3px solid var(--accent); transform: translateY(-5px); }
-        
-        /* Landscape Warning */
-        .rotate-msg { display: none; position: absolute; top:0; left:0; width:100%; height:100%; background: #000; z-index: 999; color: white; align-items: center; justify-content: center; text-align: center; }
-        @media (orientation: portrait) and (max-width: 1000px) { .rotate-msg { display: flex; } }
-        
+
+        /* TOAST NOTIFICATION */
+        #toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 20px;
+            font-size: 0.9rem; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        #toast.show { opacity: 1; }
+
         .hidden { display: none !important; }
-        .lobby-list { text-align: left; background: #222; padding: 20px; border-radius: 8px; width: 300px; min-height: 200px; margin: 20px 0; border: 1px solid #444; }
-        .lobby-item { padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
 
-    <div class="rotate-msg"><h1>Rotate Device ↻</h1></div>
+    <div id="toast">Notification</div>
 
     <div id="screen-home" class="screen active center-screen">
         <h1 style="font-size:3rem; margin-bottom:10px;">Scrabble<span style="color:var(--accent)">Pro</span></h1>
-        <div style="color:#888; margin-bottom:30px;" id="dict-status">Loading Dictionary...</div>
+        <div id="dict-status" style="color:#888; margin-bottom:20px;">Loading Dictionary...</div>
         
-        <button onclick="initHost()" class="btn-lg">Host Game</button>
+        <button onclick="initHost()" style="width:250px; padding:20px;">Host Game</button>
         
-        <div style="margin-top:40px; border-top:1px solid #333; padding-top:20px; text-align: center;">
+        <div style="margin-top:30px; border-top:1px solid #333; padding-top:20px; text-align: center;">
+            <div id="reconnect-msg" style="color:var(--accent); display:none; margin-bottom:10px;">Reconnecting...</div>
             <input type="text" id="join-name" placeholder="NICKNAME" maxlength="10"><br>
             <input type="text" id="join-code" placeholder="ROOM CODE"><br>
             <button id="btn-join" onclick="joinGame()" disabled>Join Game</button>
@@ -175,62 +116,62 @@
 
     <div id="screen-lobby" class="screen center-screen">
         <h2 style="color:#aaa; margin:0;">ROOM CODE</h2>
-        <div id="lobby-code-big" style="font-size: 4rem; font-weight: 800; color: var(--accent); letter-spacing: 5px;">...</div>
+        <div id="lobby-code-display" style="font-size: 4rem; font-weight: 800; color: var(--accent); letter-spacing: 5px;">...</div>
         
-        <div class="lobby-list" id="lobby-player-list">
-            <div style="color:#666; font-style:italic;">Waiting for players...</div>
-        </div>
+        <div class="lobby-list" id="lobby-player-list" style="width:300px; min-height:150px; background:#222; margin:20px; padding:10px; border-radius:8px;"></div>
 
-        <button onclick="startGame()" class="btn-lg">START GAME</button>
+        <div style="display:flex; gap:10px;">
+            <button onclick="resetRoom()" class="btn-danger">New Room</button>
+            <button onclick="startGame()">START GAME</button>
+        </div>
     </div>
 
     <div id="screen-host" class="screen">
         <div class="sidebar">
-            <div class="room-info">
-                <div style="font-size:0.7rem; color:#aaa;">ROOM CODE</div>
-                <div id="sidebar-code" class="room-code-display"></div>
+            <div style="margin-bottom:15px; border-bottom:1px solid #444; padding-bottom:10px;">
+                <div style="color:#aaa; font-size:0.7rem;">ROOM</div>
+                <div id="sidebar-code" style="font-size:1.5rem; font-weight:bold; color:var(--accent);"></div>
             </div>
 
-            <div class="turn-box">
-                <div style="font-size:0.7rem; color:#aaa; text-transform:uppercase;">Current Turn</div>
-                <div id="turn-indicator" class="turn-name">...</div>
+            <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; text-align:center; margin-bottom:15px;">
+                <div style="font-size:0.7rem; color:#aaa;">CURRENT TURN</div>
+                <div id="turn-indicator" style="font-size:1.4rem; font-weight:bold;">...</div>
             </div>
 
-            <div style="flex-grow:1; overflow-y:auto; margin-bottom:10px;" id="sidebar-player-list">
-                </div>
+            <div id="sidebar-list" style="flex-grow:1; overflow-y:auto; margin-bottom:10px;"></div>
 
             <div class="inbox-area">
-                <div style="font-size:0.7rem; color:#aaa; margin-bottom:5px;">INCOMING TILES</div>
+                <div style="font-size:0.7rem; color:#aaa; margin-bottom:5px;">INBOX</div>
                 <div class="inbox-rack" id="host-inbox"></div>
-                
                 <div class="action-row">
                     <div class="return-zone" id="return-zone">DROP TO<br>RETURN</div>
-                    <button onclick="confirmTurn()" class="confirm-btn">Confirm Turn</button>
+                    <button onclick="confirmTurn()" style="flex:2; margin:0; font-size:0.9rem;">Confirm</button>
                 </div>
             </div>
         </div>
-
         <div class="board-wrapper">
             <div class="scrabble-board" id="board-grid"></div>
         </div>
     </div>
 
     <div id="screen-player" class="screen center-screen" id="player-ui">
-        <div style="position:absolute; top:10px; left:10px; font-weight:bold; color:var(--accent);" id="my-display-name">Me</div>
-        <div style="position:absolute; top:10px; right:10px; color:#aaa; font-size:0.8rem;" id="wait-msg">Wait for turn</div>
+        <div style="width:100%; padding:15px; background:#111; display:flex; justify-content:space-between; align-items:center;">
+            <span id="my-display-name" style="color:var(--accent); font-weight:bold;">Me</span>
+            <span id="status-msg" style="color:#888; font-size:0.8rem;">Waiting...</span>
+        </div>
 
         <div class="rack-area">
             <div id="my-rack" class="player-rack"></div>
         </div>
 
-        <div style="padding:20px; width:100%; background:#111; display:flex; gap:10px;">
+        <div style="width:100%; padding:20px; background:#111; display:flex; gap:10px;">
             <button onclick="shuffleRack()" style="flex:1; background:#e67e22">Shuffle</button>
-            <button onclick="playSelected()" style="flex:2;">Send Selected</button>
+            <button onclick="playSelected()" style="flex:2;">Send Tiles</button>
         </div>
     </div>
 
     <script>
-        // --- DATA & CONFIG ---
+        // --- DATA ---
         const SCORES = {'A':1,'B':3,'C':3,'D':2,'E':1,'F':4,'G':2,'H':4,'I':1,'J':8,'K':5,'L':1,'M':3,'N':1,'O':1,'P':3,'Q':10,'R':1,'S':1,'T':1,'U':1,'V':4,'W':4,'X':8,'Y':4,'Z':10,'_':0};
         const BAG_INIT = {'A':9,'B':2,'C':2,'D':4,'E':12,'F':2,'G':3,'H':2,'I':9,'J':1,'K':1,'L':4,'M':2,'N':6,'O':8,'P':2,'Q':1,'R':6,'S':4,'T':6,'U':4,'V':2,'W':2,'X':1,'Y':2,'Z':1,'_':2};
         const LAYOUT = [
@@ -251,7 +192,9 @@
             [1,0,0,4,0,0,0,1,0,0,0,4,0,0,1]
         ];
 
-        let peer, conn, dictionary = new Set(), bag = [], players = [], turnIndex = 0;
+        let peer, conn;
+        let dictionary = new Set();
+        let bag=[], players=[], turnIndex=0;
 
         // --- INIT ---
         fetch('https://raw.githubusercontent.com/redbo/scrabble/master/dictionary.txt')
@@ -260,6 +203,20 @@
                 document.getElementById('dict-status').innerText = "Dictionary Ready";
                 document.getElementById('dict-status').style.color = "#2ecc71";
             });
+
+        // Auto-Reconnect Check
+        window.addEventListener('load', () => {
+            const savedName = localStorage.getItem('scrabble_name');
+            const savedCode = localStorage.getItem('scrabble_code');
+            if(savedName && savedCode) {
+                document.getElementById('join-name').value = savedName;
+                document.getElementById('join-code').value = savedCode;
+                document.getElementById('btn-join').disabled = false;
+                document.getElementById('reconnect-msg').style.display = 'block';
+                // Small delay to let PeerJS load, then auto-join
+                setTimeout(joinGame, 1000);
+            }
+        });
 
         document.querySelectorAll('input').forEach(i => i.addEventListener('keyup', () => {
             const n = document.getElementById('join-name').value.trim();
@@ -271,87 +228,139 @@
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(id).classList.add('active');
         }
+        function toast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
 
-        // --- HOST ---
+        // --- HOST LOGIC ---
         function initHost() {
+            if(peer) peer.destroy();
             peer = new Peer(genId());
             peer.on('open', id => {
                 showScreen('screen-lobby');
-                document.getElementById('lobby-code-big').innerText = id;
-                document.getElementById('sidebar-code').innerText = id; // Set sidebar code too
+                document.getElementById('lobby-code-display').innerText = id;
+                document.getElementById('sidebar-code').innerText = id;
                 initBag();
                 renderBoard();
+                players = [];
+                updateHostLists();
             });
             peer.on('connection', c => {
                 c.on('data', d => handleHostData(c, d));
-                c.on('close', () => { /* Handle disconnect */ });
+                c.on('close', () => {
+                    // Optional: handle dirty disconnects
+                });
             });
         }
 
-        function startGame() {
-            if(players.length === 0) return alert("Wait for players!");
-            showScreen('screen-host');
-            updateTurnUI();
-            players.forEach(p => deal(p.conn, 7));
+        function resetRoom() {
+            if(!confirm("Reset Room? This will kick everyone.")) return;
+            // Kick everyone
+            players.forEach(p => {
+                p.conn.send({type:'kick', msg:'Host reset the room.'});
+            });
+            // Restart Host
+            initHost(); 
         }
 
-        function genId() { return Math.random().toString(36).substring(2,6).toUpperCase(); }
+        function kickPlayer(id) {
+            const idx = players.findIndex(p => p.id === id);
+            if(idx > -1) {
+                players[idx].conn.send({type:'kick', msg:'You were kicked by the host.'});
+                players.splice(idx, 1);
+                updateHostLists();
+                toast("Player kicked");
+            }
+        }
 
         function handleHostData(c, data) {
             if(data.type === 'join') {
-                players.push({ id:c.peer, name:data.name, score:0, conn:c });
-                updateLobbyList();
-                updateSidebarList();
+                // Check if reconnecting (same name)
+                const existing = players.find(p => p.name === data.name);
+                if(existing) {
+                    // Update connection ID but keep score/tiles logic if we were tracking strict state
+                    // For now, simple re-add
+                    existing.conn = c;
+                    existing.id = c.peer;
+                    toast(`${data.name} reconnected`);
+                } else {
+                    players.push({ id:c.peer, name:data.name, score:0, conn:c });
+                    toast(`${data.name} joined`);
+                }
+                c.send({type:'welcome', name: data.name});
+                updateHostLists();
             }
             if(data.type === 'play') {
                 data.tiles.forEach(l => createHostTile(l, c.peer)); 
             }
         }
 
-        function updateLobbyList() {
-            const div = document.getElementById('lobby-player-list');
-            div.innerHTML = players.map(p => `<div class="lobby-item"><span>${p.name}</span><span style="color:var(--accent)">Joined</span></div>`).join('');
-        }
-
-        function updateSidebarList() {
-            const div = document.getElementById('sidebar-player-list');
-            div.innerHTML = players.map((p, i) => `
-                <div style="padding:10px; border-bottom:1px solid #333; ${i===turnIndex ? 'background:#222; border-left:3px solid var(--accent);' : ''}">
-                    <strong>${p.name}</strong> <span style="float:right; color:#f1c40f">${p.score}</span>
+        function updateHostLists() {
+            // Lobby List
+            const lobbyList = document.getElementById('lobby-player-list');
+            lobbyList.innerHTML = players.map(p => `
+                <div class="player-row" style="background:#333; margin-bottom:5px; border-radius:4px;">
+                    <span>${p.name}</span>
+                    <button class="kick-btn" onclick="kickPlayer('${p.id}')">✕</button>
                 </div>
             `).join('');
+
+            // Sidebar List
+            const sideList = document.getElementById('sidebar-list');
+            sideList.innerHTML = players.map((p, i) => `
+                <div class="player-row ${i===turnIndex ? 'active-turn' : ''}">
+                    <div>
+                        <strong>${p.name}</strong>
+                        <div style="font-size:0.8rem; color:#aaa;">Score: ${p.score}</div>
+                    </div>
+                    <button class="kick-btn" onclick="kickPlayer('${p.id}')">✕</button>
+                </div>
+            `).join('');
+
+            // Turn Indicator
+            if(players[turnIndex]) {
+                document.getElementById('turn-indicator').innerText = players[turnIndex].name;
+            }
         }
 
-        function updateTurnUI() {
-            if(players[turnIndex]) document.getElementById('turn-indicator').innerText = players[turnIndex].name;
-            updateSidebarList();
+        function startGame() {
+            if(players.length===0) return alert("No players connected!");
+            showScreen('screen-host');
+            // Notify players
+            players.forEach(p => {
+                p.conn.send({type:'gamestart'});
+                deal(p.conn, 7);
+            });
+            notifyCurrentTurn();
         }
 
-        function initBag() {
-            bag = []; for(let l in BAG_INIT) for(let i=0; i<BAG_INIT[l]; i++) bag.push(l);
-            bag.sort(()=>Math.random()-0.5);
-        }
-
-        function deal(c, n) {
-            let h = []; for(let i=0; i<n; i++) if(bag.length) h.push(bag.pop());
-            if(h.length) c.send({type:'hand', tiles:h});
-        }
-
-        function returnTile(l, ownerId) {
-            const p = players.find(x=>x.id===ownerId);
-            if(p) p.conn.send({type:'return', tile:l});
+        function notifyCurrentTurn() {
+            players.forEach((p, i) => {
+                if(i === turnIndex) p.conn.send({type:'toast', msg:"It's your turn!"});
+                else p.conn.send({type:'status', msg:`Waiting for ${players[turnIndex].name}`});
+            });
+            updateHostLists();
         }
 
         function confirmTurn() {
             const grid = getGrid();
             const words = getWords(grid);
-            if(!words.length) return alert("No words!");
-            const bad = words.filter(w => !dictionary.has(w) && dictionary.size);
-            if(bad.length) return alert("Invalid: " + bad.join(', '));
+            if(!words.length) return alert("No words on board!");
+            
+            // Dictionary Check
+            const invalid = words.filter(w => !dictionary.has(w) && dictionary.size > 0);
+            if(invalid.length > 0) {
+                // Notify current player
+                players[turnIndex].conn.send({type:'toast', msg:`Invalid word: ${invalid[0]}`});
+                return alert("Invalid: " + invalid.join(', '));
+            }
 
             // Lock tiles
             const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
-            const count = newTiles.length;
+            if(newTiles.length === 0) return alert("Place tiles first!");
+            
             newTiles.forEach(t => {
                 t.removeAttribute('data-new');
                 t.dataset.locked = "true";
@@ -359,17 +368,22 @@
             });
 
             // Refill & Next
-            if(count > 0) deal(players[turnIndex].conn, count);
+            deal(players[turnIndex].conn, newTiles.length);
             turnIndex = (turnIndex + 1) % players.length;
-            updateTurnUI();
+            notifyCurrentTurn();
 
-            // Clear inbox leftovers
+            // Clear Inbox
             const inbox = document.getElementById('host-inbox');
             while(inbox.firstChild) {
                 returnTile(inbox.firstChild.dataset.letter, inbox.firstChild.dataset.owner);
                 inbox.firstChild.remove();
             }
         }
+
+        function genId() { return Math.random().toString(36).substring(2,6).toUpperCase(); }
+        function initBag() { bag=[]; for(let l in BAG_INIT) for(let i=0; i<BAG_INIT[l]; i++) bag.push(l); bag.sort(()=>Math.random()-0.5); }
+        function deal(c,n) { let h=[]; for(let i=0; i<n; i++) if(bag.length) h.push(bag.pop()); if(h.length) c.send({type:'hand', tiles:h}); }
+        function returnTile(l,oid) { const p=players.find(x=>x.id===oid); if(p) p.conn.send({type:'return', tile:l}); }
 
         // --- BOARD & DRAG ---
         function renderBoard() {
@@ -380,19 +394,17 @@
                     const d = document.createElement('div');
                     d.className = 'cell'; d.dataset.r=r; d.dataset.c=c;
                     const t = LAYOUT[r][c];
-                    if(t===1) {d.classList.add('tw'); d.innerText='TW';}
-                    if(t===2) {d.classList.add('dw'); d.innerText='DW';}
-                    if(t===3) {d.classList.add('tl'); d.innerText='TL';}
-                    if(t===4) {d.classList.add('dl'); d.innerText='DL';}
-                    if(t===5) {d.classList.add('star'); d.innerHTML='★';}
+                    if(t===1){d.classList.add('tw');d.innerText='TW'} if(t===2){d.classList.add('dw');d.innerText='DW'}
+                    if(t===3){d.classList.add('tl');d.innerText='TL'} if(t===4){d.classList.add('dl');d.innerText='DL'}
+                    if(t===5){d.classList.add('star');d.innerHTML='★'}
                     b.appendChild(d);
                 }
             }
         }
 
         function createHostTile(l, owner) {
-            const t = document.createElement('div');
-            t.className = 'tile'; t.dataset.letter = l; t.dataset.owner = owner; t.dataset.new = "true";
+            const t = document.createElement('div'); t.className = 'tile'; 
+            t.dataset.letter=l; t.dataset.owner=owner; t.dataset.new="true";
             t.innerHTML = `${l}<span class="score">${SCORES[l]}</span>`;
             t.addEventListener('pointerdown', onDragStart);
             document.getElementById('host-inbox').appendChild(t);
@@ -400,76 +412,70 @@
 
         let dragEl=null, clone=null, startX=0, startY=0;
         function onDragStart(e) {
-            if(e.currentTarget.dataset.locked === "true") return;
-            e.preventDefault();
-            dragEl = e.currentTarget;
-            clone = dragEl.cloneNode(true);
-            clone.classList.add('dragging');
+            if(e.currentTarget.dataset.locked==="true") return;
+            e.preventDefault(); dragEl = e.currentTarget;
+            clone = dragEl.cloneNode(true); clone.classList.add('dragging');
             document.body.appendChild(clone);
-            const r = dragEl.getBoundingClientRect();
-            startX = e.clientX - r.left; startY = e.clientY - r.top;
+            const r=dragEl.getBoundingClientRect(); startX=e.clientX-r.left; startY=e.clientY-r.top;
             moveClone(e.clientX, e.clientY);
-            dragEl.style.opacity = '0.3';
-            document.addEventListener('pointermove', onDragMove);
-            document.addEventListener('pointerup', onDragEnd);
+            dragEl.style.opacity='0.3';
+            document.addEventListener('pointermove', onDragMove); document.addEventListener('pointerup', onDragEnd);
         }
-        function onDragMove(e) { e.preventDefault(); moveClone(e.clientX, e.clientY); }
-        function moveClone(x, y) { if(clone) { clone.style.left=(x-25)+'px'; clone.style.top=(y-25)+'px'; } }
-        function onDragEnd(e) {
-            document.removeEventListener('pointermove', onDragMove);
-            document.removeEventListener('pointerup', onDragEnd);
-            dragEl.style.opacity = '1'; clone.remove(); clone=null;
-            
+        function onDragMove(e){ e.preventDefault(); moveClone(e.clientX, e.clientY); }
+        function moveClone(x,y){ if(clone){ clone.style.left=(x-25)+'px'; clone.style.top=(y-25)+'px'; } }
+        function onDragEnd(e){
+            document.removeEventListener('pointermove',onDragMove); document.removeEventListener('pointerup',onDragEnd);
+            dragEl.style.opacity='1'; clone.remove(); clone=null;
             const el = document.elementFromPoint(e.clientX, e.clientY);
             if(!el) return;
-            const cell = el.closest('.cell');
-            const ret = el.closest('.return-zone');
-            const inbox = el.closest('.inbox-area');
-
+            const cell = el.closest('.cell'); const ret = el.closest('.return-zone'); const inbox = el.closest('.inbox-area');
             if(ret) { returnTile(dragEl.dataset.letter, dragEl.dataset.owner); dragEl.remove(); }
             else if(cell && !cell.hasChildNodes()) { cell.appendChild(dragEl); cell.innerText=''; cell.className='cell'; }
             else if(inbox) { document.getElementById('host-inbox').appendChild(dragEl); }
-            dragEl = null;
-        }
-
-        function getGrid() {
-            let g=[]; document.querySelectorAll('.cell').forEach(c=>{
-                if(!g[c.dataset.r]) g[c.dataset.r]=[];
-                g[c.dataset.r][c.dataset.c] = c.querySelector('.tile')?.dataset.letter || null;
-            }); return g;
-        }
-        function getWords(g) {
-            let w=[];
-            for(let i=0; i<15; i++) {
-                let r="", c="";
-                for(let j=0; j<15; j++) {
-                    r += g[i][j] || " "; c += g[j][i] || " ";
-                }
-                r.split(" ").forEach(x=>{if(x.length>1) w.push(x)});
-                c.split(" ").forEach(x=>{if(x.length>1) w.push(x)});
-            }
-            return w;
+            dragEl=null;
         }
 
         // --- PLAYER ---
         function joinGame() {
-            const n = document.getElementById('join-name').value;
-            const c = document.getElementById('join-code').value;
+            const n = document.getElementById('join-name').value.trim();
+            const c = document.getElementById('join-code').value.trim().toUpperCase();
+            
+            // Save for Reconnect
+            localStorage.setItem('scrabble_name', n);
+            localStorage.setItem('scrabble_code', c);
+
             peer = new Peer();
             peer.on('open', () => {
-                conn = peer.connect(c.toUpperCase());
+                conn = peer.connect(c);
                 conn.on('open', () => {
                     conn.send({type:'join', name:n});
-                    showScreen('screen-player');
-                    document.getElementById('my-display-name').innerText = n;
-                    Sortable.create(document.getElementById('my-rack'), {animation:150});
+                    document.getElementById('reconnect-msg').innerText = "Connected!";
+                    document.getElementById('status-msg').innerText = "Waiting for host...";
                 });
                 conn.on('data', d => {
+                    if(d.type==='welcome') { 
+                        showScreen('screen-player'); 
+                        document.getElementById('my-display-name').innerText = d.name;
+                        Sortable.create(document.getElementById('my-rack'), {animation:150});
+                    }
+                    if(d.type==='gamestart') { showScreen('screen-player'); toast("Game Started!"); }
                     if(d.type==='hand') addRack(d.tiles);
-                    if(d.type==='return') addRack([d.tile]);
+                    if(d.type==='return') { addRack([d.tile]); toast("Tile returned"); }
+                    if(d.type==='kick') {
+                        alert(d.msg);
+                        localStorage.clear();
+                        location.reload();
+                    }
+                    if(d.type==='toast') toast(d.msg);
+                    if(d.type==='status') document.getElementById('status-msg').innerText = d.msg;
+                });
+                conn.on('error', err => {
+                    alert("Could not connect to room " + c);
+                    localStorage.clear(); // Clear bad data
                 });
             });
         }
+
         function addRack(t) {
             t.forEach(l=>{
                 const d=document.createElement('div'); d.className='tile'; d.dataset.letter=l;
@@ -479,14 +485,23 @@
             });
         }
         function playSelected() {
-            const s = document.querySelectorAll('.selected');
+            const s=document.querySelectorAll('.selected');
             if(!s.length) return;
             const t=[]; s.forEach(x=>{t.push(x.dataset.letter); x.remove();});
             conn.send({type:'play', tiles:t});
+            toast("Tiles sent!");
         }
         function shuffleRack() {
             const r=document.getElementById('my-rack');
             Array.from(r.children).sort(()=>Math.random()-0.5).forEach(x=>r.appendChild(x));
+        }
+
+        // Utils
+        function getGrid(){ let g=[]; document.querySelectorAll('.cell').forEach(c=>{ if(!g[c.dataset.r])g[c.dataset.r]=[]; g[c.dataset.r][c.dataset.c]=c.querySelector('.tile')?.dataset.letter||null; }); return g; }
+        function getWords(g){ let w=[]; 
+            for(let i=0;i<15;i++){ let r="",c=""; for(let j=0;j<15;j++){ r+=g[i][j]||" "; c+=g[j][i]||" "; }
+            r.split(" ").forEach(x=>{if(x.length>1)w.push(x)}); c.split(" ").forEach(x=>{if(x.length>1)w.push(x)}); }
+            return w; 
         }
     </script>
 </body>
