@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Final</title>
+    <title>Scrabble Pro - Fixed Dragging</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -14,6 +14,7 @@
             --bg: #121212;
             --sidebar: #1e1e1e;
             --accent: #27ae60;
+            --accent-light: #2ecc71;
             --accent-disabled: #1e5635;
             --danger: #c0392b;
             --wood: #5d4037;
@@ -54,7 +55,15 @@
             background: #000; border: 10px solid var(--wood); border-radius: 4px;
             width: 96vmin; height: 96vmin; 
         }
-        .cell { background: var(--board-bg); display: flex; justify-content: center; align-items: center; font-size: 0.65rem; font-weight: 700; color: #555; position: relative; text-transform: uppercase; }
+        .cell { 
+            background: var(--board-bg); 
+            display: flex; justify-content: center; align-items: center; 
+            font-size: 0.65rem; font-weight: 700; color: #555; 
+            position: relative; text-transform: uppercase; 
+            transition: background 0.1s;
+        }
+        .cell.drop-target { background: var(--accent-light) !important; box-shadow: inset 0 0 10px rgba(0,0,0,0.3); }
+
         .tw { background: #ff7675; color: white; } .dw { background: #fab1a0; }
         .tl { background: #74b9ff; color: white; } .dl { background: #81ecec; }
         .star { background: #fab1a0; font-size: 1.5rem; color: #d63031; }
@@ -68,6 +77,8 @@
         }
         .cell .tile { width: 100%; height: 100%; border-radius: 0; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
         .tile span.score { font-size: 0.5rem; position: absolute; bottom: 1px; right: 2px; }
+        
+        /* Dragging Clone Style */
         .tile.dragging { 
             position: fixed; z-index: 9999; 
             width: 50px !important; height: 50px !important; 
@@ -184,7 +195,7 @@
             <div id="sidebar-list" style="flex-grow:1; overflow-y:auto; margin-bottom:10px;"></div>
 
             <div class="inbox-area">
-                <div style="font-size:0.7rem; color:#aaa; margin-bottom:5px;">INBOX</div>
+                <div style="font-size:0.7rem; color:#aaa; margin-bottom:5px;">INBOX (Drag to Board)</div>
                 <div class="inbox-rack" id="host-inbox"></div>
                 <div class="action-row">
                     <div class="return-zone" id="return-zone">DROP TO<br>RETURN</div>
@@ -266,7 +277,8 @@
             
             peer.on('connection', c => {
                 c.on('data', d => handleHostData(c, d));
-                c.on('open', () => { /* Connection established, waiting for join payload */ });
+                // Send immediate status to help 2nd peer sync if they join late or reconnect
+                c.on('open', () => { /* wait for join msg */ });
             });
         }
 
@@ -275,14 +287,20 @@
                 const existing = players.find(p => p.name === data.name);
                 if(existing) { existing.conn = c; existing.id = c.peer; toast(`${data.name} reconnected`); }
                 else { players.push({ id:c.peer, name:data.name, score:0, conn:c }); toast(`${data.name} joined`); }
-                c.send({type:'joined_lobby', name: data.name});
+                
+                // Determine if we should send them to Lobby or Game
+                if(document.getElementById('screen-host').classList.contains('active')) {
+                     c.send({type:'gamestart'}); // Late joiner -> straight to game
+                } else {
+                     c.send({type:'joined_lobby', name: data.name}); // Normal join -> waiting screen
+                }
                 updateHostUI();
             }
             if(data.type === 'play') {
                 // SERVER SIDE TURN CHECK
                 if(c.peer !== players[turnIndex].id) {
                     c.send({type:'toast', msg:"Not your turn!"});
-                    return; // Reject tiles
+                    return; 
                 }
                 data.tiles.forEach(l => createHostTile(l, c.peer)); 
             }
@@ -357,32 +375,105 @@
             document.getElementById('host-inbox').appendChild(t);
         }
 
+        // --- DRAG AND DROP ENGINE ---
         let dragEl=null, clone=null;
+        let lastHighlightCell = null;
+
         function onDragStart(e) {
             if(e.currentTarget.dataset.locked==="true") return;
-            e.preventDefault(); dragEl=e.currentTarget;
-            clone=dragEl.cloneNode(true); clone.classList.add('dragging'); document.body.appendChild(clone);
-            moveClone(e.clientX, e.clientY); dragEl.style.opacity='0'; // Hide original completely
-            document.addEventListener('pointermove', onDragMove); document.addEventListener('pointerup', onDragEnd);
-        }
-        function onDragMove(e) { e.preventDefault(); moveClone(e.clientX, e.clientY); }
-        function moveClone(x,y) { if(clone){ clone.style.left=(x-25)+'px'; clone.style.top=(y-25)+'px'; } }
-        function onDragEnd(e) {
-            document.removeEventListener('pointermove', onDragMove); document.removeEventListener('pointerup', onDragEnd);
+            e.preventDefault(); 
+            dragEl = e.currentTarget;
             
-            // KEY FIX: Hide clone to see what is underneath
-            clone.hidden = true;
-            const el=document.elementFromPoint(e.clientX, e.clientY);
+            // Create Visual Clone
+            clone = dragEl.cloneNode(true); 
+            clone.classList.add('dragging'); 
+            document.body.appendChild(clone);
+            
+            moveClone(e.clientX, e.clientY); 
+            
+            // Hide Original - Using opacity 0 keeps it in DOM but invisible
+            dragEl.style.opacity='0'; 
+
+            document.addEventListener('pointermove', onDragMove); 
+            document.addEventListener('pointerup', onDragEnd);
+        }
+
+        function onDragMove(e) { 
+            e.preventDefault(); 
+            moveClone(e.clientX, e.clientY); 
+            
+            // Hit Test for Highlighting
+            clone.hidden = true; // Hide clone to see what's under
+            const el = document.elementFromPoint(e.clientX, e.clientY);
             clone.hidden = false;
 
-            dragEl.style.opacity='1'; clone.remove(); clone=null;
+            if (lastHighlightCell) {
+                lastHighlightCell.classList.remove('drop-target');
+                lastHighlightCell = null;
+            }
+
+            if(el) {
+                const cell = el.closest('.cell');
+                // Highlight if cell exists and is empty
+                if(cell && !cell.hasChildNodes()) {
+                    cell.classList.add('drop-target');
+                    lastHighlightCell = cell;
+                }
+            }
+        }
+
+        function moveClone(x,y) { 
+            if(clone){ 
+                // Center clone under finger/mouse
+                clone.style.left=(x-25)+'px'; 
+                clone.style.top=(y-25)+'px'; 
+            } 
+        }
+
+        function onDragEnd(e) {
+            document.removeEventListener('pointermove', onDragMove); 
+            document.removeEventListener('pointerup', onDragEnd);
             
-            if(!el) return;
-            const cell=el.closest('.cell'); const ret=el.closest('.return-zone'); const inbox=el.closest('.inbox-area');
+            // Cleanup Highlights
+            if (lastHighlightCell) {
+                lastHighlightCell.classList.remove('drop-target');
+                lastHighlightCell = null;
+            }
+
+            // Determine Drop
+            clone.hidden = true;
+            const el = document.elementFromPoint(e.clientX, e.clientY);
+            clone.hidden = false;
+
+            // Remove visual clone
+            clone.remove(); clone=null;
+
+            // Restore dragEl visibility defaults
+            dragEl.style.opacity='1'; 
+
+            if(!el) return; // Dropped outside window
+
+            const cell = el.closest('.cell'); 
+            const ret = el.closest('.return-zone'); 
+            const inbox = el.closest('.inbox-area');
             
-            if(ret) { returnTile(dragEl.dataset.letter, dragEl.dataset.owner); dragEl.remove(); }
-            else if(cell && !cell.hasChildNodes()) { cell.appendChild(dragEl); cell.innerText=''; cell.className='cell'; }
-            else if(inbox) { document.getElementById('host-inbox').appendChild(dragEl); }
+            if(ret) { 
+                // Return to Player
+                returnTile(dragEl.dataset.letter, dragEl.dataset.owner); 
+                dragEl.remove(); 
+            }
+            else if(cell && !cell.hasChildNodes()) { 
+                // Place on Board
+                cell.appendChild(dragEl); 
+                cell.innerText=''; 
+                cell.className='cell'; // Remove color classes
+            }
+            else if(inbox) { 
+                // Back to Inbox
+                document.getElementById('host-inbox').appendChild(dragEl); 
+            }
+            // If dropped anywhere else (invalid), dragEl just stays where it started (inbox or previous cell) automatically because we never removed it from DOM, just hid it.
+            
             dragEl=null;
         }
 
