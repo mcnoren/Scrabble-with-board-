@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - No Alerts</title>
+    <title>Scrabble Pro - Connection Fix</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -127,7 +127,7 @@
             display: flex; gap: 10px; width: 95%;
         }
 
-        /* CUSTOM NOTIFICATION (No Native Alerts) */
+        /* CUSTOM NOTIFICATION */
         #notification-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.6); z-index: 5000;
@@ -138,6 +138,11 @@
             border-radius: 10px; text-align: center; max-width: 80%;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
+
+        /* STATUS DOT */
+        .status-dot { height: 10px; width: 10px; background-color: #bbb; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .status-online { background-color: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
+        .status-offline { background-color: #c0392b; }
 
         /* TOAST */
         #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); color: white; padding: 12px 24px; border-radius: 30px; font-size: 1rem; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
@@ -170,6 +175,10 @@
     </div>
 
     <div id="screen-lobby" class="screen center-screen">
+        <div style="margin-bottom:10px;">
+            <span id="host-status-dot" class="status-dot"></span>
+            <span id="host-status-text" style="color:#aaa; font-size:0.9rem;">Connecting to Cloud...</span>
+        </div>
         <h2 style="color:#aaa; margin:0; font-size:1rem;">JOIN CODE</h2>
         <div id="lobby-code-display" style="font-size:3.5rem; font-weight:800; color:var(--accent); letter-spacing:5px;">...</div>
         <div id="qrcode"></div>
@@ -215,7 +224,6 @@
         
         <div class="rack-container">
             <div id="my-rack" class="player-rack"></div>
-            
             <div class="mobile-controls">
                 <button onclick="shuffleRack()" style="flex:1; background:#e67e22; margin:0;">Shuffle</button>
                 <button id="btn-send-tiles" onclick="playSelected()" style="flex:2; margin:0;" disabled>Send Selected</button>
@@ -232,6 +240,17 @@
             [0,0,4,0,0,0,4,0,4,0,0,0,4,0,0],[0,3,0,0,0,3,0,0,0,3,0,0,0,3,0],[0,0,0,0,2,0,0,0,0,0,2,0,0,0,0],[4,0,0,2,0,0,0,4,0,0,0,2,0,0,4],
             [0,0,2,0,0,0,4,0,4,0,0,0,2,0,0],[0,2,0,0,0,3,0,0,0,3,0,0,0,2,0],[1,0,0,4,0,0,0,1,0,0,0,4,0,0,1]
         ];
+
+        // BETTER PEER CONFIG FOR CONNECTIVITY
+        const PEER_CONFIG = {
+            debug: 1,
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:global.stun.twilio.com:3478' }
+                ]
+            }
+        };
 
         let peer, conn, dictionary = new Set(), bag=[], players=[], turnIndex=0, myTurn=false, isFirstTurn=true;
 
@@ -313,8 +332,6 @@
             const coords = newTiles.map(t => { const p = t.parentElement; return { r: parseInt(p.dataset.r), c: parseInt(p.dataset.c) }; });
             const rows = new Set(coords.map(k => k.r)); const cols = new Set(coords.map(k => k.c));
             if(rows.size > 1 && cols.size > 1) return { valid: false, msg: "Tiles must be in a straight line." };
-            
-            // Simplified connectivity for brevity/robustness
             if(isFirstTurn) {
                 const center = coords.find(k => k.r === 7 && k.c === 7);
                 if(!center) return { valid: false, msg: "First word must cross center." };
@@ -349,14 +366,27 @@
         function initHost() {
             if(peer) peer.destroy();
             const id = genId();
-            peer = new Peer(id);
+            peer = new Peer(id, PEER_CONFIG);
+            
             peer.on('open', id => {
                 showScreen('screen-lobby');
                 document.getElementById('lobby-code-display').innerText = id;
                 document.getElementById('qrcode').innerHTML = "";
                 new QRCode(document.getElementById("qrcode"), { text: id, width: 128, height: 128 });
+                
+                const dot = document.getElementById('host-status-dot');
+                const txt = document.getElementById('host-status-text');
+                dot.classList.remove('status-offline');
+                dot.classList.add('status-online');
+                txt.innerText = "Status: Online (Ready)";
+
                 initBag(); renderBoard(); players=[]; updateHostUI();
             });
+
+            peer.on('error', err => {
+                showModal("Host Error", "Could not start server. Try refreshing.");
+            });
+
             peer.on('connection', c => { c.on('data', d => handleHostData(c, d)); });
         }
         function handleHostData(c, data) {
@@ -441,7 +471,7 @@
                 }
             }, 6000);
 
-            peer = new Peer();
+            peer = new Peer(null, PEER_CONFIG);
             peer.on('open', () => {
                 conn = peer.connect(c);
                 conn.on('open', () => {
