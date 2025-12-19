@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - QR Edition</title>
+    <title>Scrabble Pro - Final</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -14,6 +14,7 @@
             --bg: #121212;
             --sidebar: #1e1e1e;
             --accent: #27ae60;
+            --accent-disabled: #1e5635;
             --danger: #c0392b;
             --wood: #5d4037;
             --tile-face: #fdf5e6;
@@ -34,13 +35,13 @@
         
         button { background: var(--accent); color: white; border: none; padding: 15px 30px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin: 10px; font-weight: 600; transition: transform 0.1s; box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
         button:active { transform: scale(0.96); box-shadow: none; }
-        button:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
+        button:disabled { background: var(--accent-disabled); color: #888; cursor: not-allowed; transform: none; box-shadow: none; opacity: 0.6; }
         .btn-danger { background: var(--danger); }
         .btn-ghost { background: transparent; border: 1px solid #555; }
 
-        /* WAITING ANIMATION */
+        /* ANIMATIONS */
         .pulse { animation: pulse-anim 1.5s infinite ease-in-out; }
-        @keyframes pulse-anim { 0% { opacity: 0.5; transform: scale(0.98); } 50% { opacity: 1; transform: scale(1); } 100% { opacity: 0.5; transform: scale(0.98); } }
+        @keyframes pulse-anim { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
 
         /* HOST LAYOUT */
         #screen-host { flex-direction: row; }
@@ -58,37 +59,73 @@
         .tl { background: #74b9ff; color: white; } .dl { background: #81ecec; }
         .star { background: #fab1a0; font-size: 1.5rem; color: #d63031; }
 
-        /* TILES */
+        /* TILES (Shared) */
         .tile {
-            width: 90%; height: 90%; background: var(--tile-face); border-radius: 4px; box-shadow: 0 3px 0 #bcaaa4; color: #2d3436;
+            width: 100%; height: 100%; aspect-ratio: 1/1;
+            background: var(--tile-face); border-radius: 4px; box-shadow: 0 3px 0 #bcaaa4; color: #2d3436;
             display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 1.3rem; 
             position: relative; user-select: none; cursor: grab; z-index: 100; touch-action: none;
         }
         .cell .tile { width: 100%; height: 100%; border-radius: 0; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
         .tile span.score { font-size: 0.5rem; position: absolute; bottom: 1px; right: 2px; }
-        .tile.dragging { position: fixed; z-index: 9999; width: 50px !important; height: 50px !important; opacity: 0.9; transform: scale(1.2); pointer-events: none; }
+        .tile.dragging { 
+            position: fixed; z-index: 9999; 
+            width: 50px !important; height: 50px !important; 
+            opacity: 0.9; transform: scale(1.1); pointer-events: none; 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
 
         /* LOBBY & QR */
         #qrcode { background: white; padding: 10px; border-radius: 8px; margin: 20px auto; display: inline-block; }
         .lobby-code { font-size: 3.5rem; font-weight: 800; color: var(--accent); letter-spacing: 5px; font-family: monospace; }
         
-        /* INBOX & ACTIONS */
+        /* HOST SIDEBAR COMPONENTS */
         .player-row { padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
         .player-row.active-turn { background: #222; border-left: 4px solid var(--accent); }
+        
         .inbox-area { margin-top: auto; background: #111; padding: 10px; border-radius: 8px; border: 1px solid #444; }
-        .inbox-rack { display: flex; gap: 5px; flex-wrap: wrap; min-height: 50px; margin-bottom: 10px; align-items: center; justify-content: center; }
+        /* Host Inbox Tiles - Fixed Size */
+        .inbox-rack { 
+            display: flex; gap: 5px; flex-wrap: wrap; 
+            min-height: 55px; margin-bottom: 10px; align-items: center; justify-content: center; 
+        }
+        .inbox-rack .tile { width: 45px; height: 45px; font-size: 1.2rem; } /* Explicit size for host inbox */
+
         .action-row { display: flex; gap: 10px; }
         .return-zone { flex: 1; height: 50px; background: var(--danger); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; text-align: center; border: 2px dashed rgba(255,255,255,0.3); }
 
-        /* PLAYER UI */
+        /* PLAYER PHONE UI */
         #player-ui { background: #2d3436; justify-content: space-between; flex-direction: column; }
-        .rack-area { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; padding: 20px; }
-        .player-rack { background: var(--wood); padding: 15px; border-radius: 8px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; box-shadow: inset 0 5px 10px rgba(0,0,0,0.5); width: 100%; max-width: 500px; }
-        .player-rack .tile { width: 45px; height: 45px; font-size: 1.8rem; }
-        .tile.selected { border: 3px solid var(--accent); transform: translateY(-5px); }
+        .rack-area { 
+            flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; 
+            background: #2d3436; 
+        }
+        
+        /* HORIZONTAL SCROLL RACK */
+        .player-rack { 
+            background: var(--wood); 
+            padding: 10px; 
+            border-radius: 4px; 
+            display: flex; 
+            flex-direction: row; /* Horizontal */
+            flex-wrap: nowrap; /* No wrapping */
+            overflow-x: auto; /* Scrollable */
+            gap: 8px; 
+            box-shadow: inset 0 5px 10px rgba(0,0,0,0.5); 
+            width: 95%; max-width: 600px;
+            height: 80px;
+            align-items: center;
+        }
+        /* Mobile Tiles */
+        .player-rack .tile { 
+            flex: 0 0 auto; /* Don't shrink */
+            width: 60px; height: 60px; 
+            font-size: 1.8rem; 
+        }
+        .tile.selected { border: 3px solid var(--accent); transform: translateY(-3px); }
 
         /* TOAST */
-        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); color: white; padding: 12px 24px; border-radius: 30px; font-size: 1rem; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.3s; border: 1px solid #444; }
+        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); color: white; padding: 12px 24px; border-radius: 30px; font-size: 1rem; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.3s; border: 1px solid #444; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
         #toast.show { opacity: 1; }
 
         .hidden { display: none !important; }
@@ -105,7 +142,6 @@
         <button onclick="initHost()" style="width:260px; padding:18px;">Host New Game</button>
         
         <div style="margin-top:40px; border-top:1px solid #333; padding-top:20px; width: 100%; max-width: 320px;">
-            <div id="reconnect-msg" style="color:var(--accent); display:none; margin-bottom:10px;">Reconnecting you...</div>
             <input type="text" id="join-name" placeholder="NICKNAME" maxlength="10">
             <input type="text" id="join-code" placeholder="ROOM CODE" maxlength="4">
             <br>
@@ -124,10 +160,7 @@
             <div style="color:#666; font-style:italic;">Waiting for players...</div>
         </div>
 
-        <div style="display:flex; gap:10px;">
-            <button onclick="location.reload()" class="btn-ghost">Cancel</button>
-            <button onclick="hostStartGame()">START GAME</button>
-        </div>
+        <button onclick="hostStartGame()">START GAME</button>
     </div>
 
     <div id="screen-waiting" class="screen center-screen">
@@ -151,7 +184,7 @@
             <div id="sidebar-list" style="flex-grow:1; overflow-y:auto; margin-bottom:10px;"></div>
 
             <div class="inbox-area">
-                <div style="font-size:0.7rem; color:#aaa; margin-bottom:5px;">INBOX (Drag to Board)</div>
+                <div style="font-size:0.7rem; color:#aaa; margin-bottom:5px;">INBOX</div>
                 <div class="inbox-rack" id="host-inbox"></div>
                 <div class="action-row">
                     <div class="return-zone" id="return-zone">DROP TO<br>RETURN</div>
@@ -176,12 +209,12 @@
 
         <div style="width:100%; padding:20px; background:#111; display:flex; gap:10px;">
             <button onclick="shuffleRack()" style="flex:1; background:#e67e22">Shuffle</button>
-            <button onclick="playSelected()" style="flex:2;">Send Selected</button>
+            <button id="btn-send-tiles" onclick="playSelected()" style="flex:2;" disabled>Send Selected</button>
         </div>
     </div>
 
     <script>
-        // --- DATA & CONFIG ---
+        // --- CONSTANTS ---
         const SCORES = {'A':1,'B':3,'C':3,'D':2,'E':1,'F':4,'G':2,'H':4,'I':1,'J':8,'K':5,'L':1,'M':3,'N':1,'O':1,'P':3,'Q':10,'R':1,'S':1,'T':1,'U':1,'V':4,'W':4,'X':8,'Y':4,'Z':10,'_':0};
         const BAG_INIT = {'A':9,'B':2,'C':2,'D':4,'E':12,'F':2,'G':3,'H':2,'I':9,'J':1,'K':1,'L':4,'M':2,'N':6,'O':8,'P':2,'Q':1,'R':6,'S':4,'T':6,'U':4,'V':2,'W':2,'X':1,'Y':2,'Z':1,'_':2};
         const LAYOUT = [
@@ -191,11 +224,11 @@
             [0,0,2,0,0,0,4,0,4,0,0,0,2,0,0], [0,2,0,0,0,3,0,0,0,3,0,0,0,2,0], [1,0,0,4,0,0,0,1,0,0,0,4,0,0,1]
         ];
 
-        // --- GLOBAL STATE ---
+        // --- STATE ---
         let peer, conn, dictionary = new Set(), bag = [], players = [], turnIndex = 0;
-        let joining = false; // Prevent double join clicks
+        let joining = false, myTurn = false;
 
-        // --- SETUP ---
+        // --- INIT ---
         fetch('https://raw.githubusercontent.com/redbo/scrabble/master/dictionary.txt')
             .then(r=>r.text()).then(t => {
                 t.toUpperCase().split(/\s+/).forEach(w => dictionary.add(w));
@@ -209,17 +242,9 @@
             document.getElementById('btn-join').disabled = !(n && c.length === 4);
         }));
 
-        // --- UTILS ---
         function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
         function toast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
-        
-        // Generate Unambiguous ID (No I, O, 0, 1)
-        function genId() { 
-            const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-            let result = "";
-            for (let i = 0; i < 4; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-            return result;
-        }
+        function genId() { const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let r=""; for(let i=0;i<4;i++) r+=c.charAt(Math.floor(Math.random()*c.length)); return r; }
 
         // --- HOST LOGIC ---
         function initHost() {
@@ -231,16 +256,8 @@
                 showScreen('screen-lobby');
                 document.getElementById('lobby-code-display').innerText = id;
                 document.getElementById('sidebar-code').innerText = id;
-                
-                // Generate QR Code
                 document.getElementById('qrcode').innerHTML = "";
-                new QRCode(document.getElementById("qrcode"), {
-                    text: id, // Just the code, simpler for manual entry or smart scanning
-                    width: 128, height: 128,
-                    colorDark : "#000000", colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
-                });
-
+                new QRCode(document.getElementById("qrcode"), { text: id, width: 128, height: 128, colorDark:"#000", colorLight:"#fff", correctLevel:QRCode.CorrectLevel.H });
                 initBag();
                 renderBoard();
                 players = [];
@@ -249,37 +266,31 @@
             
             peer.on('connection', c => {
                 c.on('data', d => handleHostData(c, d));
-                c.on('close', () => { /* Handle disconnect silently */ });
-            });
-            
-            peer.on('error', err => {
-                alert("Connection Error: " + err.type);
+                c.on('open', () => { /* Connection established, waiting for join payload */ });
             });
         }
 
         function handleHostData(c, data) {
             if(data.type === 'join') {
                 const existing = players.find(p => p.name === data.name);
-                if(existing) {
-                    existing.conn = c; // Reconnect logic
-                    existing.id = c.peer;
-                    toast(`${data.name} reconnected`);
-                } else {
-                    players.push({ id:c.peer, name:data.name, score:0, conn:c });
-                    toast(`${data.name} joined`);
-                }
-                c.send({type:'joined_lobby', name: data.name}); // Confirm entry
+                if(existing) { existing.conn = c; existing.id = c.peer; toast(`${data.name} reconnected`); }
+                else { players.push({ id:c.peer, name:data.name, score:0, conn:c }); toast(`${data.name} joined`); }
+                c.send({type:'joined_lobby', name: data.name});
                 updateHostUI();
             }
-            if(data.type === 'play') { data.tiles.forEach(l => createHostTile(l, c.peer)); }
+            if(data.type === 'play') {
+                // SERVER SIDE TURN CHECK
+                if(c.peer !== players[turnIndex].id) {
+                    c.send({type:'toast', msg:"Not your turn!"});
+                    return; // Reject tiles
+                }
+                data.tiles.forEach(l => createHostTile(l, c.peer)); 
+            }
         }
 
         function hostStartGame() {
             if(players.length === 0) return alert("Waiting for players...");
-            
             showScreen('screen-host');
-            
-            // Critical Sync Fix: Iterate and send start signal to all
             players.forEach(p => {
                 if(p.conn && p.conn.open) {
                     p.conn.send({type:'gamestart'});
@@ -291,18 +302,9 @@
 
         function updateHostUI() {
             const list = document.getElementById('lobby-player-list');
-            list.innerHTML = players.map(p => `
-                <div style="border-bottom:1px solid #333; padding:5px; display:flex; justify-content:space-between;">
-                    <span>${p.name}</span>
-                    <span style="color:var(--accent)">Ready</span>
-                </div>`).join('');
-            
+            list.innerHTML = players.map(p => `<div style="border-bottom:1px solid #333; padding:5px; display:flex; justify-content:space-between;"><span>${p.name}</span><span style="color:var(--accent)">Ready</span></div>`).join('');
             const sideList = document.getElementById('sidebar-list');
-            sideList.innerHTML = players.map((p, i) => `
-                <div class="player-row ${i===turnIndex?'active-turn':''}">
-                    <strong>${p.name}</strong> <span>${p.score}</span>
-                </div>`).join('');
-            
+            sideList.innerHTML = players.map((p, i) => `<div class="player-row ${i===turnIndex?'active-turn':''}"><strong>${p.name}</strong> <span>${p.score}</span></div>`).join('');
             if(players[turnIndex]) document.getElementById('turn-indicator').innerText = players[turnIndex].name;
         }
 
@@ -314,25 +316,24 @@
             const grid=getGrid(); const words=getWords(grid);
             if(!words.length) return alert("No words!");
             const invalid = words.filter(w => !dictionary.has(w) && dictionary.size > 0);
-            if(invalid.length > 0) {
-                players[turnIndex].conn.send({type:'toast', msg:`Invalid: ${invalid[0]}`});
-                return alert("Invalid: " + invalid.join(', '));
-            }
+            if(invalid.length > 0) { players[turnIndex].conn.send({type:'toast', msg:`Invalid: ${invalid[0]}`}); return alert("Invalid: " + invalid.join(', ')); }
+            
             const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
             if(newTiles.length===0) return alert("Place tiles first.");
+            
             newTiles.forEach(t => { t.removeAttribute('data-new'); t.dataset.locked="true"; t.style.cursor="default"; });
             deal(players[turnIndex].conn, newTiles.length);
             turnIndex = (turnIndex + 1) % players.length;
             notifyCurrentTurn();
-            // Clear inbox
+            
             const inbox = document.getElementById('host-inbox');
             while(inbox.firstChild) { returnTile(inbox.firstChild.dataset.letter, inbox.firstChild.dataset.owner); inbox.firstChild.remove(); }
         }
 
         function notifyCurrentTurn() {
             players.forEach((p, i) => {
-                if(i === turnIndex) p.conn.send({type:'toast', msg:"It's your turn!"});
-                else p.conn.send({type:'status', msg:`Waiting for ${players[turnIndex].name}`});
+                const isTurn = (i === turnIndex);
+                p.conn.send({type:'turn_update', myTurn: isTurn, activePlayer: players[turnIndex].name});
                 updateHostUI();
             });
         }
@@ -355,23 +356,30 @@
             t.addEventListener('pointerdown', onDragStart);
             document.getElementById('host-inbox').appendChild(t);
         }
-        // Simplified Drag Logic
+
         let dragEl=null, clone=null;
         function onDragStart(e) {
             if(e.currentTarget.dataset.locked==="true") return;
             e.preventDefault(); dragEl=e.currentTarget;
             clone=dragEl.cloneNode(true); clone.classList.add('dragging'); document.body.appendChild(clone);
-            moveClone(e.clientX, e.clientY); dragEl.style.opacity='0.3';
+            moveClone(e.clientX, e.clientY); dragEl.style.opacity='0'; // Hide original completely
             document.addEventListener('pointermove', onDragMove); document.addEventListener('pointerup', onDragEnd);
         }
         function onDragMove(e) { e.preventDefault(); moveClone(e.clientX, e.clientY); }
         function moveClone(x,y) { if(clone){ clone.style.left=(x-25)+'px'; clone.style.top=(y-25)+'px'; } }
         function onDragEnd(e) {
             document.removeEventListener('pointermove', onDragMove); document.removeEventListener('pointerup', onDragEnd);
-            dragEl.style.opacity='1'; clone.remove(); clone=null;
+            
+            // KEY FIX: Hide clone to see what is underneath
+            clone.hidden = true;
             const el=document.elementFromPoint(e.clientX, e.clientY);
+            clone.hidden = false;
+
+            dragEl.style.opacity='1'; clone.remove(); clone=null;
+            
             if(!el) return;
             const cell=el.closest('.cell'); const ret=el.closest('.return-zone'); const inbox=el.closest('.inbox-area');
+            
             if(ret) { returnTile(dragEl.dataset.letter, dragEl.dataset.owner); dragEl.remove(); }
             else if(cell && !cell.hasChildNodes()) { cell.appendChild(dragEl); cell.innerText=''; cell.className='cell'; }
             else if(inbox) { document.getElementById('host-inbox').appendChild(dragEl); }
@@ -380,39 +388,20 @@
 
         // --- PLAYER ---
         function joinGame() {
-            if(joining) return; // Prevent double click
+            if(joining) return;
             const n = document.getElementById('join-name').value.trim();
             const c = document.getElementById('join-code').value.trim().toUpperCase();
-            
-            // Check storage to prevent duplicates logically or re-join
-            if(localStorage.getItem('scrabble_room') === c && localStorage.getItem('scrabble_name') !== n) {
-                // Different name, same room? 
-                // We'll allow it for simplicity in this demo, but typically we'd block.
-            }
-
-            joining = true;
-            document.getElementById('btn-join').innerText = "Connecting...";
+            joining = true; document.getElementById('btn-join').innerText = "Connecting...";
 
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(c);
-                
-                // Connection Error handling
-                peer.on('error', err => {
-                    alert("Could not find room: " + c);
-                    joining = false; document.getElementById('btn-join').innerText = "Join Room";
-                });
+                peer.on('error', err => { alert("Room not found"); joining=false; document.getElementById('btn-join').innerText="Join Room"; });
 
                 conn.on('open', () => {
                     conn.send({type:'join', name:n});
-                    
-                    // Switch to Waiting Screen immediately
                     showScreen('screen-waiting');
                     document.getElementById('waiting-player-name').innerText = n;
-
-                    // Save session
-                    localStorage.setItem('scrabble_name', n);
-                    localStorage.setItem('scrabble_room', c);
                 });
 
                 conn.on('data', d => {
@@ -425,7 +414,23 @@
                     if(d.type==='hand') addRack(d.tiles);
                     if(d.type==='return') { addRack([d.tile]); toast("Tile returned"); }
                     if(d.type==='toast') toast(d.msg);
-                    if(d.type==='status') document.getElementById('status-msg').innerText = d.msg;
+                    if(d.type==='turn_update') {
+                        myTurn = d.myTurn;
+                        const btn = document.getElementById('btn-send-tiles');
+                        const status = document.getElementById('status-msg');
+                        if(myTurn) {
+                            btn.disabled = false;
+                            btn.innerText = "Send Selected";
+                            status.innerText = "YOUR TURN";
+                            status.style.color = "var(--accent)";
+                            toast("It's your turn!");
+                        } else {
+                            btn.disabled = true;
+                            btn.innerText = `Wait for ${d.activePlayer}`;
+                            status.innerText = `Turn: ${d.activePlayer}`;
+                            status.style.color = "#888";
+                        }
+                    }
                 });
             });
         }
@@ -439,6 +444,7 @@
             });
         }
         function playSelected() {
+            if(!myTurn) { toast("Not your turn!"); return; }
             const s=document.querySelectorAll('.selected');
             if(!s.length) return;
             const t=[]; s.forEach(x=>{t.push(x.dataset.letter); x.remove();});
@@ -452,11 +458,7 @@
 
         // Utils
         function getGrid(){ let g=[]; document.querySelectorAll('.cell').forEach(c=>{ if(!g[c.dataset.r])g[c.dataset.r]=[]; g[c.dataset.r][c.dataset.c]=c.querySelector('.tile')?.dataset.letter||null; }); return g; }
-        function getWords(g){ let w=[]; 
-            for(let i=0;i<15;i++){ let r="",c=""; for(let j=0;j<15;j++){ r+=g[i][j]||" "; c+=g[j][i]||" "; }
-            r.split(" ").forEach(x=>{if(x.length>1)w.push(x)}); c.split(" ").forEach(x=>{if(x.length>1)w.push(x)}); }
-            return w; 
-        }
+        function getWords(g){ let w=[]; for(let i=0;i<15;i++){ let r="",c=""; for(let j=0;j<15;j++){ r+=g[i][j]||" "; c+=g[j][i]||" "; } r.split(" ").forEach(x=>{if(x.length>1)w.push(x)}); c.split(" ").forEach(x=>{if(x.length>1)w.push(x)}); } return w; }
     </script>
 </body>
 </html>
