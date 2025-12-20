@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Perfect Score</title>
+    <title>Scrabble Pro - Animation</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -116,7 +116,7 @@
             border: 2px solid var(--accent); border-radius: 4px;
         }
 
-        /* SCORE PILL */
+        /* SCORE PILL & ANIMATION */
         #score-pill {
             position: fixed; top: 0; left: 0;
             background: #2980b9; color: white;
@@ -129,6 +129,16 @@
             border: 2px solid rgba(255,255,255,0.8);
         }
         #score-pill.visible { opacity: 1; transform: scale(1); }
+
+        .flying-score {
+            position: fixed; z-index: 99999;
+            background: #f1c40f; color: #000;
+            padding: 10px 20px; border-radius: 50px;
+            font-weight: bold; font-size: 1.5rem;
+            box-shadow: 0 0 20px #f1c40f;
+            transition: all 1s ease-in-out;
+            pointer-events: none;
+        }
 
         /* HOST UI ELEMENTS */
         .info-panel { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: center; border: 1px solid #444; }
@@ -176,14 +186,14 @@
             padding: 15px; 
             border-radius: 8px; 
             width: 95%; max-width: 500px;
-            display: flex; justify-content: space-between;
-            gap: 2px;
+            display: flex; justify-content: center;
+            gap: 5px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5), inset 0 2px 5px rgba(255,255,255,0.1);
             border: 1px solid #3e2723;
         }
         .player-rack .tile { 
             width: 12vw; height: 12vw; 
-            max-width: 55px; max-height: 55px; 
+            max-width: 60px; max-height: 60px; 
             min-width: 40px; min-height: 40px;
             font-size: 1.5rem; 
             box-shadow: 0 4px 0 #3e2723, 0 5px 10px rgba(0,0,0,0.3);
@@ -196,9 +206,10 @@
         }
 
         .mobile-controls { 
-            width: 100%; padding: 20px 10px 30px 10px;
+            width: 100%; padding: 20px;
             background: #222; 
             display: flex; gap: 15px; border-top: 1px solid #333; 
+            padding-bottom: 40px; /* Safe area */
         }
         .mobile-controls button { margin: 0; flex: 1; padding: 16px; font-size: 1.1rem; }
 
@@ -261,11 +272,6 @@
             <div class="info-panel">
                 <div style="font-size:0.7rem; color:#7f8c8d; letter-spacing:1px;">CURRENT TURN</div>
                 <div id="turn-indicator" style="font-size:1.6rem; font-weight:bold; color:#ecf0f1;">...</div>
-            </div>
-
-            <div class="info-panel" style="border:1px solid var(--accent); background:rgba(39, 174, 96, 0.1);">
-                <div style="font-size:0.7rem; color:#7f8c8d;">TOTAL SCORE</div>
-                <div id="game-score-display" class="turn-score">0</div>
             </div>
 
             <div id="sidebar-list" style="flex-grow:1; overflow-y:auto; margin-bottom:15px;"></div>
@@ -343,7 +349,7 @@
             updateClonePos(e.clientX, e.clientY);
             dragEl.style.opacity = '0';
             
-            // IMMEDIATE UPDATE: Exclude this tile from calculation while dragging
+            // IMMEDIATE UPDATE: Trigger Pill update immediately (dragEl will be filtered out)
             updateScorePill();
 
             document.addEventListener('pointermove', onDragMove);
@@ -357,16 +363,11 @@
             const el = document.elementFromPoint(e.clientX, e.clientY);
             clone.hidden = false;
             clone.remove(); clone=null;
-            
-            // KEY VISIBILITY RESET
             dragEl.removeAttribute('style'); 
-            
             if(el) {
                 const cell = el.closest('.cell');
                 const ret = el.closest('.return-zone');
                 const inbox = el.closest('.inbox-area');
-                
-                // Allow Drop if cell has NO tile (ignoring text)
                 const hasTile = cell ? cell.querySelector('.tile') : false;
                 
                 if(ret) { 
@@ -389,30 +390,27 @@
 
         // --- SMART SCORE PILL ---
         function updateScorePill() {
-            // FILTER: If dragging, exclude dragEl
+            // Get all tiles on board marked new
             let newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
             
+            // FILTER: If we are currently dragging a tile, EXCLUDE it from calculation
             if(dragEl) {
                 newTiles = newTiles.filter(t => t !== dragEl);
             }
 
             const pill = document.getElementById('score-pill');
             
-            // 1. Basic Validation: Is it in a line? Are there gaps?
             if (newTiles.length === 0 || !isPlacementShapeValid(newTiles)) {
                 pill.classList.remove('visible');
                 currentTurnPoints = 0;
                 return;
             }
 
-            // 2. Calculate Potential Score
             currentTurnPoints = calculateComplexScore(newTiles);
-            
-            // 3. Show Pill
             pill.innerText = `${currentTurnPoints} pts`;
             pill.classList.add('visible');
 
-            // Position at end of word
+            // Position at end
             newTiles.sort((a,b) => {
                 const pA = a.parentElement, pB = b.parentElement;
                 return (parseInt(pA.dataset.r) - parseInt(pB.dataset.r)) || (parseInt(pA.dataset.c) - parseInt(pB.dataset.c));
@@ -427,25 +425,22 @@
             const coords = tiles.map(t => ({ r: parseInt(t.parentElement.dataset.r), c: parseInt(t.parentElement.dataset.c) }));
             const rows = new Set(coords.map(k => k.r));
             const cols = new Set(coords.map(k => k.c));
-            
-            // Must be single row OR single col
             if(rows.size > 1 && cols.size > 1) return false;
-
-            // Check for gaps
+            
             const isH = rows.size === 1;
             if(isH) {
                 coords.sort((a,b) => a.c - b.c);
                 const r = coords[0].r;
                 for(let c = coords[0].c; c <= coords[coords.length-1].c; c++) {
                     const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-                    if(!cell.querySelector('.tile')) return false; // Gap found
+                    if(!cell.querySelector('.tile')) return false; 
                 }
             } else {
                 coords.sort((a,b) => a.r - b.r);
                 const c = coords[0].c;
                 for(let r = coords[0].r; r <= coords[coords.length-1].r; r++) {
                     const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-                    if(!cell.querySelector('.tile')) return false; // Gap found
+                    if(!cell.querySelector('.tile')) return false; 
                 }
             }
             return true;
@@ -456,29 +451,23 @@
             const coords = newTiles.map(t => ({ r: parseInt(t.parentElement.dataset.r), c: parseInt(t.parentElement.dataset.c) }));
             const uniqueRows = new Set(coords.map(x=>x.r)).size;
             let isHoriz = uniqueRows === 1; 
-            
-            // Main Word
             totalScore += getWordScoreAt(coords[0].r, coords[0].c, isHoriz);
-            // Cross Words
             coords.forEach(pos => {
                 const crossScore = getWordScoreAt(pos.r, pos.c, !isHoriz);
                 if (crossScore > 0) totalScore += crossScore;
             });
-            // Bingo
             if (newTiles.length === 7) totalScore += 50;
             return totalScore;
         }
 
         function getWordScoreAt(r, c, isHoriz) {
             let curr = isHoriz ? c : r;
-            // Scan Back
             while(curr > 0) {
                 const cell = isHoriz ? getCell(r, curr-1) : getCell(curr-1, c);
                 if(!cell.querySelector('.tile')) break;
                 curr--;
             }
             const start = curr;
-            // Scan Forward
             curr = isHoriz ? c : r;
             while(curr < 14) {
                 const cell = isHoriz ? getCell(r, curr+1) : getCell(curr+1, c);
@@ -486,8 +475,7 @@
                 curr++;
             }
             const end = curr;
-
-            if (start === end) return 0; // Single tile is not a word
+            if (start === end) return 0;
 
             let pts = 0;
             let mult = 1;
@@ -508,12 +496,41 @@
         }
         function getCell(r, c) { return document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`); }
 
+        // --- ANIMATION ---
+        function animatePoints(points, startRect) {
+            const fly = document.createElement('div');
+            fly.className = 'flying-score';
+            fly.innerText = `+${points}`;
+            document.body.appendChild(fly);
+            
+            // Start Pos
+            fly.style.top = startRect.top + 'px';
+            fly.style.left = startRect.left + 'px';
+            
+            // End Pos (Active Player Score in Sidebar)
+            // We find the specific score element for the current turn
+            const target = document.querySelector(`.player-row[data-index="${turnIndex}"] .score-text`);
+            
+            if(target) {
+                const endRect = target.getBoundingClientRect();
+                
+                // Force Reflow
+                fly.offsetHeight; 
+                
+                fly.style.top = endRect.top + 'px';
+                fly.style.left = endRect.left + 'px';
+                fly.style.transform = 'scale(0.5)';
+                fly.style.opacity = '0';
+            }
+
+            setTimeout(() => { fly.remove(); }, 1000);
+        }
+
         function confirmTurn() {
             if(document.getElementById('score-pill').classList.contains('visible') === false) {
                 showModal("Invalid", "Tiles must be in a line with no gaps."); return;
             }
             
-            // Check First Turn Center
             if(isFirstTurn) {
                 const newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
                 const hasCenter = newTiles.some(t => {
@@ -523,7 +540,6 @@
                 if(!hasCenter) { showModal("Rule", "First word must cross the center star."); return; }
             }
 
-            // Dictionary
             const grid=getGrid(); const words=getWords(grid);
             const invalid = words.filter(w => !dictionary.has(w) && dictionary.size > 0);
             if(invalid.length > 0) { 
@@ -532,16 +548,23 @@
                 return; 
             }
             
-            // Commit
-            const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
+            // Animation Setup
+            const pill = document.getElementById('score-pill');
+            const pillRect = pill.getBoundingClientRect();
+            
+            // Update State
             players[turnIndex].score += currentTurnPoints;
+            const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
             newTiles.forEach(t => { t.removeAttribute('data-new'); t.dataset.locked="true"; t.style.cursor="default"; });
             
+            // Trigger Animation
+            animatePoints(currentTurnPoints, pillRect);
+            
+            // Cleanup
+            pill.classList.remove('visible');
             deal(players[turnIndex].conn, newTiles.length);
             isFirstTurn = false;
             turnIndex = (turnIndex + 1) % players.length;
-            
-            document.getElementById('score-pill').classList.remove('visible');
             notifyTurn();
             
             const inbox = document.getElementById('host-inbox');
@@ -589,11 +612,14 @@
         function updateHostUI() {
             const list = document.getElementById('lobby-player-list');
             list.innerHTML = players.map(p => `<div>${p.name} <span style="color:var(--accent)">Ready</span></div>`).join('');
+            
             const sideList = document.getElementById('sidebar-list');
-            sideList.innerHTML = players.map((p, i) => `<div style="padding:10px; border-bottom:1px solid #444; ${i===turnIndex?'border-left:4px solid var(--accent); background:rgba(255,255,255,0.05)':''}">
-                <div style="font-weight:bold; font-size:1.1rem;">${p.name}</div>
-                <div style="color:var(--accent);">${p.score} pts</div>
-            </div>`).join('');
+            // Added data-index for animation targeting
+            sideList.innerHTML = players.map((p, i) => `
+                <div class="player-row" data-index="${i}" style="padding:10px; border-bottom:1px solid #444; ${i===turnIndex?'border-left:4px solid var(--accent); background:rgba(255,255,255,0.05)':''}">
+                    <div style="font-weight:bold; font-size:1.1rem;">${p.name}</div>
+                    <div class="score-text" style="color:var(--accent); font-weight:bold; transition: transform 0.2s;">${p.score} pts</div>
+                </div>`).join('');
         }
         function initBag() { bag=[]; for(let l in BAG_INIT) for(let i=0; i<BAG_INIT[l]; i++) bag.push(l); bag.sort(()=>Math.random()-0.5); }
         function deal(c,n) { let h=[]; for(let i=0; i<n; i++) if(bag.length) h.push(bag.pop()); if(h.length) c.send({type:'hand', tiles:h}); }
