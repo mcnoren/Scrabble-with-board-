@@ -18,9 +18,8 @@
             --danger: #c0392b;
             --wood-frame: #5d4037;
             /* LIGHTER RACK COLORS */
-            --wood-rack-light: #e0c39e;
-            --wood-rack-dark: #bcaaa4;
-            --rack-shadow: #8d6e63;
+            --wood-rack-light: #d7ccc8;
+            --wood-rack-dark: #8d6e63;
             
             --tile-face: #fdf5e6;
             --tile-active: #f1c40f;
@@ -70,29 +69,31 @@
             box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.2); 
             color: #2d3436; display: flex; justify-content: center; align-items: center; 
             font-weight: 700; font-size: 1.3rem; position: relative; cursor: grab; z-index: 20; touch-action: none;
-            transition: transform 0.1s, border 0.1s; /* Smooth selection */
+            transition: transform 0.1s ease-out; /* Smooth pop up */
         }
-        
-        /* SELECTION INDICATION */
-        .tile.selected {
-            border: 3px solid var(--accent) !important;
-            transform: translateY(-12px) !important;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5) !important;
-            z-index: 100 !important;
-        }
-
-        /* On Board */
+        /* On Board: Absolute to cover text */
         .cell .tile { position: absolute; top:0; left:0; width:100%; height:100%; border-radius: 0; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.1); z-index: 30; }
         .tile[data-new="true"] { background: var(--tile-active); box-shadow: inset 0 -3px 0 #d4a017; color: #000; }
         .tile span.score { font-size: 0.55rem; position: absolute; bottom: 2px; right: 2px; font-weight: 600; }
         .tile.dragging { position: fixed; z-index: 99999; width: 55px !important; height: 55px !important; opacity: 0.95; transform: scale(1.15) rotate(-2deg); pointer-events: none; box-shadow: 0 15px 30px rgba(0,0,0,0.4); border: 2px solid var(--accent); border-radius: 4px; }
 
-        /* ANIMATIONS & OVERLAYS */
+        /* ANIMATIONS */
         @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.5); color: #f1c40f; } 100% { transform: scale(1); } }
         .score-pop { animation: pop 0.4s ease-in-out; }
-        #score-pill { position: fixed; top: 0; left: 0; background: #2980b9; color: white; padding: 8px 18px; border-radius: 30px; font-weight: 800; font-size: 1.1rem; box-shadow: 0 5px 15px rgba(0,0,0,0.4); pointer-events: none; z-index: 2000; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0; transform: scale(0.5); border: 2px solid rgba(255,255,255,0.8); }
+
+        #score-pill {
+            position: fixed; top: 0; left: 0; background: #2980b9; color: white;
+            padding: 8px 18px; border-radius: 30px; font-weight: 800; font-size: 1.1rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4); pointer-events: none; z-index: 2000;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0; transform: scale(0.5); border: 2px solid rgba(255,255,255,0.8);
+        }
         #score-pill.visible { opacity: 1; transform: scale(1); }
-        .flying-score { position: fixed; z-index: 99999; background: #f1c40f; color: #000; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 1.5rem; box-shadow: 0 0 20px #f1c40f; transition: all 1s ease-in-out; pointer-events: none; }
+
+        .flying-score {
+            position: fixed; z-index: 99999; background: #f1c40f; color: #000;
+            padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 1.5rem;
+            box-shadow: 0 0 20px #f1c40f; transition: all 1s ease-in-out; pointer-events: none;
+        }
 
         /* HOST UI ELEMENTS */
         .info-panel { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: center; border: 1px solid #444; }
@@ -103,47 +104,71 @@
         .return-zone { width: 100%; height: 50px; background: #34495e; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #95a5a6; border: 2px dashed #555; transition: all 0.2s; margin-bottom: 10px; }
         .return-zone.hovered { background: #c0392b; color: white; border-color: #e74c3c; }
 
+        /* PLAYER LOBBY LIST */
+        .player-lobby-container { width: 100%; max-width: 400px; background: #222; border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: left; }
+        .lobby-row { padding: 12px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center; }
+
         /* PLAYER MOBILE UI */
         #player-ui { background: #1a1a1a; justify-content: space-between; flex-direction: column; height: 100vh; }
         .mobile-top-bar { padding: 15px 20px; background: #222; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
         .player-name { font-size: 1.2rem; font-weight: bold; color: var(--accent); }
         .game-status { font-size: 0.9rem; color: #888; background: #333; padding: 4px 10px; border-radius: 12px; }
-        .rack-wrapper { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle at center, #2a2a2a 0%, #1a1a1a 100%); padding: 20px; gap: 30px; }
+
+        .rack-wrapper { 
+            flex-grow: 1; display: flex; flex-direction: column; /* Vertical stack */
+            align-items: center; justify-content: center;
+            background: radial-gradient(circle at center, #2a2a2a 0%, #1a1a1a 100%);
+            padding: 20px; gap: 30px;
+        }
         
-        /* --- FIXED RACK STYLE --- */
+        /* FIXED RACK DESIGN */
         .player-rack { 
             position: relative;
             background: linear-gradient(180deg, var(--wood-rack-light) 0%, var(--wood-rack-dark) 100%);
-            padding: 15px 10px 20px 10px; 
+            padding: 20px 10px 15px 10px; 
             border-radius: 6px; 
             
-            /* FIXED WIDTH LOGIC: 7 tiles * 13vw + gaps + padding */
-            min-width: calc((13vw * 7) + (6 * 4px) + 20px);
-            max-width: 98vw;
+            /* FIXED WIDTH LOGIC */
+            width: 95%; max-width: 500px;
+            min-height: 80px; /* Maintains height even if empty */
             
             display: flex; 
-            justify-content: center; 
-            gap: 4px; 
+            justify-content: center; /* Center tiles */
+            gap: 4px;
             
             box-shadow: 0 10px 20px rgba(0,0,0,0.6), inset 0 2px 10px rgba(255,255,255,0.3);
-            border-bottom: 8px solid var(--rack-shadow);
+            border-bottom: 8px solid #5d4037;
         }
 
         .player-rack .tile { 
-            width: 13vw; height: 13vw; /* Large size */
+            width: 13vw; height: 13vw; 
             max-width: 60px; max-height: 60px; 
-            min-width: 45px; min-height: 45px;
-            font-size: 1.8rem; 
+            min-width: 40px; min-height: 40px;
+            font-size: 1.6rem; 
             box-shadow: 0 5px 0 #bcaaa4, 0 8px 10px rgba(0,0,0,0.4);
-            border-radius: 4px; 
-            z-index: 2;
+            border-radius: 4px; z-index: 2;
         }
         
-        /* Drag Ghost */
-        .sortable-ghost { opacity: 0.2; background: #000 !important; box-shadow: inset 0 0 5px #000 !important; color: transparent !important; border: 1px dashed #555; }
+        /* SELECTION INDICATION */
+        .tile.selected { 
+            border: 3px solid var(--accent); 
+            transform: translateY(-15px) scale(1.1); /* High pop up */
+            box-shadow: 0 20px 25px rgba(0,0,0,0.5); 
+            z-index: 100;
+        }
+
+        /* Sortable Ghost (Empty Slot) */
+        .sortable-ghost {
+            opacity: 0.2; background: #000 !important;
+            box-shadow: inset 0 0 5px #000 !important;
+            color: transparent !important;
+            border: 1px dashed #555;
+        }
         .sortable-drag { opacity: 1 !important; transform: scale(1.1); z-index: 9999; }
 
-        .mobile-controls { display: flex; gap: 10px; width: 95%; max-width: 500px; padding-bottom: 30px; }
+        .mobile-controls { 
+            display: flex; gap: 10px; width: 95%; max-width: 500px;
+        }
         .mobile-controls button { margin: 0; flex: 1; padding: 16px; font-size: 1.1rem; }
 
         /* OVERLAYS & TOAST */
@@ -211,7 +236,9 @@
                 <div style="font-size:0.7rem; color:#7f8c8d; letter-spacing:1px;">CURRENT TURN</div>
                 <div id="turn-indicator" style="font-size:1.6rem; font-weight:bold; color:#ecf0f1;">...</div>
             </div>
+            
             <div id="sidebar-list" style="flex-grow:1; overflow-y:auto; margin-bottom:15px;"></div>
+
             <div class="inbox-area">
                 <div class="inbox-header">
                     <div style="font-size:0.7rem; color:#7f8c8d; text-transform:uppercase;">Tile Inbox</div>
@@ -609,15 +636,7 @@
             t.forEach(l=>{
                 const d=document.createElement('div'); d.className='tile'; d.dataset.letter=l;
                 d.innerHTML=`${l}<span class="score">${SCORES[l]}</span>`;
-                
-                // Add click listener safely
-                d.addEventListener('click', (e) => {
-                    // Prevent drag interference
-                    if(!d.classList.contains('sortable-drag')) {
-                        d.classList.toggle('selected');
-                    }
-                });
-                
+                d.onclick=()=>d.classList.toggle('selected');
                 document.getElementById('my-rack').appendChild(d);
             });
         }
