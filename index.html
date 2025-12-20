@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Player Lobby</title>
+    <title>Scrabble Pro - Final Polish</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -16,10 +16,11 @@
             --accent: #27ae60;
             --accent-hover: #2ecc71;
             --danger: #c0392b;
-            --warning: #f39c12;
-            --wood-dark: #3e2723;
-            --wood-light: #5d4037;
-            --wood-grain: #4e342e;
+            --wood-frame: #5d4037;
+            /* LIGHTER RACK COLORS */
+            --wood-rack-light: #d7ccc8;
+            --wood-rack-dark: #8d6e63;
+            
             --tile-face: #fdf5e6;
             --tile-active: #f1c40f;
             --board-bg: #d7ccc8;
@@ -34,24 +35,13 @@
         .active { display: flex; z-index: 20; }
         .center-screen { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 
-        /* COMMON UI */
-        input { 
-            padding: 15px; font-size: 1.1rem; border-radius: 8px; border: 2px solid #444; 
-            background: #333; color: white; margin-bottom: 12px; text-transform: uppercase; 
-            text-align: center; width: 280px; transition: border 0.3s;
-        }
-        input:focus { border-color: var(--accent); outline: none; }
-        
-        button { 
-            background: var(--accent); color: white; border: none; padding: 12px 20px; 
-            font-size: 1rem; border-radius: 8px; cursor: pointer; margin: 5px; font-weight: 600; 
-            box-shadow: 0 4px 0 rgba(0,0,0,0.2); transition: all 0.1s;
-        }
+        /* UI ELEMENTS */
+        input { padding: 15px; font-size: 1.1rem; border-radius: 8px; border: 2px solid #444; background: #333; color: white; margin-bottom: 12px; text-transform: uppercase; text-align: center; width: 280px; }
+        button { background: var(--accent); color: white; border: none; padding: 14px 24px; font-size: 1rem; border-radius: 8px; cursor: pointer; margin: 5px; font-weight: 600; box-shadow: 0 4px 0 rgba(0,0,0,0.2); transition: all 0.1s; }
         button:active { transform: translateY(2px); box-shadow: none; }
         button:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
-        .btn-warning { background: var(--warning); color: #222; }
-        .btn-danger { background: var(--danger); color: white; }
-        .btn-sm { padding: 8px 12px; font-size: 0.8rem; }
+        .btn-warning { background: #f39c12; color: #222; }
+        .btn-sm { padding: 8px 15px; font-size: 0.85rem; width: auto; margin: 0; }
 
         /* HOST LAYOUT */
         #screen-host { flex-direction: row; }
@@ -65,54 +55,39 @@
         /* BOARD GRID */
         .scrabble-board {
             display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); gap: 2px;
-            background: #000; border: 12px solid var(--wood-dark); border-radius: 6px;
+            background: #000; border: 12px solid var(--wood-frame); border-radius: 6px;
             width: 95vmin; height: 95vmin; box-shadow: 0 0 50px rgba(0,0,0,0.5);
         }
-        .cell { 
-            background: var(--board-bg); 
-            display: flex; justify-content: center; align-items: center; 
-            font-size: 0.65rem; font-weight: 800; color: #666; 
-            position: relative; text-transform: uppercase; 
-            user-select: none;
-        }
+        .cell { background: var(--board-bg); display: flex; justify-content: center; align-items: center; font-size: 0.65rem; font-weight: 800; color: #666; position: relative; text-transform: uppercase; user-select: none; }
         .tw { background: #ff7675; color: white; } .dw { background: #fab1a0; color: #444; }
         .tl { background: #74b9ff; color: white; } .dl { background: #81ecec; color: #444; }
         .star { background: #fab1a0; font-size: 1.5rem; color: #d63031; }
 
         /* TILES */
         .tile {
-            width: 100%; height: 100%;
-            background: var(--tile-face); 
-            border-radius: 3px; 
+            width: 100%; height: 100%; background: var(--tile-face); border-radius: 3px; 
             box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.2); 
-            color: #2d3436;
-            display: flex; justify-content: center; align-items: center; 
-            font-weight: 700; font-size: 1.3rem; 
-            position: relative; 
-            cursor: grab; 
-            z-index: 20; 
-            touch-action: none;
+            color: #2d3436; display: flex; justify-content: center; align-items: center; 
+            font-weight: 700; font-size: 1.3rem; position: relative; cursor: grab; z-index: 20; touch-action: none;
         }
+        /* On Board: Absolute to cover text */
         .cell .tile { position: absolute; top:0; left:0; width:100%; height:100%; border-radius: 0; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.1); z-index: 30; }
         .tile[data-new="true"] { background: var(--tile-active); box-shadow: inset 0 -3px 0 #d4a017; color: #000; }
         .tile span.score { font-size: 0.55rem; position: absolute; bottom: 2px; right: 2px; font-weight: 600; }
-        .tile.dragging { 
-            position: fixed; z-index: 99999; 
-            width: 55px !important; height: 55px !important; 
-            opacity: 0.95; transform: scale(1.15) rotate(-2deg); pointer-events: none; 
-            box-shadow: 0 15px 30px rgba(0,0,0,0.4); border: 2px solid var(--accent); border-radius: 4px;
-        }
+        .tile.dragging { position: fixed; z-index: 99999; width: 55px !important; height: 55px !important; opacity: 0.95; transform: scale(1.15) rotate(-2deg); pointer-events: none; box-shadow: 0 15px 30px rgba(0,0,0,0.4); border: 2px solid var(--accent); border-radius: 4px; }
 
-        /* SCORE PILL & ANIMATION */
+        /* ANIMATIONS */
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.5); color: #f1c40f; } 100% { transform: scale(1); } }
+        .score-pop { animation: pop 0.4s ease-in-out; }
+
         #score-pill {
-            position: fixed; top: 0; left: 0;
-            background: #2980b9; color: white;
+            position: fixed; top: 0; left: 0; background: #2980b9; color: white;
             padding: 8px 18px; border-radius: 30px; font-weight: 800; font-size: 1.1rem;
             box-shadow: 0 5px 15px rgba(0,0,0,0.4); pointer-events: none; z-index: 2000;
-            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            opacity: 0; transform: scale(0.5); border: 2px solid rgba(255,255,255,0.8);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0; transform: scale(0.5); border: 2px solid rgba(255,255,255,0.8);
         }
         #score-pill.visible { opacity: 1; transform: scale(1); }
+
         .flying-score {
             position: fixed; z-index: 99999; background: #f1c40f; color: #000;
             padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 1.5rem;
@@ -129,82 +104,53 @@
         .return-zone.hovered { background: #c0392b; color: white; border-color: #e74c3c; }
 
         /* PLAYER LOBBY LIST */
-        .player-lobby-container {
-            width: 100%; max-width: 400px;
-            background: #222; border-radius: 12px; padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: left;
-        }
+        .player-lobby-container { width: 100%; max-width: 400px; background: #222; border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: left; }
         .lobby-row { padding: 12px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center; }
-        .lobby-row:last-child { border-bottom: none; }
 
-        /* REALISTIC PLAYER UI */
+        /* PLAYER MOBILE UI */
         #player-ui { background: #1a1a1a; justify-content: space-between; flex-direction: column; height: 100vh; }
         .mobile-top-bar { padding: 15px 20px; background: #222; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
         .player-name { font-size: 1.2rem; font-weight: bold; color: var(--accent); }
         .game-status { font-size: 0.9rem; color: #888; background: #333; padding: 4px 10px; border-radius: 12px; }
 
-        /* RACK AREA */
         .rack-wrapper { 
-            flex-grow: 1; display: flex; flex-direction: row; /* Row for Rack + Buttons */
-            align-items: center; justify-content: center;
-            background: radial-gradient(circle at center, #2a2a2a 0%, #1a1a1a 100%);
-            padding: 20px; gap: 20px;
+            flex-grow: 1; display: flex; flex-direction: row; align-items: center; justify-content: center;
+            background: radial-gradient(circle at center, #2a2a2a 0%, #1a1a1a 100%); padding: 20px; gap: 20px;
         }
         
-        /* 3D WOOD RACK */
+        /* LIGHTER RACK STYLE */
         .player-rack { 
             position: relative;
-            background: linear-gradient(180deg, #5d4037 0%, #3e2723 100%);
+            background: linear-gradient(180deg, var(--wood-rack-light) 0%, var(--wood-rack-dark) 100%);
             padding: 20px 10px 10px 10px; 
             border-radius: 6px; 
-            width: auto; min-width: 65%; /* Take up most width */
+            width: auto; min-width: 65%;
             display: flex; justify-content: center; gap: 4px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.6), inset 0 2px 10px rgba(0,0,0,0.5);
-            border-bottom: 8px solid #281815; /* Thickness */
+            box-shadow: 0 10px 20px rgba(0,0,0,0.6), inset 0 2px 10px rgba(255,255,255,0.3);
+            border-bottom: 8px solid #5d4037;
         }
-        /* Ledge effect */
-        .player-rack::before {
-            content: ''; position: absolute; bottom: -8px; left: 0; width: 100%; height: 8px;
-            background: #3e2723; border-radius: 0 0 6px 6px;
-        }
-
         .player-rack .tile { 
-            width: 55px; height: 55px; 
-            font-size: 1.6rem; 
-            box-shadow: 0 5px 0 #8d6e63, 0 8px 10px rgba(0,0,0,0.4);
-            border-radius: 4px;
-            z-index: 2;
+            width: 55px; height: 55px; font-size: 1.6rem; 
+            box-shadow: 0 5px 0 #bcaaa4, 0 8px 10px rgba(0,0,0,0.4);
+            border-radius: 4px; z-index: 2;
         }
         .tile.selected { 
-            border: 2px solid var(--accent); 
-            transform: translateY(-8px); 
-            box-shadow: 0 15px 20px rgba(0,0,0,0.5);
-            z-index: 10;
+            border: 2px solid var(--accent); transform: translateY(-8px); 
+            box-shadow: 0 15px 20px rgba(0,0,0,0.5); z-index: 10;
         }
 
-        /* SIDE BUTTONS */
-        .side-controls {
-            display: flex; flex-direction: column; gap: 10px;
-            justify-content: center; align-items: center;
-        }
-        .control-btn {
-            width: 60px; height: 60px; border-radius: 50%; border: none;
-            color: white; font-weight: bold; font-size: 0.8rem;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: transform 0.1s;
-        }
+        .side-controls { display: flex; flex-direction: column; gap: 10px; justify-content: center; align-items: center; }
+        .control-btn { width: 60px; height: 60px; border-radius: 50%; border: none; color: white; font-weight: bold; font-size: 0.7rem; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: transform 0.1s; }
         .control-btn:active { transform: scale(0.9); }
-        .btn-play { background: var(--accent); width: 70px; height: 70px; font-size: 0.9rem; }
+        .btn-play { background: var(--accent); width: 70px; height: 70px; font-size: 0.8rem; }
         .btn-shuffle { background: #e67e22; }
         .btn-skip { background: #7f8c8d; }
 
         /* OVERLAYS */
         #notification-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 5000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal { background: #2c3e50; border: 1px solid #444; padding: 25px; border-radius: 12px; text-align: center; max-width: 300px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); color: white; }
-        
         #toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%) translateY(-20px); background: #2ecc71; color: #fff; padding: 12px 30px; border-radius: 50px; font-weight: bold; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 6000; opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-        
         .hidden { display: none !important; }
         .status-dot { height: 10px; width: 10px; background-color: #555; border-radius: 50%; display: inline-block; margin-right: 6px; }
         .status-online { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
@@ -227,9 +173,7 @@
     <div id="screen-home" class="screen active center-screen">
         <h1 style="font-size:3.5rem; margin-bottom:10px; color:#ecf0f1;">Scrabble<span style="color:var(--accent)">Pro</span></h1>
         <div id="dict-status" style="color:#7f8c8d; margin-bottom:40px; font-size:0.9rem;">Dictionary Loading...</div>
-        
         <button onclick="initHost()" style="width:280px; padding:20px; font-size:1.2rem;">Host New Game</button>
-        
         <div style="margin-top:50px; padding-top:30px; border-top:1px solid #333; width:300px;">
             <input type="text" id="join-name" placeholder="NICKNAME" maxlength="10"><br>
             <input type="text" id="join-code" placeholder="ROOM CODE" maxlength="4"><br>
@@ -245,9 +189,7 @@
         </div>
         <h2 style="color:#7f8c8d; margin:0; font-size:0.9rem; letter-spacing:2px;">JOIN CODE</h2>
         <div id="lobby-code-display" style="font-size:4rem; font-weight:800; color:var(--accent); letter-spacing:8px; line-height:1; margin: 10px 0;">...</div>
-        
         <div id="qrcode" style="margin:20px; border: 5px solid white; border-radius: 4px;"></div>
-        
         <div class="lobby-list" id="lobby-player-list" style="margin-top:10px; color:#bdc3c7;">Waiting for players...</div>
         <button onclick="hostStartGame()" style="margin-top:30px; width: 200px;">START GAME</button>
     </div>
@@ -255,11 +197,9 @@
     <div id="screen-player-lobby" class="screen center-screen">
         <h2 style="color:var(--accent);">You are in!</h2>
         <p style="color:#7f8c8d;">Waiting for host to start...</p>
-        
         <div class="player-lobby-container">
             <div style="text-transform:uppercase; font-size:0.8rem; color:#555; margin-bottom:10px; border-bottom:1px solid #444; padding-bottom:5px;">Players in Room</div>
-            <div id="player-lobby-list">
-                </div>
+            <div id="player-lobby-list"></div>
         </div>
     </div>
 
@@ -269,7 +209,7 @@
                 <div style="font-size:0.7rem; color:#7f8c8d; letter-spacing:1px;">CURRENT TURN</div>
                 <div id="turn-indicator" style="font-size:1.6rem; font-weight:bold; color:#ecf0f1;">...</div>
             </div>
-
+            
             <div id="sidebar-list" style="flex-grow:1; overflow-y:auto; margin-bottom:15px;"></div>
 
             <div class="inbox-area">
@@ -277,11 +217,8 @@
                     <div style="font-size:0.7rem; color:#7f8c8d; text-transform:uppercase;">Tile Inbox</div>
                     <button onclick="recallTiles()" class="btn-warning btn-sm">Recall All</button>
                 </div>
-                
                 <div class="inbox-rack" id="host-inbox"></div>
-                
                 <div class="return-zone" id="return-zone">Drag Here to Return</div>
-                
                 <button onclick="confirmTurn()" style="width:100%; margin:0; padding:15px; margin-top:10px;">Confirm Turn</button>
             </div>
         </div>
@@ -295,12 +232,10 @@
             <div id="my-display-name" class="player-name">Player</div>
             <div id="status-msg" class="game-status">Waiting...</div>
         </div>
-        
         <div class="rack-wrapper">
             <div id="my-rack" class="player-rack"></div>
-            
             <div class="side-controls">
-                <button id="btn-play" class="control-btn btn-play" onclick="playSelected()">PLAY</button>
+                <button id="btn-play" class="control-btn btn-play" onclick="playSelected()">SEND<br>TILES</button>
                 <button class="control-btn btn-shuffle" onclick="shuffleRack()">MIX</button>
                 <button class="control-btn btn-skip" onclick="skipTurn()">SKIP</button>
             </div>
@@ -308,7 +243,6 @@
     </div>
 
     <script>
-        // CONFIG
         const SCORES = {'A':1,'B':3,'C':3,'D':2,'E':1,'F':4,'G':2,'H':4,'I':1,'J':8,'K':5,'L':1,'M':3,'N':1,'O':1,'P':3,'Q':10,'R':1,'S':1,'T':1,'U':1,'V':4,'W':4,'X':8,'Y':4,'Z':10,'_':0};
         const BAG_INIT = {'A':9,'B':2,'C':2,'D':4,'E':12,'F':2,'G':3,'H':2,'I':9,'J':1,'K':1,'L':4,'M':2,'N':6,'O':8,'P':2,'Q':1,'R':6,'S':4,'T':6,'U':4,'V':2,'W':2,'X':1,'Y':2,'Z':1,'_':2};
         const LAYOUT = [
@@ -345,7 +279,7 @@
             document.body.appendChild(clone);
             updateClonePos(e.clientX, e.clientY);
             dragEl.style.opacity = '0';
-            updateScorePill(); // Update immediately
+            updateScorePill();
             document.addEventListener('pointermove', onDragMove);
             document.addEventListener('pointerup', onDragEnd);
         }
@@ -372,11 +306,10 @@
         }
         function updateClonePos(x, y) { if(clone) { clone.style.left=(x-25)+'px'; clone.style.top=(y-25)+'px'; } }
 
-        // --- SCORE & RULES ---
+        // --- SCORE & ANIMATION ---
         function updateScorePill() {
             let newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
-            if(dragEl) newTiles = newTiles.filter(t => t !== dragEl); // Exclude dragged tile
-
+            if(dragEl) newTiles = newTiles.filter(t => t !== dragEl);
             const pill = document.getElementById('score-pill');
             if (newTiles.length === 0 || !isPlacementShapeValid(newTiles)) {
                 pill.classList.remove('visible');
@@ -386,7 +319,6 @@
             currentTurnPoints = calculateComplexScore(newTiles);
             pill.innerText = `${currentTurnPoints} pts`;
             pill.classList.add('visible');
-            
             newTiles.sort((a,b) => {
                 const pA = a.parentElement, pB = b.parentElement;
                 return (parseInt(pA.dataset.r) - parseInt(pB.dataset.r)) || (parseInt(pA.dataset.c) - parseInt(pB.dataset.c));
@@ -399,10 +331,8 @@
 
         function isPlacementShapeValid(tiles) {
             const coords = tiles.map(t => ({ r: parseInt(t.parentElement.dataset.r), c: parseInt(t.parentElement.dataset.c) }));
-            const rows = new Set(coords.map(k => k.r));
-            const cols = new Set(coords.map(k => k.c));
+            const rows = new Set(coords.map(k => k.r)); const cols = new Set(coords.map(k => k.c));
             if(rows.size > 1 && cols.size > 1) return false;
-            
             const isH = rows.size === 1;
             if(isH) {
                 coords.sort((a,b) => a.c - b.c);
@@ -452,14 +382,10 @@
             }
             const end = curr;
             if (start === end) return 0;
-
-            let pts = 0;
-            let mult = 1;
+            let pts = 0; let mult = 1;
             for(let i=start; i<=end; i++) {
-                const row = isHoriz ? r : i;
-                const col = isHoriz ? i : c;
-                const cell = getCell(row, col);
-                const tile = cell.querySelector('.tile');
+                const row = isHoriz ? r : i; const col = isHoriz ? i : c;
+                const cell = getCell(row, col); const tile = cell.querySelector('.tile');
                 let val = SCORES[tile.dataset.letter];
                 if(tile.dataset.new === "true") {
                     const type = LAYOUT[row][col];
@@ -472,24 +398,30 @@
         }
         function getCell(r, c) { return document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`); }
 
-        // --- ANIMATION ---
-        function animatePoints(points, startRect) {
+        function animatePoints(points, startRect, callback) {
             const fly = document.createElement('div');
             fly.className = 'flying-score';
             fly.innerText = `+${points}`;
             document.body.appendChild(fly);
             fly.style.top = startRect.top + 'px';
             fly.style.left = startRect.left + 'px';
+            
+            // Find sidebar score element
             const target = document.querySelector(`.player-row[data-index="${turnIndex}"] .score-text`);
+            
             if(target) {
                 const endRect = target.getBoundingClientRect();
-                fly.offsetHeight; 
+                fly.offsetHeight; // Reflow
                 fly.style.top = endRect.top + 'px';
                 fly.style.left = endRect.left + 'px';
                 fly.style.transform = 'scale(0.5)';
                 fly.style.opacity = '0';
             }
-            setTimeout(() => { fly.remove(); }, 1000);
+
+            setTimeout(() => { 
+                fly.remove(); 
+                if(callback) callback();
+            }, 1000);
         }
 
         function confirmTurn() {
@@ -506,16 +438,29 @@
                 showModal("Invalid Word", invalid.join(', '));
                 return; 
             }
+            
             const pill = document.getElementById('score-pill');
             const pillRect = pill.getBoundingClientRect();
-            players[turnIndex].score += currentTurnPoints;
+            pill.classList.remove('visible');
+
+            // Trigger animation, then update logic
+            animatePoints(currentTurnPoints, pillRect, () => {
+                players[turnIndex].score += currentTurnPoints;
+                updateHostUI();
+                
+                // Pop Effect
+                const scoreEl = document.querySelector(`.player-row[data-index="${turnIndex}"] .score-text`);
+                if(scoreEl) scoreEl.classList.add('score-pop');
+                setTimeout(() => { if(scoreEl) scoreEl.classList.remove('score-pop'); }, 500);
+            });
+
             const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
             newTiles.forEach(t => { t.removeAttribute('data-new'); t.dataset.locked="true"; t.style.cursor="default"; });
-            animatePoints(currentTurnPoints, pillRect);
-            pill.classList.remove('visible');
+            
             deal(players[turnIndex].conn, newTiles.length);
             isFirstTurn = false;
             turnIndex = (turnIndex + 1) % players.length;
+            
             notifyTurn();
             const inbox = document.getElementById('host-inbox');
             while(inbox.firstChild) { returnTile(inbox.firstChild.dataset.letter, inbox.firstChild.dataset.owner); inbox.firstChild.remove(); }
@@ -545,8 +490,9 @@
                 if(existing) { existing.conn = c; existing.id = c.peer; toast(`${data.name} reconnected`); }
                 else { players.push({ id:c.peer, name:data.name, score:0, conn:c }); toast(`${data.name} joined`); }
                 
-                broadcastLobby(); // Update everyone's lobby screen
-
+                c.send({type:'joined_lobby', name: data.name}); // Immediate redirect
+                broadcastLobby();
+                
                 if(document.getElementById('screen-host').classList.contains('active')) c.send({type:'gamestart'});
                 updateHostUI();
             }
@@ -561,16 +507,10 @@
                 notifyTurn();
             }
         }
-        
         function broadcastLobby() {
             const names = players.map(p => p.name);
-            players.forEach(p => {
-                if(p.conn && p.conn.open) {
-                    p.conn.send({type:'lobby_update', names: names});
-                }
-            });
+            players.forEach(p => { if(p.conn && p.conn.open) p.conn.send({type:'lobby_update', names: names}); });
         }
-
         function hostStartGame() {
             if(players.length === 0) { showModal("Wait", "Need players to start."); return; }
             showScreen('screen-host');
@@ -580,12 +520,15 @@
         function updateHostUI() {
             const list = document.getElementById('lobby-player-list');
             list.innerHTML = players.map(p => `<div>${p.name} <span style="color:var(--accent)">Ready</span></div>`).join('');
+            
             const sideList = document.getElementById('sidebar-list');
             sideList.innerHTML = players.map((p, i) => `
                 <div class="player-row" data-index="${i}" style="padding:10px; border-bottom:1px solid #444; ${i===turnIndex?'border-left:4px solid var(--accent); background:rgba(255,255,255,0.05)':''}">
                     <div style="font-weight:bold; font-size:1.1rem;">${p.name}</div>
                     <div class="score-text" style="color:var(--accent); font-weight:bold; transition: transform 0.2s;">${p.score} pts</div>
                 </div>`).join('');
+            
+            if(players[turnIndex]) document.getElementById('turn-indicator').innerText = players[turnIndex].name;
         }
         function initBag() { bag=[]; for(let l in BAG_INIT) for(let i=0; i<BAG_INIT[l]; i++) bag.push(l); bag.sort(()=>Math.random()-0.5); }
         function deal(c,n) { let h=[]; for(let i=0; i<n; i++) if(bag.length) h.push(bag.pop()); if(h.length) c.send({type:'hand', tiles:h}); }
@@ -620,7 +563,7 @@
             document.getElementById('host-inbox').appendChild(t);
         }
 
-        // --- PLAYER ---
+        // --- PLAYER CONNECTION ---
         function joinGame() {
             const n = document.getElementById('join-name').value.trim();
             const c = document.getElementById('join-code').value.trim().toUpperCase();
@@ -639,10 +582,11 @@
                 conn = peer.connect(c);
                 conn.on('open', () => { clearTimeout(safetyTimer); conn.send({type:'join', name:n}); });
                 conn.on('data', d => {
-                    if(d.type === 'lobby_update') {
+                    if(d.type === 'joined_lobby') {
                         showScreen('screen-player-lobby');
-                        const list = document.getElementById('player-lobby-list');
-                        list.innerHTML = d.names.map(name => `<div class="lobby-row"><span>${name}</span><span style="color:#2ecc71;">Joined</span></div>`).join('');
+                    }
+                    if(d.type === 'lobby_update') {
+                        document.getElementById('player-lobby-list').innerHTML = d.names.map(name => `<div class="lobby-row"><span>${name}</span><span style="color:#2ecc71;">Joined</span></div>`).join('');
                     }
                     if(d.type==='gamestart') { 
                         showScreen('screen-player'); 
@@ -655,13 +599,13 @@
                     if(d.type==='toast') toast(d.msg);
                     if(d.type==='turn_update') {
                         myTurn = d.myTurn;
-                        const btn = document.getElementById('btn-play');
+                        const sendBtn = document.getElementById('btn-send-tiles');
                         const status = document.getElementById('status-msg');
                         if(myTurn) {
-                            btn.disabled = false;
+                            sendBtn.disabled = false; sendBtn.innerText = "Send Selected";
                             status.innerText = "YOUR TURN"; status.style.color = "var(--accent)"; toast("It's your turn!");
                         } else {
-                            btn.disabled = true;
+                            sendBtn.disabled = true; sendBtn.innerText = `Wait for ${d.activePlayer}`;
                             status.innerText = `Turn: ${d.activePlayer}`; status.style.color = "#888";
                         }
                     }
