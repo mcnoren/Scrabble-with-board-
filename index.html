@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Final Polish</title>
+    <title>Scrabble Pro - Perfect Score</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -48,6 +48,7 @@
         button:active { transform: translateY(2px); box-shadow: none; }
         button:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
         .btn-warning { background: #f39c12; color: #222; }
+        .btn-sm { padding: 8px 15px; font-size: 0.85rem; width: auto; margin: 0; }
 
         /* HOST LAYOUT */
         #screen-host { flex-direction: row; }
@@ -77,7 +78,7 @@
         .dl { background: #81ecec; color: #444; }
         .star { background: #fab1a0; font-size: 1.5rem; color: #d63031; }
 
-        /* TILES - THE FIX FOR SIZING */
+        /* TILES */
         .tile {
             width: 100%; height: 100%;
             background: var(--tile-face); 
@@ -92,14 +93,12 @@
             touch-action: none;
         }
         
-        /* THIS FIXES THE OVERLAP ISSUE ON MULTIPLIERS */
         .cell .tile {
-            position: absolute; /* Take out of flex flow */
-            top: 0; left: 0;
+            position: absolute; top: 0; left: 0;
             width: 100%; height: 100%;
             border-radius: 0; 
             box-shadow: inset 0 -2px 0 rgba(0,0,0,0.1);
-            z-index: 30; /* Ensure on top of text */
+            z-index: 30;
         }
 
         .tile[data-new="true"] {
@@ -135,6 +134,8 @@
         .info-panel { background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-bottom: 10px; text-align: center; border: 1px solid #444; }
         .inbox-area { margin-top: auto; background: #222; padding: 15px; border-radius: 12px; border: 1px solid #444; box-shadow: 0 -5px 15px rgba(0,0,0,0.2); }
         
+        .inbox-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        
         .inbox-rack { 
             display: flex; gap: 6px; flex-wrap: wrap; 
             min-height: 60px; margin-bottom: 15px; 
@@ -143,15 +144,14 @@
         }
         .inbox-rack .tile { width: 45px; height: 45px; font-size: 1.2rem; }
 
-        /* PROFESSIONAL RETURN ZONE */
         .return-zone { 
-            flex: 1; height: 50px; 
-            background: #34495e; /* Professional dark blue-grey */
+            width: 100%; height: 50px; 
+            background: #34495e; 
             border-radius: 8px; 
             display: flex; align-items: center; justify-content: center; 
             font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;
-            color: #95a5a6; border: 2px solid #444;
-            transition: all 0.2s;
+            color: #95a5a6; border: 2px dashed #555;
+            transition: all 0.2s; margin-bottom: 10px;
         }
         .return-zone.hovered { background: #c0392b; color: white; border-color: #e74c3c; box-shadow: inset 0 0 15px rgba(0,0,0,0.3); }
 
@@ -175,14 +175,13 @@
             background: var(--wood-dark); 
             padding: 15px; 
             border-radius: 8px; 
-            width: 95%; max-width: 500px; /* Constrain width */
-            display: flex; justify-content: space-between; /* Space them evenly */
+            width: 95%; max-width: 500px;
+            display: flex; justify-content: space-between;
             gap: 2px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5), inset 0 2px 5px rgba(255,255,255,0.1);
             border: 1px solid #3e2723;
         }
         .player-rack .tile { 
-            /* Perfect sizing for 7 tiles on phone */
             width: 12vw; height: 12vw; 
             max-width: 55px; max-height: 55px; 
             min-width: 40px; min-height: 40px;
@@ -197,7 +196,7 @@
         }
 
         .mobile-controls { 
-            width: 100%; padding: 20px 10px 30px 10px; /* Extra bottom padding for iPhone home bar */
+            width: 100%; padding: 20px 10px 30px 10px;
             background: #222; 
             display: flex; gap: 15px; border-top: 1px solid #333; 
         }
@@ -272,14 +271,16 @@
             <div id="sidebar-list" style="flex-grow:1; overflow-y:auto; margin-bottom:15px;"></div>
 
             <div class="inbox-area">
-                <div style="font-size:0.7rem; color:#7f8c8d; margin-bottom:8px; text-transform:uppercase;">Tile Inbox</div>
+                <div class="inbox-header">
+                    <div style="font-size:0.7rem; color:#7f8c8d; text-transform:uppercase;">Tile Inbox</div>
+                    <button onclick="recallTiles()" class="btn-warning btn-sm">Recall All</button>
+                </div>
+                
                 <div class="inbox-rack" id="host-inbox"></div>
                 
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
-                    <button onclick="recallTiles()" class="btn-warning" style="margin:0; padding:12px; font-size:0.8rem;">Recall All</button>
-                    <div class="return-zone" id="return-zone">Drag to Return</div>
-                </div>
-                <button onclick="confirmTurn()" style="width:100%; margin:0; padding:15px;">Confirm Turn</button>
+                <div class="return-zone" id="return-zone">Drag Here to Return</div>
+                
+                <button onclick="confirmTurn()" style="width:100%; margin:0; padding:15px; margin-top:10px;">Confirm Turn</button>
             </div>
         </div>
         <div class="board-wrapper">
@@ -341,6 +342,10 @@
             document.body.appendChild(clone);
             updateClonePos(e.clientX, e.clientY);
             dragEl.style.opacity = '0';
+            
+            // IMMEDIATE UPDATE: Exclude this tile from calculation while dragging
+            updateScorePill();
+
             document.addEventListener('pointermove', onDragMove);
             document.addEventListener('pointerup', onDragEnd);
         }
@@ -384,7 +389,13 @@
 
         // --- SMART SCORE PILL ---
         function updateScorePill() {
-            const newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
+            // FILTER: If dragging, exclude dragEl
+            let newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
+            
+            if(dragEl) {
+                newTiles = newTiles.filter(t => t !== dragEl);
+            }
+
             const pill = document.getElementById('score-pill');
             
             // 1. Basic Validation: Is it in a line? Are there gaps?
