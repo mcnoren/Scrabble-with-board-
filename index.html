@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Reliable</title>
+    <title>Scrabble Pro - Live Scoring</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -14,10 +14,10 @@
             --bg: #121212;
             --sidebar: #1e1e1e;
             --accent: #27ae60;
-            --danger: #c0392b;
-            --warning: #f39c12;
+            --pill-bg: #3498db;
             --wood: #5d4037;
             --tile-face: #fdf5e6;
+            --tile-active: #f1c40f;
             --board-bg: #d7ccc8;
         }
 
@@ -29,19 +29,18 @@
         .active { display: flex; z-index: 20; }
         .center-screen { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 
-        /* INPUTS & BUTTONS */
+        /* UI ELEMENTS */
         input { padding: 15px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #333; background: #222; color: white; margin-bottom: 10px; text-transform: uppercase; text-align: center; width: 300px; }
         button { background: var(--accent); color: white; border: none; padding: 15px 30px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin: 10px; font-weight: 600; box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
         button:active { transform: scale(0.96); box-shadow: none; }
         button:disabled { background: #333; color: #888; cursor: not-allowed; }
-        .btn-warning { background: var(--warning); color: #222; }
 
         /* HOST LAYOUT */
         #screen-host { flex-direction: row; }
         .sidebar { 
             width: 320px; height: 100%; background: var(--sidebar); border-right: 1px solid #333; 
             display: flex; flex-direction: column; padding: 15px; z-index: 50; 
-            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5); position: relative;
         }
         .board-wrapper { flex-grow: 1; height: 100%; display: flex; align-items: center; justify-content: center; background: #000; position: relative; }
 
@@ -64,17 +63,22 @@
 
         /* TILES */
         .tile {
-            width: 100%; height: 100%;
+            width: 100%; height: 100%; /* Cover full cell */
             background: var(--tile-face); 
-            border-radius: 3px; 
-            box-shadow: inset 0 -3px 0 #bcaaa4; 
+            border-radius: 2px; 
+            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); 
             color: #2d3436;
             display: flex; justify-content: center; align-items: center; 
             font-weight: bold; font-size: 1.2rem; 
             position: relative; 
             cursor: grab; 
-            z-index: 100;
-            touch-action: none; 
+            z-index: 20; /* Sit above board text */
+            touch-action: none;
+        }
+        .tile[data-new="true"] {
+            background: var(--tile-active);
+            box-shadow: inset 0 -3px 0 #d4a017;
+            border: 1px solid #d4a017;
         }
         .tile.dragging { 
             position: fixed; z-index: 99999; 
@@ -83,73 +87,50 @@
             box-shadow: 0 15px 30px rgba(0,0,0,0.5);
             border: 2px solid var(--accent);
         }
-        .tile[data-new="true"] {
-            background: #f1c40f; /* Active yellow */
-            box-shadow: inset 0 -3px 0 #d4a017;
-            border: 1px solid #d4a017;
-        }
         .tile span.score { font-size: 0.5rem; position: absolute; bottom: 2px; right: 2px; }
 
-        /* HOST SIDEBAR */
+        /* SCORE PILL */
+        #score-pill {
+            position: fixed; top: 0; left: 0;
+            background: var(--pill-bg); color: white;
+            padding: 8px 16px; border-radius: 20px;
+            font-weight: bold; font-size: 1rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+            pointer-events: none; z-index: 2000;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            opacity: 0; transform: scale(0.8);
+            border: 2px solid white;
+        }
+        #score-pill.visible { opacity: 1; transform: scale(1); }
+
+        /* SIDEBAR */
         .info-box { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; margin-bottom: 10px; text-align: center; }
-        .turn-score { color: var(--accent); font-size: 2rem; font-weight: bold; }
         .inbox-area { margin-top: auto; background: #111; padding: 10px; border-radius: 8px; border: 1px solid #444; }
         .inbox-rack { display: flex; gap: 5px; flex-wrap: wrap; min-height: 55px; margin-bottom: 10px; align-items: center; justify-content: center; }
         .inbox-rack .tile { width: 40px; height: 40px; font-size: 1.1rem; }
-        .return-zone { flex: 1; height: 50px; background: var(--danger); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; text-align: center; cursor: pointer; border: 2px dashed rgba(255,255,255,0.3); }
 
         /* PLAYER MOBILE UI */
         #player-ui { background: #2d3436; justify-content: flex-start; flex-direction: column; padding-top: 20px; }
-        
-        .mobile-header {
-            width: 100%; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px;
-        }
-
-        .rack-container { 
-            width: 100%; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-        }
-        
-        .player-rack { 
-            background: var(--wood); padding: 15px; border-radius: 8px; width: 95%; 
-            display: flex; justify-content: center; gap: 2vw; margin-bottom: 20px;
-        }
-        .player-rack .tile { 
-            width: 11vw; height: 11vw; max-width: 60px; max-height: 60px;
-            font-size: 1.5rem; box-shadow: 0 4px 0 #bcaaa4;
-        }
+        .mobile-header { width: 100%; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+        .rack-container { width: 100%; display: flex; flex-direction: column; align-items: center; }
+        .player-rack { background: var(--wood); padding: 15px; border-radius: 8px; width: 95%; display: flex; justify-content: center; gap: 2vw; margin-bottom: 20px; }
+        .player-rack .tile { width: 11vw; height: 11vw; max-width: 60px; max-height: 60px; font-size: 1.5rem; box-shadow: 0 4px 0 #bcaaa4; }
         .tile.selected { border: 3px solid var(--accent); transform: translateY(-5px); }
+        .mobile-controls { display: flex; gap: 10px; width: 95%; }
 
-        /* BUTTONS UNDER TILES */
-        .mobile-controls {
-            display: flex; gap: 10px; width: 95%;
-        }
-
-        /* CUSTOM NOTIFICATION */
-        #notification-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); z-index: 5000;
-            display: none; align-items: center; justify-content: center;
-        }
-        .modal {
-            background: #222; border: 1px solid #444; padding: 20px; 
-            border-radius: 10px; text-align: center; max-width: 80%;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        }
-
-        /* STATUS */
-        .status-dot { height: 10px; width: 10px; background-color: #bbb; border-radius: 50%; display: inline-block; margin-right: 5px; }
-        .status-online { background-color: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
-        
-        /* TOAST */
+        /* MODALS & TOASTS */
+        #notification-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 5000; display: none; align-items: center; justify-content: center; }
+        .modal { background: #222; border: 1px solid #444; padding: 20px; border-radius: 10px; text-align: center; max-width: 80%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
         #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); color: white; padding: 12px 24px; border-radius: 30px; font-size: 1rem; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         #toast.show { opacity: 1; }
         .hidden { display: none !important; }
+        .status-dot { height: 10px; width: 10px; background-color: #bbb; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .status-online { background-color: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
     </style>
 </head>
 <body>
+
+    <div id="score-pill">0 pts</div>
 
     <div id="notification-overlay" onclick="closeModal()">
         <div class="modal" onclick="event.stopPropagation()">
@@ -192,19 +173,13 @@
                 <div id="turn-indicator" style="font-size:1.4rem; font-weight:bold;">...</div>
             </div>
 
-            <div class="info-box" style="border:1px solid var(--accent);">
-                <div style="font-size:0.7rem; color:#aaa;">SCORE</div>
-                <div id="live-score" class="turn-score">0</div>
-            </div>
-
             <div id="sidebar-list" style="flex-grow:1; overflow-y:auto; margin-bottom:10px;"></div>
 
             <div class="inbox-area">
                 <div style="font-size:0.7rem; color:#aaa; margin-bottom:5px;">INBOX</div>
                 <div class="inbox-rack" id="host-inbox"></div>
-                
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-bottom:5px;">
-                    <button onclick="recallTiles()" class="btn-warning" style="margin:0; padding:10px; font-size:0.8rem;">Recall All</button>
+                    <button onclick="recallTiles()" style="margin:0; padding:10px; font-size:0.8rem; background:#f39c12; color:black;">Recall All</button>
                     <div class="return-zone" id="return-zone">Drag to Return</div>
                 </div>
                 <button onclick="confirmTurn()" style="width:100%; margin:0; padding:12px;">Confirm Turn</button>
@@ -220,7 +195,6 @@
             <span id="my-display-name" style="color:var(--accent); font-weight:bold;">Me</span>
             <span id="status-msg" style="color:#888;">Waiting...</span>
         </div>
-        
         <div class="rack-container">
             <div id="my-rack" class="player-rack"></div>
             <div class="mobile-controls">
@@ -241,6 +215,7 @@
         ];
 
         let peer, conn, dictionary = new Set(), bag=[], players=[], turnIndex=0, myTurn=false, isFirstTurn=true;
+        let currentTurnPoints = 0; // Global to store calculated score
 
         fetch('https://raw.githubusercontent.com/redbo/scrabble/master/dictionary.txt')
             .then(r=>r.text()).then(t => {
@@ -282,36 +257,136 @@
                 const cell = el.closest('.cell');
                 const ret = el.closest('.return-zone');
                 const inbox = el.closest('.inbox-area');
+                // Fix: Check for .tile, ignore text nodes
                 const hasTile = cell ? cell.querySelector('.tile') : false;
                 if(ret) { returnTile(dragEl.dataset.letter, dragEl.dataset.owner); dragEl.remove(); }
                 else if(cell && !hasTile) { cell.appendChild(dragEl); }
                 else { document.getElementById('host-inbox').appendChild(dragEl); }
             } else { document.getElementById('host-inbox').appendChild(dragEl); }
             dragEl = null;
-            calculateLiveScore();
+            updateScorePill();
         }
         function updateClonePos(x, y) { if(clone) { clone.style.left=(x-25)+'px'; clone.style.top=(y-25)+'px'; } }
 
-        // --- GAME LOGIC ---
-        function calculateLiveScore() {
-            let score = 0;
-            const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
-            if(newTiles.length === 0) { document.getElementById('live-score').innerText = "0"; return; }
-            newTiles.forEach(t => {
-                const cell = t.parentElement;
-                const r = parseInt(cell.dataset.r); const c = parseInt(cell.dataset.c);
-                const type = LAYOUT[r][c];
-                let val = SCORES[t.dataset.letter];
-                if(type === 3) val *= 3; if(type === 4) val *= 2;
-                score += val;
+        // --- SCORING ENGINE ---
+        function updateScorePill() {
+            const newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
+            const pill = document.getElementById('score-pill');
+            
+            if (newTiles.length === 0) {
+                pill.classList.remove('visible');
+                currentTurnPoints = 0;
+                return;
+            }
+
+            // Calculate Score
+            currentTurnPoints = calculateComplexScore(newTiles);
+            
+            // Update Pill Text
+            pill.innerText = `${currentTurnPoints} pts`;
+            pill.classList.add('visible');
+
+            // Position Pill diagonal to the "last" tile (highest Row/Col)
+            // Sort by Row then Col
+            newTiles.sort((a,b) => {
+                const pA = a.parentElement, pB = b.parentElement;
+                const rA = parseInt(pA.dataset.r), cA = parseInt(pA.dataset.c);
+                const rB = parseInt(pB.dataset.r), cB = parseInt(pB.dataset.c);
+                return (rA - rB) || (cA - cB);
             });
+            
+            const lastTile = newTiles[newTiles.length - 1];
+            const rect = lastTile.getBoundingClientRect();
+            
+            // Offset logic
+            pill.style.top = (rect.bottom + 10) + 'px';
+            pill.style.left = (rect.right + 10) + 'px';
+        }
+
+        function calculateComplexScore(newTiles) {
+            let totalScore = 0;
+            // Determine direction
+            const coords = newTiles.map(t => ({ 
+                r: parseInt(t.parentElement.dataset.r), 
+                c: parseInt(t.parentElement.dataset.c),
+                l: t.dataset.letter 
+            }));
+            
+            const uniqueRows = new Set(coords.map(x=>x.r)).size;
+            const uniqueCols = new Set(coords.map(x=>x.c)).size;
+            
+            // If just one tile, can be Horiz or Vert. Default Horiz.
+            let isHoriz = uniqueRows === 1; 
+            
+            // 1. Calculate Main Word
+            totalScore += getWordScoreAt(coords[0].r, coords[0].c, isHoriz);
+
+            // 2. Calculate Cross Words
+            coords.forEach(pos => {
+                // If main word is horiz, cross words are vert
+                const crossScore = getWordScoreAt(pos.r, pos.c, !isHoriz);
+                if (crossScore > 0) totalScore += crossScore;
+            });
+
+            // 3. Bingo
+            if (newTiles.length === 7) totalScore += 50;
+
+            return totalScore;
+        }
+
+        function getWordScoreAt(r, c, isHoriz) {
+            // Find Start
+            let curr = isHoriz ? c : r;
+            while(curr > 0) {
+                const check = isHoriz 
+                    ? document.querySelector(`.cell[data-r="${r}"][data-c="${curr-1}"] .tile`)
+                    : document.querySelector(`.cell[data-r="${curr-1}"][data-c="${c}"] .tile`);
+                if(!check) break;
+                curr--;
+            }
+            const start = curr;
+
+            // Find End
+            curr = isHoriz ? c : r;
+            while(curr < 14) {
+                const check = isHoriz 
+                    ? document.querySelector(`.cell[data-r="${r}"][data-c="${curr+1}"] .tile`)
+                    : document.querySelector(`.cell[data-r="${curr+1}"][data-c="${c}"] .tile`);
+                if(!check) break;
+                curr++;
+            }
+            const end = curr;
+
+            if (start === end) return 0; // Not a word (single tile)
+
+            // Calculate Points
+            let wordPoints = 0;
             let wordMult = 1;
-            newTiles.forEach(t => {
-                const cell = t.parentElement;
-                const type = LAYOUT[parseInt(cell.dataset.r)][parseInt(cell.dataset.c)];
-                if(type === 1) wordMult *= 3; if(type === 2 || type === 5) wordMult *= 2;
-            });
-            document.getElementById('live-score').innerText = score * wordMult;
+
+            for(let i=start; i<=end; i++) {
+                const row = isHoriz ? r : i;
+                const col = isHoriz ? i : c;
+                const cell = document.querySelector(`.cell[data-r="${row}"][data-c="${col}"]`);
+                const tile = cell.querySelector('.tile');
+                
+                if(!tile) continue; // Should not happen
+
+                let letterVal = SCORES[tile.dataset.letter];
+                
+                // Apply modifiers ONLY if tile is new
+                if (tile.dataset.new === "true") {
+                    const type = LAYOUT[row][col];
+                    if(type === 3) letterVal *= 3; // TL
+                    else if(type === 4) letterVal *= 2; // DL
+                    
+                    if(type === 1) wordMult *= 3; // TW
+                    else if(type === 2 || type === 5) wordMult *= 2; // DW / Star
+                }
+                
+                wordPoints += letterVal;
+            }
+
+            return wordPoints * wordMult;
         }
 
         function validatePlacement() {
@@ -319,7 +394,27 @@
             if(newTiles.length === 0) return { valid: false, msg: "Place tiles first." };
             const coords = newTiles.map(t => { const p = t.parentElement; return { r: parseInt(p.dataset.r), c: parseInt(p.dataset.c) }; });
             const rows = new Set(coords.map(k => k.r)); const cols = new Set(coords.map(k => k.c));
+            
             if(rows.size > 1 && cols.size > 1) return { valid: false, msg: "Tiles must be in a straight line." };
+            
+            // Continuity Check
+            const isH = rows.size === 1;
+            if(isH) {
+                coords.sort((a,b)=>a.c-b.c);
+                const r = coords[0].r;
+                for(let c=coords[0].c; c<=coords[coords.length-1].c; c++) {
+                    const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+                    if(!cell.querySelector('.tile')) return {valid:false, msg:"No gaps allowed."};
+                }
+            } else {
+                coords.sort((a,b)=>a.r-b.r);
+                const c = coords[0].c;
+                for(let r=coords[0].r; r<=coords[coords.length-1].r; r++) {
+                    const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+                    if(!cell.querySelector('.tile')) return {valid:false, msg:"No gaps allowed."};
+                }
+            }
+
             if(isFirstTurn) {
                 const center = coords.find(k => k.r === 7 && k.c === 7);
                 if(!center) return { valid: false, msg: "First word must cross center." };
@@ -330,52 +425,51 @@
         function confirmTurn() {
             const rules = validatePlacement();
             if(!rules.valid) { showModal("Invalid Move", rules.msg); return; }
+            
+            // Dictionary check
             const grid=getGrid(); const words=getWords(grid);
-            if(!words.length) { showModal("Error", "No words found."); return; }
             const invalid = words.filter(w => !dictionary.has(w) && dictionary.size > 0);
             if(invalid.length > 0) { 
                 players[turnIndex].conn.send({type:'toast', msg:`Invalid: ${invalid[0]}`}); 
                 showModal("Invalid Word", invalid.join(', '));
                 return; 
             }
+            
+            // Commit
             const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
-            const points = parseInt(document.getElementById('live-score').innerText);
-            players[turnIndex].score += points;
+            
+            // Use the calculated global score
+            players[turnIndex].score += currentTurnPoints;
+            
             newTiles.forEach(t => { t.removeAttribute('data-new'); t.dataset.locked="true"; t.style.cursor="default"; });
             deal(players[turnIndex].conn, newTiles.length);
             isFirstTurn = false;
             turnIndex = (turnIndex + 1) % players.length;
-            document.getElementById('live-score').innerText = "0";
+            
+            // Hide Pill
+            document.getElementById('score-pill').classList.remove('visible');
+            
             notifyTurn();
             const inbox = document.getElementById('host-inbox');
             while(inbox.firstChild) { returnTile(inbox.firstChild.dataset.letter, inbox.firstChild.dataset.owner); inbox.firstChild.remove(); }
         }
 
+        // --- STANDARD FUNCTIONS ---
         function initHost() {
             if(peer) peer.destroy();
             const id = genId();
-            // REVERTED TO SIMPLE CONFIG FOR RELIABILITY
-            peer = new Peer(id);
-            
+            peer = new Peer(id); // Simple Config
             peer.on('open', id => {
                 showScreen('screen-lobby');
                 document.getElementById('lobby-code-display').innerText = id;
                 document.getElementById('qrcode').innerHTML = "";
                 new QRCode(document.getElementById("qrcode"), { text: id, width: 128, height: 128 });
-                
                 const dot = document.getElementById('host-status-dot');
                 const txt = document.getElementById('host-status-text');
-                dot.classList.remove('status-offline');
-                dot.classList.add('status-online');
+                dot.classList.remove('status-offline'); dot.classList.add('status-online');
                 txt.innerText = "Status: Ready";
-
                 initBag(); renderBoard(); players=[]; updateHostUI();
             });
-
-            peer.on('error', err => {
-                showModal("Host Error", "Could not start server. Try refreshing.");
-            });
-
             peer.on('connection', c => { c.on('data', d => handleHostData(c, d)); });
         }
         function handleHostData(c, data) {
@@ -406,12 +500,12 @@
         }
         function initBag() { bag=[]; for(let l in BAG_INIT) for(let i=0; i<BAG_INIT[l]; i++) bag.push(l); bag.sort(()=>Math.random()-0.5); }
         function deal(c,n) { let h=[]; for(let i=0; i<n; i++) if(bag.length) h.push(bag.pop()); if(h.length) c.send({type:'hand', tiles:h}); }
-        function returnTile(l,oid) { const p=players.find(x=>x.id===oid); if(p) p.conn.send({type:'return', tile:l}); calculateLiveScore(); }
+        function returnTile(l,oid) { const p=players.find(x=>x.id===oid); if(p) p.conn.send({type:'return', tile:l}); updateScorePill(); }
         function recallTiles() {
             const inbox = document.getElementById('host-inbox');
             const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
             newTiles.forEach(t => inbox.appendChild(t));
-            calculateLiveScore();
+            updateScorePill();
         }
         function notifyTurn() {
             players.forEach((p, i) => {
@@ -437,37 +531,24 @@
             document.getElementById('host-inbox').appendChild(t);
         }
 
-        // --- PLAYER CONNECTION & UI ---
+        // --- PLAYER CONNECTION ---
         function joinGame() {
             const n = document.getElementById('join-name').value.trim();
             const c = document.getElementById('join-code').value.trim().toUpperCase();
             if(!n || c.length!==4) return;
-            
             const btn = document.getElementById('btn-join');
             const statusDiv = document.getElementById('connect-status');
-            
-            btn.disabled = true;
-            btn.innerText = "Connecting...";
-            statusDiv.innerText = "";
-
-            // Timeout Safety
+            btn.disabled = true; btn.innerText = "Connecting..."; statusDiv.innerText = "";
             const safetyTimer = setTimeout(() => {
                 if(btn.innerText === "Connecting...") {
-                    btn.disabled = false;
-                    btn.innerText = "Join Room";
-                    statusDiv.innerText = "Host not found or timed out.";
+                    btn.disabled = false; btn.innerText = "Join Room"; statusDiv.innerText = "Host not found.";
                     if(peer) peer.destroy();
                 }
             }, 6000);
-
-            // SIMPLE PEER CONFIG FOR PLAYER TOO
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(c);
-                conn.on('open', () => {
-                    clearTimeout(safetyTimer);
-                    conn.send({type:'join', name:n});
-                });
+                conn.on('open', () => { clearTimeout(safetyTimer); conn.send({type:'join', name:n}); });
                 conn.on('data', d => {
                     if(d.type==='gamestart') { 
                         showScreen('screen-player'); 
@@ -492,11 +573,7 @@
                     }
                 });
             });
-            peer.on('error', err => {
-                clearTimeout(safetyTimer);
-                btn.disabled = false; btn.innerText = "Join Room";
-                statusDiv.innerText = "Error: " + err.type;
-            });
+            peer.on('error', err => { clearTimeout(safetyTimer); btn.disabled = false; btn.innerText = "Join Room"; statusDiv.innerText = "Error: " + err.type; });
         }
 
         function addRack(t) {
