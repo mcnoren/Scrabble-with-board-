@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro</title>
+    <title>Scrabble Pro - Top Status</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -34,16 +34,8 @@
         .center-screen { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 
         /* UI ELEMENTS */
-        input { 
-            padding: 15px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #444; 
-            background: #333; color: white; margin-bottom: 12px; text-transform: uppercase; 
-            text-align: center; width: 280px; 
-        }
-        button { 
-            background: var(--accent); color: white; border: none; padding: 16px 32px; 
-            font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin: 10px; font-weight: 600; 
-            box-shadow: 0 4px 0 rgba(0,0,0,0.2); transition: transform 0.1s; 
-        }
+        input { padding: 15px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #444; background: #333; color: white; margin-bottom: 12px; text-transform: uppercase; text-align: center; width: 280px; }
+        button { background: var(--accent); color: white; border: none; padding: 16px 32px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin: 10px; font-weight: 600; box-shadow: 0 4px 0 rgba(0,0,0,0.2); transition: transform 0.1s; }
         button:active { transform: translateY(2px); box-shadow: none; }
         button:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
         .btn-secondary { background: #7f8c8d; }
@@ -52,23 +44,13 @@
 
         /* HOST LAYOUT */
         #screen-host { flex-direction: row; }
-        .sidebar { 
-            width: 320px; height: 100%; background: var(--panel); border-right: 1px solid #444; 
-            display: flex; flex-direction: column; padding: 20px; z-index: 50; 
-            box-shadow: 5px 0 20px rgba(0,0,0,0.5);
-        }
+        .sidebar { width: 320px; height: 100%; background: var(--panel); border-right: 1px solid #444; display: flex; flex-direction: column; padding: 20px; z-index: 50; box-shadow: 5px 0 20px rgba(0,0,0,0.5); }
         .board-wrapper { flex-grow: 1; height: 100%; display: flex; align-items: center; justify-content: center; background: #111; position: relative; }
 
         /* BOARD GRID */
-        .scrabble-board {
-            display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); gap: 2px;
-            background: #000; border: 12px solid var(--wood-frame); border-radius: 6px;
-            width: 95vmin; height: 95vmin; box-shadow: 0 0 50px rgba(0,0,0,0.5);
-        }
+        .scrabble-board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); gap: 2px; background: #000; border: 12px solid var(--wood-frame); border-radius: 6px; width: 95vmin; height: 95vmin; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
         .cell { background: var(--board-bg); display: flex; justify-content: center; align-items: center; font-size: 0.65rem; font-weight: 800; color: #666; position: relative; text-transform: uppercase; user-select: none; }
-        .tw { background: #ff7675; color: white; } .dw { background: #fab1a0; color: #444; }
-        .tl { background: #74b9ff; color: white; } .dl { background: #81ecec; color: #444; }
-        .star { background: #fab1a0; font-size: 1.5rem; color: #d63031; }
+        .tw { background: #ff7675; color: white; } .dw { background: #fab1a0; color: #444; } .tl { background: #74b9ff; color: white; } .dl { background: #81ecec; color: #444; } .star { background: #fab1a0; font-size: 1.5rem; color: #d63031; }
 
         /* TILES */
         .tile {
@@ -80,24 +62,11 @@
         .cell .tile { position: absolute; top:0; left:0; width:100%; height:100%; border-radius: 0; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.1); z-index: 30; }
         .tile[data-new="true"] { background: var(--tile-active); box-shadow: inset 0 -3px 0 #d4a017; color: #000; }
         .tile span.score { font-size: 0.55rem; position: absolute; bottom: 2px; right: 2px; font-weight: 600; }
-        
-        /* HOST DRAG STYLE */
         .tile.dragging { position: fixed; z-index: 99999; width: 55px !important; height: 55px !important; opacity: 0.95; pointer-events: none; box-shadow: 0 15px 30px rgba(0,0,0,0.4); border: 2px solid var(--accent); border-radius: 4px; }
 
-        /* --- PLAYER RACK SORTABLE STYLES --- */
-        .sortable-ghost {
-            opacity: 0.2; background: #000 !important;
-            box-shadow: inset 0 0 5px #000 !important;
-            color: transparent !important;
-            border: 1px dashed #555;
-        }
-        /* No rotation, just scale */
-        .sortable-drag {
-            opacity: 1 !important;
-            transform: scale(1.1); /* Slight pop, no rotation */
-            z-index: 99999;
-            cursor: grabbing;
-        }
+        /* PLAYER RACK SORTABLE */
+        .sortable-ghost { opacity: 0.2; background: #000 !important; box-shadow: inset 0 0 5px #000 !important; color: transparent !important; border: 1px dashed #555; }
+        .sortable-drag { opacity: 1 !important; transform: scale(1.1); z-index: 99999; cursor: grabbing; }
 
         /* ANIMATIONS & OVERLAYS */
         @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.5); color: #f1c40f; } 100% { transform: scale(1); } }
@@ -115,11 +84,26 @@
         .return-zone { width: 100%; height: 50px; background: #34495e; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #95a5a6; border: 2px dashed #555; transition: all 0.2s; margin-bottom: 10px; }
         .return-zone.hovered { background: #c0392b; color: white; border-color: #e74c3c; }
 
-        /* PLAYER MOBILE UI */
-        #player-ui { background: #1a1a1a; justify-content: space-between; flex-direction: column; height: 100vh; }
-        .mobile-top-bar { padding: 15px 20px; background: #222; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
-        .player-name { font-size: 1.2rem; font-weight: bold; color: var(--accent); }
-        .game-status { font-size: 0.9rem; color: #888; background: #333; padding: 4px 10px; border-radius: 12px; }
+        /* PLAYER MOBILE UI - NEW LAYOUT */
+        #player-ui { background: #1a1a1a; justify-content: flex-start; flex-direction: column; height: 100vh; }
+        
+        /* NEW TOP STATUS BAR */
+        .turn-banner {
+            width: 100%; padding: 20px; text-align: center;
+            font-weight: bold; font-size: 1.3rem;
+            background: #222; color: #777;
+            transition: background 0.3s, color 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+        /* Active Turn Style */
+        .turn-banner.my-turn { background: var(--accent); color: white; }
+        
+        .player-info-bar {
+            width: 100%; text-align: center; padding: 8px;
+            background: #111; color: #555; font-size: 0.9rem;
+            border-bottom: 1px solid #222;
+        }
 
         .rack-wrapper { 
             flex-grow: 1; display: flex; flex-direction: column; 
@@ -133,8 +117,7 @@
             background: linear-gradient(180deg, var(--wood-rack-light) 0%, var(--wood-rack-dark) 100%);
             padding: 20px 10px 15px 10px; 
             border-radius: 6px; 
-            width: 95%; max-width: 500px;
-            min-height: 80px; 
+            width: 95%; max-width: 500px; min-height: 80px; 
             display: inline-flex; justify-content: center; gap: 4px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.6), inset 0 2px 10px rgba(255,255,255,0.3);
             border-bottom: 8px solid #5d4037;
@@ -245,9 +228,11 @@
     </div>
 
     <div id="screen-player" class="screen" id="player-ui">
-        <div class="mobile-top-bar">
-            <div id="my-display-name" class="player-name">Player</div>
-            <div id="status-msg" class="game-status">Waiting...</div>
+        
+        <div id="turn-banner" class="turn-banner">Waiting for turn...</div>
+        
+        <div class="player-info-bar">
+            Playing as: <strong id="my-display-name">...</strong>
         </div>
         
         <div class="rack-wrapper">
@@ -262,6 +247,7 @@
     </div>
 
     <script>
+        // CONFIG
         const SCORES = {'A':1,'B':3,'C':3,'D':2,'E':1,'F':4,'G':2,'H':4,'I':1,'J':8,'K':5,'L':1,'M':3,'N':1,'O':1,'P':3,'Q':10,'R':1,'S':1,'T':1,'U':1,'V':4,'W':4,'X':8,'Y':4,'Z':10,'_':0};
         const BAG_INIT = {'A':9,'B':2,'C':2,'D':4,'E':12,'F':2,'G':3,'H':2,'I':9,'J':1,'K':1,'L':4,'M':2,'N':6,'O':8,'P':2,'Q':1,'R':6,'S':4,'T':6,'U':4,'V':2,'W':2,'X':1,'Y':2,'Z':1,'_':2};
         const LAYOUT = [
@@ -601,8 +587,8 @@
                             animation: 150, 
                             ghostClass: 'sortable-ghost', 
                             dragClass: 'sortable-drag', 
-                            forceFallback: true, // Key for custom drag visual
-                            fallbackOnBody: true // Key for not getting clipped
+                            forceFallback: true, 
+                            fallbackOnBody: true 
                         });
                         toast("Game Started!");
                     }
@@ -612,13 +598,16 @@
                     if(d.type==='turn_update') {
                         myTurn = d.myTurn;
                         const btn = document.getElementById('btn-play');
-                        const status = document.getElementById('status-msg');
+                        const banner = document.getElementById('turn-banner');
                         if(myTurn) {
                             btn.disabled = false;
-                            status.innerText = "YOUR TURN"; status.style.color = "var(--accent)"; toast("It's your turn!");
+                            banner.innerText = "YOUR TURN";
+                            banner.classList.add('my-turn');
+                            toast("It's your turn!");
                         } else {
                             btn.disabled = true;
-                            status.innerText = `Turn: ${d.activePlayer}`; status.style.color = "#888";
+                            banner.innerText = `Waiting for ${d.activePlayer}...`;
+                            banner.classList.remove('my-turn');
                         }
                     }
                 });
