@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Top Status</title>
+    <title>Scrabble Pro - Clean View</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -34,23 +34,41 @@
         .center-screen { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 
         /* UI ELEMENTS */
-        input { padding: 15px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #444; background: #333; color: white; margin-bottom: 12px; text-transform: uppercase; text-align: center; width: 280px; }
-        button { background: var(--accent); color: white; border: none; padding: 16px 32px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin: 10px; font-weight: 600; box-shadow: 0 4px 0 rgba(0,0,0,0.2); transition: transform 0.1s; }
+        input { 
+            padding: 15px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #444; 
+            background: #333; color: white; margin-bottom: 12px; text-transform: uppercase; 
+            text-align: center; width: 280px; 
+        }
+        button { 
+            background: var(--accent); color: white; border: none; padding: 16px 32px; 
+            font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin: 10px; font-weight: 600; 
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2); transition: transform 0.1s; 
+        }
         button:active { transform: translateY(2px); box-shadow: none; }
         button:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
         .btn-secondary { background: #7f8c8d; }
         .btn-warning { background: #f39c12; color: #222; }
         .btn-sm { padding: 8px 15px; font-size: 0.85rem; width: auto; margin: 0; }
 
-        /* HOST LAYOUT */
+        /* HOST LAYOUT (Sidebar exists here) */
         #screen-host { flex-direction: row; }
-        .sidebar { width: 320px; height: 100%; background: var(--panel); border-right: 1px solid #444; display: flex; flex-direction: column; padding: 20px; z-index: 50; box-shadow: 5px 0 20px rgba(0,0,0,0.5); }
+        .sidebar { 
+            width: 320px; height: 100%; background: var(--panel); border-right: 1px solid #444; 
+            display: flex; flex-direction: column; padding: 20px; z-index: 50; 
+            box-shadow: 5px 0 20px rgba(0,0,0,0.5);
+        }
         .board-wrapper { flex-grow: 1; height: 100%; display: flex; align-items: center; justify-content: center; background: #111; position: relative; }
 
         /* BOARD GRID */
-        .scrabble-board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); gap: 2px; background: #000; border: 12px solid var(--wood-frame); border-radius: 6px; width: 95vmin; height: 95vmin; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+        .scrabble-board {
+            display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); gap: 2px;
+            background: #000; border: 12px solid var(--wood-frame); border-radius: 6px;
+            width: 95vmin; height: 95vmin; box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
         .cell { background: var(--board-bg); display: flex; justify-content: center; align-items: center; font-size: 0.65rem; font-weight: 800; color: #666; position: relative; text-transform: uppercase; user-select: none; }
-        .tw { background: #ff7675; color: white; } .dw { background: #fab1a0; color: #444; } .tl { background: #74b9ff; color: white; } .dl { background: #81ecec; color: #444; } .star { background: #fab1a0; font-size: 1.5rem; color: #d63031; }
+        .tw { background: #ff7675; color: white; } .dw { background: #fab1a0; color: #444; }
+        .tl { background: #74b9ff; color: white; } .dl { background: #81ecec; color: #444; }
+        .star { background: #fab1a0; font-size: 1.5rem; color: #d63031; }
 
         /* TILES */
         .tile {
@@ -62,11 +80,22 @@
         .cell .tile { position: absolute; top:0; left:0; width:100%; height:100%; border-radius: 0; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.1); z-index: 30; }
         .tile[data-new="true"] { background: var(--tile-active); box-shadow: inset 0 -3px 0 #d4a017; color: #000; }
         .tile span.score { font-size: 0.55rem; position: absolute; bottom: 2px; right: 2px; font-weight: 600; }
+        
         .tile.dragging { position: fixed; z-index: 99999; width: 55px !important; height: 55px !important; opacity: 0.95; pointer-events: none; box-shadow: 0 15px 30px rgba(0,0,0,0.4); border: 2px solid var(--accent); border-radius: 4px; }
 
-        /* PLAYER RACK SORTABLE */
-        .sortable-ghost { opacity: 0.2; background: #000 !important; box-shadow: inset 0 0 5px #000 !important; color: transparent !important; border: 1px dashed #555; }
-        .sortable-drag { opacity: 1 !important; transform: scale(1.1); z-index: 99999; cursor: grabbing; }
+        /* PLAYER RACK SORTABLE STYLES */
+        .sortable-ghost {
+            opacity: 0.2; background: #000 !important;
+            box-shadow: inset 0 0 5px #000 !important;
+            color: transparent !important;
+            border: 1px dashed #555;
+        }
+        .sortable-drag {
+            opacity: 1 !important;
+            transform: scale(1.1); 
+            z-index: 99999;
+            cursor: grabbing;
+        }
 
         /* ANIMATIONS & OVERLAYS */
         @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.5); color: #f1c40f; } 100% { transform: scale(1); } }
@@ -84,32 +113,32 @@
         .return-zone { width: 100%; height: 50px; background: #34495e; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #95a5a6; border: 2px dashed #555; transition: all 0.2s; margin-bottom: 10px; }
         .return-zone.hovered { background: #c0392b; color: white; border-color: #e74c3c; }
 
-        /* PLAYER MOBILE UI - NEW LAYOUT */
-        #player-ui { background: #1a1a1a; justify-content: flex-start; flex-direction: column; height: 100vh; }
+        /* PLAYER MOBILE UI */
+        #player-ui { background: #1a1a1a; justify-content: center; flex-direction: column; height: 100vh; padding: 0; }
         
-        /* NEW TOP STATUS BAR */
-        .turn-banner {
-            width: 100%; padding: 20px; text-align: center;
-            font-weight: bold; font-size: 1.3rem;
-            background: #222; color: #777;
-            transition: background 0.3s, color 0.3s;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        /* CLEAN HUD (No Sidebars) */
+        .player-hud {
+            position: absolute; top: 0; left: 0; width: 100%;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 20px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
             z-index: 100;
         }
-        /* Active Turn Style */
-        .turn-banner.my-turn { background: var(--accent); color: white; }
-        
-        .player-info-bar {
-            width: 100%; text-align: center; padding: 8px;
-            background: #111; color: #555; font-size: 0.9rem;
-            border-bottom: 1px solid #222;
+        .hud-name { font-weight: bold; color: #fff; font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+        .hud-status { 
+            background: rgba(255,255,255,0.1); backdrop-filter: blur(5px);
+            padding: 5px 12px; border-radius: 20px;
+            font-size: 0.85rem; color: #ccc; font-weight: 600;
+            border: 1px solid rgba(255,255,255,0.1);
         }
+        .hud-status.active { background: var(--accent); color: white; border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
 
+        /* MAIN GAME AREA */
         .rack-wrapper { 
             flex-grow: 1; display: flex; flex-direction: column; 
             align-items: center; justify-content: center;
-            background: radial-gradient(circle at center, #2a2a2a 0%, #1a1a1a 100%);
-            padding: 20px; gap: 30px;
+            background: radial-gradient(circle at center, #2a2a2a 0%, #111 100%);
+            padding: 20px; gap: 40px;
         }
         
         .player-rack { 
@@ -117,9 +146,10 @@
             background: linear-gradient(180deg, var(--wood-rack-light) 0%, var(--wood-rack-dark) 100%);
             padding: 20px 10px 15px 10px; 
             border-radius: 6px; 
-            width: 95%; max-width: 500px; min-height: 80px; 
+            width: 95%; max-width: 500px;
+            min-height: 80px; 
             display: inline-flex; justify-content: center; gap: 4px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.6), inset 0 2px 10px rgba(255,255,255,0.3);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 2px 10px rgba(255,255,255,0.3);
             border-bottom: 8px solid #5d4037;
         }
 
@@ -134,13 +164,18 @@
         
         .tile.selected { border: 3px solid var(--accent); transform: translateY(-15px) scale(1.1); box-shadow: 0 20px 25px rgba(0,0,0,0.5); z-index: 100; }
 
-        .mobile-controls { display: flex; gap: 10px; width: 95%; max-width: 500px; }
-        .mobile-controls button { margin: 0; flex: 1; padding: 16px; font-size: 1.1rem; }
+        .mobile-controls { 
+            display: flex; gap: 10px; width: 95%; max-width: 500px;
+        }
+        .mobile-controls button { 
+            margin: 0; flex: 1; padding: 20px; font-size: 1.1rem; 
+            border-radius: 12px; text-transform: uppercase; letter-spacing: 1px;
+        }
 
         /* OVERLAYS & TOAST */
         #notification-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 5000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal { background: #2c3e50; border: 1px solid #444; padding: 25px; border-radius: 12px; text-align: center; max-width: 300px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); color: white; }
-        #toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%) translateY(-20px); background: #2ecc71; color: #fff; padding: 12px 30px; border-radius: 50px; font-weight: bold; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 6000; opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
+        #toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-20px); background: #2ecc71; color: #fff; padding: 12px 30px; border-radius: 50px; font-weight: bold; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 6000; opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
         .hidden { display: none !important; }
         .status-dot { height: 10px; width: 10px; background-color: #555; border-radius: 50%; display: inline-block; margin-right: 6px; }
@@ -229,10 +264,9 @@
 
     <div id="screen-player" class="screen" id="player-ui">
         
-        <div id="turn-banner" class="turn-banner">Waiting for turn...</div>
-        
-        <div class="player-info-bar">
-            Playing as: <strong id="my-display-name">...</strong>
+        <div class="player-hud">
+            <div class="hud-name" id="my-display-name">Player</div>
+            <div class="hud-status" id="status-msg">Waiting...</div>
         </div>
         
         <div class="rack-wrapper">
@@ -598,16 +632,17 @@
                     if(d.type==='turn_update') {
                         myTurn = d.myTurn;
                         const btn = document.getElementById('btn-play');
-                        const banner = document.getElementById('turn-banner');
+                        const hudStatus = document.getElementById('status-msg');
+                        
                         if(myTurn) {
                             btn.disabled = false;
-                            banner.innerText = "YOUR TURN";
-                            banner.classList.add('my-turn');
+                            hudStatus.innerText = "YOUR TURN";
+                            hudStatus.classList.add('active');
                             toast("It's your turn!");
                         } else {
                             btn.disabled = true;
-                            banner.innerText = `Waiting for ${d.activePlayer}...`;
-                            banner.classList.remove('my-turn');
+                            hudStatus.innerText = `Turn: ${d.activePlayer}`;
+                            hudStatus.classList.remove('active');
                         }
                     }
                 });
