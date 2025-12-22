@@ -294,6 +294,9 @@
         let peer, conn, dictionary = new Set(), bag=[], players=[], turnIndex=0, myTurn=false, isFirstTurn=true;
         let currentTurnPoints = 0;
         let pendingBlankTile = null;
+        
+        // NEW: Track order of selected tiles
+        let selectedTilesOrder = [];
 
         const selector = document.getElementById('blank-selector');
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(l => {
@@ -702,15 +705,38 @@
             t.forEach(l=>{
                 const d=document.createElement('div'); d.className='tile'; d.dataset.letter=l;
                 if(l === '_') d.innerHTML = ''; else d.innerHTML=`${l}<span class="score">${SCORES[l]}</span>`;
-                d.onclick=()=>d.classList.toggle('selected');
+                
+                // NEW: Handle selection order
+                d.onclick=()=>{
+                    if(d.classList.contains('selected')) {
+                        d.classList.remove('selected');
+                        // Remove from order array
+                        selectedTilesOrder = selectedTilesOrder.filter(tile => tile !== d);
+                    } else {
+                        d.classList.add('selected');
+                        // Add to order array
+                        selectedTilesOrder.push(d);
+                    }
+                };
+                
                 document.getElementById('my-rack').appendChild(d);
             });
         }
         function playSelected() {
             if(!myTurn) { toast("Not your turn!"); return; }
-            const s=document.querySelectorAll('.selected');
-            if(!s.length) return;
-            const t=[]; s.forEach(x=>{t.push(x.dataset.letter); x.remove();});
+            
+            // NEW: Use the array instead of querySelectorAll
+            if(!selectedTilesOrder.length) return;
+            
+            const t=[]; 
+            selectedTilesOrder.forEach(x=>{
+                t.push(x.dataset.letter); 
+                x.remove();
+            });
+            
+            // Clear the order array
+            selectedTilesOrder = [];
+            
             conn.send({type:'play', tiles:t});
         }
         function skipTurn() {
