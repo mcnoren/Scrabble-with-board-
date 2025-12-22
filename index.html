@@ -89,7 +89,21 @@
         .tile[data-new="true"] { background: var(--tile-active); box-shadow: inset 0 -3px 0 #d4a017; color: #000; }
         .tile.is-blank-assigned { color: var(--tile-blank-text); }
         .tile span.score { font-size: 0.55rem; position: absolute; bottom: 2px; right: 2px; font-weight: 600; }
-        .tile.dragging { position: fixed; z-index: 99999; width: 55px !important; height: 55px !important; opacity: 0.95; pointer-events: none; box-shadow: 0 15px 30px rgba(0,0,0,0.4); border: 2px solid var(--accent); border-radius: 4px; }
+        
+        /* DRAGGING TILE - Centered & Fixed Size */
+        .tile.dragging { 
+            position: fixed; 
+            z-index: 99999; 
+            width: 55px !important; 
+            height: 55px !important; 
+            opacity: 0.95; 
+            pointer-events: none; 
+            box-shadow: 0 15px 30px rgba(0,0,0,0.4); 
+            border: 2px solid var(--accent); 
+            border-radius: 4px;
+            margin: 0; 
+            transform: none; 
+        }
 
         /* PLAYER RACK SORTABLE */
         .sortable-ghost { opacity: 0.2; background: #000 !important; box-shadow: inset 0 0 5px #000 !important; color: transparent !important; border: 1px dashed #555; }
@@ -165,10 +179,7 @@
             cursor: pointer; 
             box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.2);
             display: flex; align-items: center; justify-content: center;
-            /* FIXED: Force square ratio and remove padding */
-            aspect-ratio: 1 / 1;
-            padding: 0;
-            flex-shrink: 0;
+            aspect-ratio: 1 / 1; padding: 0; flex-shrink: 0;
         }
         .letter-btn:active { transform: translateY(2px); box-shadow: inset 0 -1px 0 rgba(0,0,0,0.2); }
 
@@ -298,7 +309,6 @@
         let peer, conn, dictionary = new Set(), bag=[], players=[], turnIndex=0, myTurn=false, isFirstTurn=true;
         let currentTurnPoints = 0;
         let pendingBlankTile = null;
-        
         let selectedTilesOrder = [];
 
         const selector = document.getElementById('blank-selector');
@@ -335,6 +345,7 @@
 
         // --- DRAG ENGINE ---
         let dragEl=null, clone=null;
+        
         function onDragStart(e) {
             if(e.currentTarget.dataset.locked==="true") return;
             e.preventDefault();
@@ -348,20 +359,30 @@
             clone = dragEl.cloneNode(true);
             clone.classList.add('dragging');
             document.body.appendChild(clone);
+            
+            // Initial positioning
             updateClonePos(e.clientX, e.clientY);
+            
             dragEl.style.opacity = '0';
             updateScorePill(); 
             document.addEventListener('pointermove', onDragMove);
             document.addEventListener('pointerup', onDragEnd);
         }
+        
         function onDragMove(e) { e.preventDefault(); updateClonePos(e.clientX, e.clientY); }
         
         function onDragEnd(e) {
             document.removeEventListener('pointermove', onDragMove);
             document.removeEventListener('pointerup', onDragEnd);
+            
+            // 1. Calculate drop target based on Center of Tile (which is now under finger)
+            const centerX = e.clientX;
+            const centerY = e.clientY;
+            
             clone.hidden = true; 
-            const el = document.elementFromPoint(e.clientX, e.clientY);
+            const el = document.elementFromPoint(centerX, centerY);
             clone.hidden = false;
+            
             clone.remove(); clone=null;
             dragEl.removeAttribute('style'); 
             
@@ -379,21 +400,20 @@
                     const existingTile = cell.querySelector('.tile');
                     
                     if (!existingTile) {
-                        // Empty cell: Just Place
                         cell.appendChild(dragEl);
                         if(dragEl.dataset.letter === '_') {
                             pendingBlankTile = dragEl;
                             document.getElementById('blank-overlay').style.display = "flex";
                         }
                     } else {
-                        // Occupied cell: Check if swap is possible
+                        // SWAP or CANCEL LOGIC
                         if(existingTile.dataset.locked === "true") {
-                            // Can't swap with locked tile -> return dragEl to inbox
-                            document.getElementById('host-inbox').appendChild(dragEl);
+                            // CANCEL: Tile is locked. Return dragged tile to previous location.
+                            // By doing nothing here, dragEl remains in its original parent.
+                            return;
                         } else {
-                            // SWAP: Move existing to inbox, place new in cell
+                            // SWAP: Existing tile is not locked (it is temporary).
                             existingTile.remove();
-                            // Reset blank status if needed before sending to inbox
                             if(existingTile.dataset.isBlank === "true") {
                                 existingTile.dataset.letter = '_';
                                 existingTile.innerHTML = '';
@@ -416,7 +436,13 @@
             updateScorePill();
         }
 
-        function updateClonePos(x, y) { if(clone) { clone.style.left=(x-25)+'px'; clone.style.top=(y-25)+'px'; } }
+        // Updated to center tile exactly under finger (55px / 2 = 27.5)
+        function updateClonePos(x, y) { 
+            if(clone) { 
+                clone.style.left = (x - 27.5) + 'px'; 
+                clone.style.top = (y - 27.5) + 'px'; 
+            } 
+        }
 
         // --- SCORE & ANIMATION ---
         function updateScorePill() {
