@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Host Authority</title>
+    <title>Scrabble Pro - Validation Fix</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -530,12 +530,12 @@
                 const p = players[turnIndex];
                 if(!p || (p.userId !== players.find(x=>x.conn===c)?.userId)) { c.send({type:'toast', msg:"Not your turn!"}); return; }
                 
-                // STRICT CHECK: Does player actually have these tiles?
+                // HOST AUTHORITY VALIDATION
                 data.tiles.forEach(l => {
                     const idx = p.tiles.indexOf(l);
                     if(idx > -1) {
-                        p.tiles.splice(idx, 1);
-                        createHostTile(l, p.userId);
+                        p.tiles.splice(idx, 1); // remove from player hand memory
+                        createHostTile(l, p.userId); // add to inbox
                     }
                 });
                 saveHostState(peer.id);
@@ -661,7 +661,7 @@
             document.removeEventListener('pointermove', onDragMove); document.removeEventListener('pointerup', onDragEnd);
             
             if(clone) { clone.remove(); clone=null; }
-            if(dragEl) dragEl.style.display = 'none'; // Check under
+            if(dragEl) dragEl.style.display = 'none'; 
             const el = document.elementFromPoint(e.clientX, e.clientY);
             if(dragEl) dragEl.style.display = 'flex';
             
@@ -680,52 +680,47 @@
             dragEl=null; updateScorePill(); saveHostState(peer.id);
         }
 
-        // HANDLERS
         function handleReturn(tile) {
-            // 1. Remove from Inbox memory
+            // CRITICAL FIX: Ensure tile is removed from board/inbox memory BEFORE returning
             const idx = hostInbox.findIndex(t => t.id === tile.dataset.id);
             if(idx > -1) {
                 hostInbox.splice(idx, 1);
-                // 2. ONLY return if successfully removed from inbox
-                returnTile(tile.dataset.letter, tile.dataset.owner);
             }
             
-            // 3. Remove DOM element
+            // Only return if it's not already on the board (prevents double counting if logic failed elsewhere)
+            // But since we are dragging it, we can assume intent.
+            returnTile(tile.dataset.letter, tile.dataset.owner);
+            
             tile.remove(); 
-            // 4. Force Re-render to clear gaps
             renderInbox(); 
         }
 
         function handleBoardPlacement(tile, cell) {
             const existing = cell.querySelector('.tile');
             if(!existing) {
-                cell.appendChild(tile); // Move
-                hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id); // Remove from inbox
+                cell.appendChild(tile); 
+                hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id); 
                 if(tile.dataset.letter==='_') { pendingBlankTile=tile; document.getElementById('blank-overlay').style.display="flex"; }
             } else {
                 if(existing.dataset.locked!=="true") {
-                    existing.remove(); // SWAP
+                    existing.remove(); 
                     if(existing.dataset.isBlank==="true") { existing.dataset.letter='_'; existing.innerHTML=''; existing.classList.remove('is-blank-assigned'); delete existing.dataset.isBlank; }
                     
-                    // Add existing back to Inbox Data
                     hostInbox.push({id: existing.dataset.id, letter: existing.dataset.letter, owner: existing.dataset.owner});
                     
                     cell.appendChild(tile);
-                    // Remove new tile from Inbox Data
                     hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id);
                     
-                    renderInbox(); // Update visual inbox
+                    renderInbox(); 
                     if(tile.dataset.letter==='_') { pendingBlankTile=tile; document.getElementById('blank-overlay').style.display="flex"; }
                 }
             }
         }
 
         function handleInboxDrop(tile) {
-            // Ensure tile is in hostInbox array
             if(!hostInbox.some(t => t.id === tile.dataset.id)) {
                 hostInbox.push({id: tile.dataset.id, letter: tile.dataset.letter, owner: tile.dataset.owner});
             }
-            // If it was on board, remove from board DOM (renderInbox handles the append)
             if(tile.parentElement && tile.parentElement.id !== 'host-inbox') tile.remove();
             renderInbox();
         }
@@ -743,6 +738,8 @@
             if(dragEl) newTiles = newTiles.filter(t => t !== dragEl);
             const pill = document.getElementById('score-pill');
             const hasUnassignedBlank = newTiles.some(t => t.dataset.letter === '_');
+            
+            // VALIDATION FIX: Ensure letters are read from extracted object, not raw object
             if (newTiles.length === 0 || !isPlacementShapeValid(newTiles) || hasUnassignedBlank) { pill.classList.remove('visible'); currentTurnPoints = 0; return; }
             currentTurnPoints = calculateComplexScore(newTiles);
             pill.innerText = `${currentTurnPoints} pts`; pill.classList.add('visible');
@@ -790,12 +787,9 @@
             turnIndex = (turnIndex + 1) % players.length;
             notifyTurn();
             
-            const inbox = document.getElementById('host-inbox');
-            while(inbox.firstChild) { 
-                returnTile(inbox.firstChild.dataset.letter, inbox.firstChild.dataset.owner); 
-                inbox.firstChild.remove(); 
-            }
+            hostInbox.forEach(t => returnTile(t.letter, t.owner));
             hostInbox = []; 
+            renderInbox();
             saveHostState(peer.id);
         }
 
@@ -824,11 +818,19 @@
         
         function genId(){const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let r="";for(let i=0;i<4;i++)r+=c.charAt(Math.floor(Math.random()*c.length));return r;}
         function initBag(){bag=[];for(let l in BAG_INIT)for(let i=0;i<BAG_INIT[l];i++)bag.push(l);for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}}
+        
         function returnTile(l,oid){
             const p = players.find(x => x.userId === oid);
-            if(p) { p.tiles.push(l); if(p.conn && p.conn.open) p.conn.send({type:'return', tile:l}); saveHostState(peer.id); }
+            if(p) { 
+                // HOST AUTHORITY: Add to player's memory hand
+                p.tiles.push(l); 
+                // Send to player device
+                if(p.conn && p.conn.open) p.conn.send({type:'return', tile:l}); 
+                saveHostState(peer.id); 
+            }
             updateScorePill();
         }
+
         function recallTiles(){const inbox=document.getElementById('host-inbox');document.querySelectorAll('.cell .tile[data-new="true"]').forEach(t=>{ if(!hostInbox.some(x=>x.id===t.dataset.id)) hostInbox.push({id:t.dataset.id, letter:t.dataset.letter, owner:t.dataset.owner}); }); renderInbox(); document.querySelectorAll('.cell').forEach(c=>{ if(c.querySelector('.tile[data-new="true"]')) c.innerHTML = ''; }); updateScorePill();}
         function notifyTurn(){players.forEach((p,i)=>p.conn && p.conn.open && p.conn.send({type:'turn_update',myTurn:(i===turnIndex),activePlayer:players[turnIndex].name}));updateHostUI();}
         function broadcastLobby(){const names=players.map(p=>p.name);players.forEach(p=>{if(p.conn&&p.conn.open)p.conn.send({type:'lobby_update',names:names});});}
@@ -843,20 +845,42 @@
         function renderBoard(){const b=document.getElementById('board-grid');b.innerHTML='';for(let r=0;r<15;r++)for(let c=0;c<15;c++){const d=document.createElement('div');d.className='cell';d.dataset.r=r;d.dataset.c=c;const t=LAYOUT[r][c];if(t===1){d.classList.add('tw');d.innerText='TW'}if(t===2){d.classList.add('dw');d.innerText='DW'}if(t===3){d.classList.add('tl');d.innerText='TL'}if(t===4){d.classList.add('dl');d.innerText='DL'}if(t===5){d.classList.add('star');d.innerHTML='★'}b.appendChild(d);}}
         
         function getGrid(){
-            let g=[];
-            document.querySelectorAll('.cell').forEach(c=>{
-                if(!g[c.dataset.r])g[c.dataset.r]=[];
+            let g = Array(15).fill(null).map(() => Array(15).fill(null));
+            document.querySelectorAll('.cell').forEach(c => {
+                const r = parseInt(c.dataset.r);
+                const col = parseInt(c.dataset.c);
                 const tile = c.querySelector('.tile');
-                if(tile) g[c.dataset.r][c.dataset.c] = {letter: tile.dataset.letter, id: tile.dataset.id, owner: tile.dataset.owner};
-                else g[c.dataset.r][c.dataset.c] = null;
+                if(tile) {
+                    g[r][col] = {
+                        letter: tile.dataset.letter,
+                        id: tile.dataset.id,
+                        owner: tile.dataset.owner
+                    };
+                }
             });
             return g;
         }
+        
+        function getWords(g){
+            let w=[];
+            for(let i=0;i<15;i++){
+                let rowStr="", colStr="";
+                for(let j=0;j<15;j++){
+                    let rVal = (g[i] && g[i][j]) ? g[i][j].letter : " ";
+                    let cVal = (g[j] && g[j][i]) ? g[j][i].letter : " ";
+                    rowStr += rVal;
+                    colStr += cVal;
+                }
+                rowStr.split(" ").forEach(x=>{if(x.length>1)w.push(x)});
+                colStr.split(" ").forEach(x=>{if(x.length>1)w.push(x)});
+            }
+            return w;
+        }
+
         function isPlacementShapeValid(tiles){const coords=tiles.map(t=>({r:parseInt(t.parentElement.dataset.r),c:parseInt(t.parentElement.dataset.c)}));const rows=new Set(coords.map(k=>k.r)),cols=new Set(coords.map(k=>k.c));if(rows.size>1&&cols.size>1)return false;const isH=rows.size===1;if(isH){coords.sort((a,b)=>a.c-b.c);const r=coords[0].r;for(let c=coords[0].c;c<=coords[coords.length-1].c;c++)if(!document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`).querySelector('.tile'))return false;}else{coords.sort((a,b)=>a.r-b.r);const c=coords[0].c;for(let r=coords[0].r;r<=coords[coords.length-1].r;r++)if(!document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`).querySelector('.tile'))return false;}return true;}
         function calculateComplexScore(newTiles){let total=0;const coords=newTiles.map(t=>({r:parseInt(t.parentElement.dataset.r),c:parseInt(t.parentElement.dataset.c)}));const isH=new Set(coords.map(x=>x.r)).size===1;total+=getWordScoreAt(coords[0].r,coords[0].c,isH);coords.forEach(pos=>{const cS=getWordScoreAt(pos.r,pos.c,!isH);if(cS>0)total+=cS;});if(newTiles.length===7)total+=50;return total;}
         function getWordScoreAt(r,c,isHoriz){let curr=isHoriz?c:r;while(curr>0){const cell=isHoriz?getCell(r,curr-1):getCell(curr-1,c);if(!cell.querySelector('.tile'))break;curr--;}const start=curr;curr=isHoriz?c:r;while(curr<14){const cell=isHoriz?getCell(r,curr+1):getCell(curr+1,c);if(!cell.querySelector('.tile'))break;curr++;}const end=curr;if(start===end)return 0;let pts=0,mult=1;for(let i=start;i<=end;i++){const row=isHoriz?r:i,col=isHoriz?i:c,cell=getCell(row,col),tile=cell.querySelector('.tile');let val=(tile.dataset.isBlank==="true")?0:(SCORES[tile.dataset.letter]||0);if(tile.dataset.new==="true"){const type=LAYOUT[row][col];if(type===3)val*=3;else if(type===4)val*=2;if(type===1)mult*=3;else if(type===2||type===5)mult*=2;}pts+=val;}return pts*mult;}
         function getCell(r,c){return document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);}
-        function getWords(g){let w=[];for(let i=0;i<15;i++){let r="",c="";for(let j=0;j<15;j++){r+=g[i][j]||" ";c+=g[j][i]||" ";}r.split(" ").forEach(x=>{if(x.length>1)w.push(x)});c.split(" ").forEach(x=>{if(x.length>1)w.push(x)});}return w;}
         function shuffleRack(){const r=document.getElementById('my-rack');Array.from(r.children).sort(()=>Math.random()-0.5).forEach(x=>r.appendChild(x));}
         function skipTurn(){if(!myTurn)return;if(!confirm("Pass your turn?"))return;conn.send({type:'pass'});}
 
