@@ -780,21 +780,28 @@
 
             const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
             
-            // 1. Lock Tiles on Board & Remove from hostInbox memory (safety)
+            // 1. Lock Tiles on Board & Remove from hostInbox memory
+            // This ensures we ONLY have true leftovers in hostInbox
             newTiles.forEach(t => { 
                 t.removeAttribute('data-new'); 
                 t.dataset.locked="true"; 
                 t.style.cursor="default"; 
+                // CRITICAL: Filter this specific tile out of inbox memory
                 hostInbox = hostInbox.filter(x => x.id !== t.dataset.id);
             });
 
             // 2. Deal new tiles
             deal(players[turnIndex].conn, newTiles.length, turnIndex); 
             
-            // 3. Return leftovers in inbox
+            // 3. FORCE RETURN leftovers
+            // Any tile remaining in hostInbox is unused and must be returned
             if(hostInbox.length > 0) {
-                hostInbox.forEach(t => returnTile(t.letter, t.owner));
-                toast(`Returned ${hostInbox.length} tiles`);
+                const count = hostInbox.length;
+                // Loop through and return each to its specific owner
+                hostInbox.forEach(t => returnTile(t.letter, t.owner, false)); // false = skip individual save
+                toast(`Returned ${count} unused tiles`);
+                
+                // Clear Memory & UI
                 hostInbox = []; 
                 renderInbox();
             }
@@ -802,7 +809,7 @@
             isFirstTurn = false;
             turnIndex = (turnIndex + 1) % players.length;
             notifyTurn();
-            saveHostState(peer.id);
+            saveHostState(peer.id); // Save state once at the end
         }
 
         function promptLeaveGame() { showConfirm("Leave Room?", "You will exit this session.", () => { if(currentSessionCode) deleteSession(currentSessionCode); location.reload(); }); }
@@ -831,14 +838,14 @@
         function genId(){const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let r="";for(let i=0;i<4;i++)r+=c.charAt(Math.floor(Math.random()*c.length));return r;}
         function initBag(){bag=[];for(let l in BAG_INIT)for(let i=0;i<BAG_INIT[l];i++)bag.push(l);for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}}
         
-        function returnTile(l,oid){
+        function returnTile(l, oid, shouldSave=true){
             const p = players.find(x => x.userId === oid);
             if(p) { 
                 // HOST AUTHORITY: Add to player's memory hand
                 p.tiles.push(l); 
                 // Send to player device
                 if(p.conn && p.conn.open) p.conn.send({type:'return', tile:l}); 
-                saveHostState(peer.id); 
+                if(shouldSave) saveHostState(peer.id); 
             }
             updateScorePill();
         }
