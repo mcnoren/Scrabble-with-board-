@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Fixed</title>
+    <title>Scrabble Pro - Final Fixes</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -97,12 +97,11 @@
             box-shadow: 5px 0 20px rgba(0,0,0,0.5); 
         }
         
-        /* SIDEBAR HEADER: Menu Btn + Turn Indicator */
+        /* SIDEBAR HEADER */
         .sidebar-header {
             display: flex; gap: 10px; align-items: stretch; margin-bottom: 20px;
             height: 70px;
         }
-        
         #host-menu-btn {
             background: rgba(255,255,255,0.1); border: 1px solid #444;
             color: #ecf0f1; font-size: 1.8rem; cursor: pointer;
@@ -365,9 +364,8 @@
         let heartbeatInterval = null;
         let startTimeout = null;
         let soundsEnabled = true;
-        let hostInbox = []; // Persistent storage for inbox tiles
+        let hostInbox = []; 
         
-        // PERSISTENCE KEYS
         const STORAGE_HOST_DATA = 'scrabble_host_state';
         const STORAGE_SESSIONS = 'scrabble_player_sessions'; 
 
@@ -416,7 +414,6 @@
             const sessionList = document.getElementById('session-list');
             const sessionArea = document.getElementById('sessions-area');
 
-            // HOST RESUME UI
             const hostData = JSON.parse(localStorage.getItem(STORAGE_HOST_DATA));
             if(hostData && hostData.roomCode) {
                 const created = new Date(hostData.createdAt || Date.now()).toLocaleDateString();
@@ -443,7 +440,6 @@
                 hostArea.style.display = 'none';
             }
 
-            // PLAYER SESSIONS UI
             const sessions = JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]');
             sessionList.innerHTML = '';
             
@@ -535,11 +531,11 @@
                     bag = savedState.bag;
                     turnIndex = savedState.turnIndex;
                     isFirstTurn = savedState.isFirstTurn;
-                    hostInbox = savedState.hostInbox || []; // Restore inbox array
+                    hostInbox = savedState.hostInbox || [];
                     
                     renderBoard();
                     restoreBoardTiles(savedState.grid);
-                    restoreHostInbox(); // Visual restore
+                    restoreHostInbox();
                     showScreen('screen-host');
                     updateHostUI();
                     toast("Game Restored");
@@ -564,28 +560,20 @@
             });
         }
 
-        // HEARTBEAT LOGIC
         function startHeartbeat() {
             heartbeatInterval = setInterval(() => {
                 const now = Date.now();
-                players.forEach(p => {
-                    if(p.conn && p.conn.open) {
-                        p.conn.send({type: 'ping'});
-                    }
-                });
-                
+                players.forEach(p => { if(p.conn && p.conn.open) p.conn.send({type: 'ping'}); });
                 let needsUpdate = false;
                 players.forEach(p => {
                     const wasOffline = p.isOffline;
                     p.isOffline = (now - (p.lastSeen || now)) > 15000;
                     if(wasOffline !== p.isOffline) needsUpdate = true;
                 });
-
                 if(needsUpdate) {
                     if(document.getElementById('screen-lobby').classList.contains('active')) updateLobbyUI();
                     if(document.getElementById('screen-host').classList.contains('active')) updateHostUI();
                 }
-
                 const btnStart = document.getElementById('btn-start-game');
                 if(btnStart && document.getElementById('screen-lobby').classList.contains('active')) {
                     if(btnStart.innerText !== "VERIFYING...") {
@@ -594,7 +582,6 @@
                         btnStart.innerText = anyOffline ? "WAITING FOR PLAYERS..." : "START GAME";
                     }
                 }
-
             }, 5000);
         }
 
@@ -603,15 +590,8 @@
             const hostData = JSON.parse(localStorage.getItem(STORAGE_HOST_DATA) || '{}');
             const createdAt = hostData.createdAt || Date.now();
             const state = { 
-                roomCode: id, 
-                players, 
-                bag, 
-                turnIndex, 
-                isFirstTurn, 
-                grid,
-                hostInbox, // Save inbox
-                createdAt: createdAt,
-                lastSavedAt: Date.now()
+                roomCode: id, players, bag, turnIndex, isFirstTurn, grid, hostInbox, 
+                createdAt: createdAt, lastSavedAt: Date.now()
             };
             localStorage.setItem(STORAGE_HOST_DATA, JSON.stringify(state));
         }
@@ -625,10 +605,7 @@
                         const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
                         if(cell) {
                             cell.innerHTML = '';
-                            const t = document.createElement('div'); 
-                            t.className = 'tile'; 
-                            t.dataset.letter = letter; 
-                            t.dataset.locked = "true"; 
+                            const t = document.createElement('div'); t.className = 'tile'; t.dataset.letter = letter; t.dataset.locked = "true"; 
                             if(letter === '_') { t.innerHTML=''; t.dataset.letter='_'; } 
                             else t.innerHTML = `${letter}<span class="score">${SCORES[letter]}</span>`;
                             cell.appendChild(t);
@@ -642,15 +619,8 @@
             const inbox = document.getElementById('host-inbox');
             inbox.innerHTML = '';
             hostInbox.forEach(item => {
-                // recreate tiles visually
-                // item should be { letter: 'A', owner: 'userid' }
-                const t = document.createElement('div');
-                t.className = 'tile';
-                t.dataset.letter = item.letter;
-                t.dataset.owner = item.owner;
-                t.dataset.new = "true"; // So it can be dragged? Actually if in inbox, it is new.
-                if(item.letter === '_') t.innerHTML = ''; 
-                else t.innerHTML=`${item.letter}<span class="score">${SCORES[item.letter]}</span>`;
+                const t = document.createElement('div'); t.className = 'tile'; t.dataset.letter = item.letter; t.dataset.owner = item.owner; t.dataset.new = "true";
+                if(item.letter === '_') t.innerHTML = ''; else t.innerHTML=`${item.letter}<span class="score">${SCORES[item.letter]}</span>`;
                 t.addEventListener('pointerdown', onDragStart);
                 inbox.appendChild(t);
             });
@@ -667,16 +637,12 @@
                     players.push(p);
                     toast(`${data.name} joined`);
                 } else {
-                    p.conn = c;
-                    p.lastSeen = Date.now();
-                    p.isOffline = false;
+                    p.conn = c; p.lastSeen = Date.now(); p.isOffline = false;
                     toast(`${p.name} reconnected`);
                 }
 
                 c.send({
-                    type: 'ack_join',
-                    success: true,
-                    name: p.name,
+                    type: 'ack_join', success: true, name: p.name,
                     activePlayer: players[turnIndex] ? players[turnIndex].name : null,
                     myTurn: (players.indexOf(p) === turnIndex),
                     tiles: p.tiles,
@@ -684,57 +650,39 @@
                     grid: getGrid()
                 });
 
-                if(document.getElementById('screen-host').classList.contains('active') === false) {
-                    broadcastLobby();
-                    updateLobbyUI();
-                } else {
-                    updateHostUI();
-                }
+                if(document.getElementById('screen-host').classList.contains('active') === false) { broadcastLobby(); updateLobbyUI(); } else { updateHostUI(); }
                 saveHostState(peer.id);
                 return;
             }
-
             if(data.type === 'pong') {
                 const p = players.find(x => x.userId === data.userId);
                 if(p) { p.lastSeen = Date.now(); p.isOffline = false; }
                 return;
             }
-
             if(data.type === 'ready_start') {
                 const p = players.find(x => x.userId === data.userId);
                 if(p) {
                     p.isReady = true;
-                    if(players.every(pl => pl.isReady)) {
-                        clearTimeout(startTimeout);
-                        finalizeGameStart();
-                    }
+                    if(players.every(pl => pl.isReady)) { clearTimeout(startTimeout); finalizeGameStart(); }
                 }
                 return;
             }
-
             if(data.type === 'play') {
                 const p = players[turnIndex];
-                if(!p || (p.userId !== players.find(x=>x.conn===c)?.userId)) { 
-                    c.send({type:'toast', msg:"Not your turn!"}); return; 
-                }
-                
+                if(!p || (p.userId !== players.find(x=>x.conn===c)?.userId)) { c.send({type:'toast', msg:"Not your turn!"}); return; }
                 data.tiles.forEach(l => {
                     const idx = p.tiles.indexOf(l);
                     if(idx > -1) p.tiles.splice(idx, 1);
-                    createHostTile(l, p.userId); // Adds to inbox visual AND storage
+                    createHostTile(l, p.userId);
                 });
                 saveHostState(peer.id);
             }
-            
             if(data.type === 'pass') {
                 const p = players.find(x=>x.conn===c);
                 if(!p || players[turnIndex].userId !== p.userId) return;
-                
                 players[turnIndex].lastScore = 0;
                 turnIndex = (turnIndex + 1) % players.length;
-                updateHostUI();
-                notifyTurn();
-                saveHostState(peer.id);
+                updateHostUI(); notifyTurn(); saveHostState(peer.id);
             }
         }
 
@@ -750,32 +698,21 @@
         function hostStartGame() {
             if(players.length === 0) { showModal("Wait", "Need players to start."); return; }
             if(players.some(p => p.isOffline)) { showModal("Wait", "All players must be connected."); return; }
-
             const btn = document.getElementById('btn-start-game');
-            btn.disabled = true;
-            btn.innerText = "VERIFYING...";
-
+            btn.disabled = true; btn.innerText = "VERIFYING...";
             players.forEach(p => p.isReady = false);
-            players.forEach(p => {
-                if(p.conn && p.conn.open) p.conn.send({type: 'prepare_start'});
-            });
-
+            players.forEach(p => { if(p.conn && p.conn.open) p.conn.send({type: 'prepare_start'}); });
             startTimeout = setTimeout(() => {
                 const missing = players.filter(p => !p.isReady).map(p => p.name).join(', ');
                 showModal("Error", `No response from: ${missing}`);
-                btn.disabled = false;
-                btn.innerText = "START GAME";
+                btn.disabled = false; btn.innerText = "START GAME";
             }, 5000); 
         }
 
         function finalizeGameStart() {
             showScreen('screen-host');
-            players.forEach((p, i) => { 
-                deal(p.conn, 7, i); 
-                if(p.conn && p.conn.open) p.conn.send({type:'gamestart'});
-            });
-            notifyTurn();
-            saveHostState(peer.id);
+            players.forEach((p, i) => { deal(p.conn, 7, i); if(p.conn && p.conn.open) p.conn.send({type:'gamestart'}); });
+            notifyTurn(); saveHostState(peer.id);
         }
 
         function kickPlayer(index) {
@@ -784,9 +721,7 @@
             if(confirm(`Kick ${p.name}?`)) {
                 if(p.conn && p.conn.open) p.conn.close();
                 players.splice(index, 1);
-                updateLobbyUI();
-                broadcastLobby();
-                saveHostState(peer.id);
+                updateLobbyUI(); broadcastLobby(); saveHostState(peer.id);
             }
         }
 
@@ -795,25 +730,17 @@
             const n = nameOverride || document.getElementById('join-name').value.trim();
             const c = (codeOverride || document.getElementById('join-code').value.trim()).toUpperCase();
             if(!n || c.length!==4) return;
-            
             const btn = document.getElementById('btn-join');
             if(btn) { btn.disabled = true; btn.innerText = "Connecting..."; }
-
             const userId = idOverride || generateUUID();
-
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(c);
-                conn.on('open', () => {
-                    conn.send({type:'join', name:n, userId: userId});
-                });
-                
+                conn.on('open', () => { conn.send({type:'join', name:n, userId: userId}); });
                 conn.on('data', d => {
                     if(d.type === 'ack_join') {
                         if(d.success === false) { alert(d.msg); return; }
-                        
                         saveSession(c, n, userId); 
-
                         if(d.isGameRunning) {
                             showScreen('screen-player');
                             document.getElementById('my-display-name').innerText = n;
@@ -822,29 +749,18 @@
                             Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
                             updateTurnUI(d.myTurn, d.activePlayer);
                             toast("Reconnected");
-                        } else {
-                            showScreen('screen-player-lobby');
-                        }
+                        } else { showScreen('screen-player-lobby'); }
                     }
-
-                    if(d.type === 'ping') {
-                        conn.send({type: 'pong', userId: userId});
-                    }
-
-                    if(d.type === 'prepare_start') {
-                        conn.send({type: 'ready_start', userId: userId});
-                    }
-
-                    if(d.type === 'lobby_update') {
-                        document.getElementById('player-lobby-list').innerHTML = d.names.map(name => `<div class="lobby-row"><span>${name}</span><span style="color:#2ecc71;">Joined</span></div>`).join('');
-                    }
+                    if(d.type === 'ping') conn.send({type: 'pong', userId: userId});
+                    if(d.type === 'prepare_start') conn.send({type: 'ready_start', userId: userId});
+                    if(d.type === 'lobby_update') document.getElementById('player-lobby-list').innerHTML = d.names.map(name => `<div class="lobby-row"><span>${name}</span><span style="color:#2ecc71;">Joined</span></div>`).join('');
                     if(d.type==='gamestart') { 
                         showScreen('screen-player'); 
                         document.getElementById('my-display-name').innerText = n;
                         Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
                         toast("Game Started!");
                     }
-                    if(d.type==='hand') { addRack(d.tiles); }
+                    if(d.type==='hand') addRack(d.tiles);
                     if(d.type==='return') { addRack([d.tile]); toast("Tile returned"); }
                     if(d.type==='toast') toast(d.msg);
                     if(d.type==='turn_update') updateTurnUI(d.myTurn, d.activePlayer);
@@ -857,14 +773,9 @@
             const btn = document.getElementById('btn-play');
             const hudStatus = document.getElementById('status-msg');
             if(myTurn) {
-                btn.disabled = false;
-                hudStatus.innerText = "YOUR TURN";
-                hudStatus.classList.add('active');
-                if(!document.hidden) toast("It's your turn!");
+                btn.disabled = false; hudStatus.innerText = "YOUR TURN"; hudStatus.classList.add('active'); if(!document.hidden) toast("It's your turn!");
             } else {
-                btn.disabled = true;
-                hudStatus.innerText = `Turn: ${activeName}`;
-                hudStatus.classList.remove('active');
+                btn.disabled = true; hudStatus.innerText = `Turn: ${activeName}`; hudStatus.classList.remove('active');
             }
         }
 
@@ -884,77 +795,71 @@
             document.addEventListener('pointermove', onDragMove); document.addEventListener('pointerup', onDragEnd);
         }
         function onDragMove(e) { e.preventDefault(); updateClonePos(e.clientX, e.clientY); }
+        
         function onDragEnd(e) {
             document.removeEventListener('pointermove', onDragMove); document.removeEventListener('pointerup', onDragEnd);
             
-            // CLEANUP FIRST: Fix floating tile issue
             if(clone) { clone.remove(); clone=null; }
-            if(dragEl) dragEl.removeAttribute('style');
-
+            
             const centerX = e.clientX; const centerY = e.clientY;
+            
+            // HACK: Hide dragEl briefly so elementFromPoint sees what's underneath
+            if(dragEl) dragEl.style.display = 'none';
             const el = document.elementFromPoint(centerX, centerY);
+            if(dragEl) dragEl.style.display = 'flex'; // Restore for visual if not removed
             
             if(el) {
                 const cell = el.closest('.cell');
                 const ret = el.closest('.return-zone');
                 
-                // RETURN TO RACK (DELETE FROM INBOX)
-                if(ret) { 
-                    // Important: use dragEl (the original), remove it from DOM
+                if(ret && dragEl) { 
                     returnTile(dragEl.dataset.letter, dragEl.dataset.owner); 
-                    dragEl.remove(); 
-                    
-                    // Remove from hostInbox memory array
+                    // Remove from hostInbox array
                     const idx = hostInbox.findIndex(t => t.letter === dragEl.dataset.letter && t.owner === dragEl.dataset.owner);
                     if(idx > -1) hostInbox.splice(idx, 1);
+                    
+                    dragEl.remove(); 
                     saveHostState(peer.id);
                 }
-                else if(cell) {
+                else if(cell && dragEl) {
                     const existing = cell.querySelector('.tile');
                     if(!existing) {
-                        cell.appendChild(dragEl); // Moves it from inbox to board
-                        // Remove from hostInbox array if it was there
+                        cell.appendChild(dragEl);
                         const idx = hostInbox.findIndex(t => t.letter === dragEl.dataset.letter && t.owner === dragEl.dataset.owner);
                         if(idx > -1) hostInbox.splice(idx, 1);
-                        
                         if(dragEl.dataset.letter==='_') { pendingBlankTile=dragEl; document.getElementById('blank-overlay').style.display="flex"; }
                     } else {
                         if(existing.dataset.locked!=="true") {
-                            // Swap
                             existing.remove();
                             if(existing.dataset.isBlank==="true") { existing.dataset.letter='_'; existing.innerHTML=''; existing.classList.remove('is-blank-assigned'); delete existing.dataset.isBlank; }
-                            
                             document.getElementById('host-inbox').appendChild(existing);
-                            // Add existing back to hostInbox array
                             hostInbox.push({letter: existing.dataset.letter, owner: existing.dataset.owner});
                             
                             cell.appendChild(dragEl);
-                            // Remove dragEl from hostInbox
                             const idx = hostInbox.findIndex(t => t.letter === dragEl.dataset.letter && t.owner === dragEl.dataset.owner);
                             if(idx > -1) hostInbox.splice(idx, 1);
-
+                            
                             if(dragEl.dataset.letter==='_') { pendingBlankTile=dragEl; document.getElementById('blank-overlay').style.display="flex"; }
-                        } else {
-                            // Locked: Cancel drag (it snaps back because dragEl is still parented to inbox/board)
                         }
                     }
-                } else { 
-                    // Dropped in void? Return to inbox visual
-                    if(!dragEl.parentElement || dragEl.parentElement.id !== 'host-inbox') {
+                } else if(dragEl) {
+                    // Dropped in invalid area, return to inbox visually if not already there
+                    if(!dragEl.closest('#host-inbox') && !dragEl.closest('.cell')) {
                         document.getElementById('host-inbox').appendChild(dragEl);
-                        // Add to hostInbox array if not present (e.g. from board back to inbox)
                         if(!hostInbox.some(t => t.letter === dragEl.dataset.letter && t.owner === dragEl.dataset.owner)) {
                              hostInbox.push({letter: dragEl.dataset.letter, owner: dragEl.dataset.owner});
                         }
                     }
                 }
-            } else { 
-                // Dropped outside window bounds
+            } else if(dragEl) {
+                // Outside window
                 document.getElementById('host-inbox').appendChild(dragEl);
             }
-            dragEl=null; updateScorePill();
-            saveHostState(peer.id); // Save any moves
+            
+            if(dragEl) dragEl.removeAttribute('style');
+            dragEl=null; updateScorePill(); saveHostState(peer.id);
         }
+        
         function updateClonePos(x,y){ if(clone){ clone.style.left=(x-27.5)+'px'; clone.style.top=(y-27.5)+'px'; } }
 
         function assignBlank(l) {
@@ -972,11 +877,9 @@
             currentTurnPoints = calculateComplexScore(newTiles);
             pill.innerText = `${currentTurnPoints} pts`; pill.classList.add('visible');
             newTiles.sort((a,b) => (parseInt(a.parentElement.dataset.r)-parseInt(b.parentElement.dataset.r)) || (parseInt(a.parentElement.dataset.c)-parseInt(b.parentElement.dataset.c)));
-            
             const lastTile = newTiles[newTiles.length-1];
             const rect = lastTile.getBoundingClientRect();
-            let top = rect.bottom + 10;
-            let left = rect.right + 10;
+            let top = rect.bottom + 10; let left = rect.right + 10;
             const pW = pill.offsetWidth || 100; const pH = pill.offsetHeight || 40; const pad = 10;
             if (left + pW + pad > window.innerWidth) left = window.innerWidth - pW - pad;
             if (top + pH + pad > window.innerHeight) top = rect.top - pH - pad;
@@ -1017,28 +920,17 @@
             turnIndex = (turnIndex + 1) % players.length;
             notifyTurn();
             
-            // Auto-return leftovers in inbox
             const inbox = document.getElementById('host-inbox');
             while(inbox.firstChild) { 
                 returnTile(inbox.firstChild.dataset.letter, inbox.firstChild.dataset.owner); 
                 inbox.firstChild.remove(); 
             }
-            hostInbox = []; // Clear inbox array
+            hostInbox = []; 
             saveHostState(peer.id);
         }
 
-        function promptLeaveGame() { 
-            showConfirm("Leave Room?", "You will exit this session.", () => {
-                if(currentSessionCode) deleteSession(currentSessionCode);
-                location.reload();
-            }); 
-        }
-        function promptEndGame() { 
-            showConfirm("End Game?", "This will delete all data for this room.", () => {
-                localStorage.removeItem(STORAGE_HOST_DATA);
-                location.reload();
-            }); 
-        }
+        function promptLeaveGame() { showConfirm("Leave Room?", "You will exit this session.", () => { if(currentSessionCode) deleteSession(currentSessionCode); location.reload(); }); }
+        function promptEndGame() { showConfirm("End Game?", "This will delete all data for this room.", () => { localStorage.removeItem(STORAGE_HOST_DATA); location.reload(); }); }
 
         function playSelected() {
             if(!myTurn) { toast("Not your turn!"); return; }
@@ -1078,7 +970,7 @@
             if(l==='_')t.innerHTML='';else t.innerHTML=`${l}<span class="score">${SCORES[l]}</span>`;
             t.addEventListener('pointerdown',onDragStart);
             document.getElementById('host-inbox').appendChild(t);
-            hostInbox.push({letter:l, owner:owner}); // Add to array for persistence
+            hostInbox.push({letter:l, owner:owner});
         }
         function renderBoard(){const b=document.getElementById('board-grid');b.innerHTML='';for(let r=0;r<15;r++)for(let c=0;c<15;c++){const d=document.createElement('div');d.className='cell';d.dataset.r=r;d.dataset.c=c;const t=LAYOUT[r][c];if(t===1){d.classList.add('tw');d.innerText='TW'}if(t===2){d.classList.add('dw');d.innerText='DW'}if(t===3){d.classList.add('tl');d.innerText='TL'}if(t===4){d.classList.add('dl');d.innerText='DL'}if(t===5){d.classList.add('star');d.innerHTML='★'}b.appendChild(d);}}
         function getGrid(){let g=[];document.querySelectorAll('.cell').forEach(c=>{if(!g[c.dataset.r])g[c.dataset.r]=[];g[c.dataset.r][c.dataset.c]=c.querySelector('.tile')?.dataset.letter||null;});return g;}
