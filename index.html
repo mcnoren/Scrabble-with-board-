@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Host Persistence</title>
+    <title>Scrabble Pro - Strict Handshake</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -299,6 +299,7 @@
         let currentTurnPoints = 0, pendingBlankTile = null, selectedTilesOrder = [];
         let currentSessionCode = null; 
         let heartbeatInterval = null;
+        let startTimeout = null;
         
         // PERSISTENCE KEYS
         const STORAGE_HOST_DATA = 'scrabble_host_state';
@@ -425,6 +426,7 @@
         function initHost(existingId = null, isResume = false) {
             if(peer) peer.destroy();
             if(heartbeatInterval) clearInterval(heartbeatInterval);
+            if(startTimeout) clearTimeout(startTimeout);
             
             let savedState = null;
             if(isResume) {
@@ -443,6 +445,7 @@
                 document.getElementById('host-status-text').innerText = "Status: Ready";
                 
                 if(savedState) {
+                    // RESTORE
                     players = savedState.players || [];
                     bag = savedState.bag;
                     turnIndex = savedState.turnIndex;
@@ -453,6 +456,7 @@
                     updateHostUI();
                     toast("Game Restored");
                 } else {
+                    // NEW GAME
                     initBag(); 
                     renderBoard(); 
                     players=[];
@@ -500,8 +504,10 @@
                 const btnStart = document.getElementById('btn-start-game');
                 if(btnStart && document.getElementById('screen-lobby').classList.contains('active')) {
                     const anyOffline = players.some(p => p.isOffline);
-                    btnStart.disabled = players.length === 0 || anyOffline;
-                    btnStart.innerText = anyOffline ? "WAITING FOR PLAYERS..." : "START GAME";
+                    if(btnStart.innerText !== "VERIFYING...") {
+                        btnStart.disabled = players.length === 0 || anyOffline;
+                        btnStart.innerText = anyOffline ? "WAITING FOR PLAYERS..." : "START GAME";
+                    }
                 }
 
             }, 5000); // Ping every 5s
@@ -590,6 +596,19 @@
                 return;
             }
 
+            // START HANDSHAKE RESPONSE
+            if(data.type === 'ready_start') {
+                const p = players.find(x => x.userId === data.userId);
+                if(p) {
+                    p.isReady = true;
+                    if(players.every(pl => pl.isReady)) {
+                        clearTimeout(startTimeout);
+                        finalizeGameStart();
+                    }
+                }
+                return;
+            }
+
             if(data.type === 'play') {
                 const p = players[turnIndex];
                 if(!p || (p.userId !== players.find(x=>x.conn===c)?.userId)) { 
@@ -626,10 +645,28 @@
         }
 
         function hostStartGame() {
-            // Constraint check done in heartbeat loop, but double check here
             if(players.length === 0) { showModal("Wait", "Need players to start."); return; }
             if(players.some(p => p.isOffline)) { showModal("Wait", "All players must be connected."); return; }
 
+            // START HANDSHAKE PROCESS
+            const btn = document.getElementById('btn-start-game');
+            btn.disabled = true;
+            btn.innerText = "VERIFYING...";
+
+            players.forEach(p => p.isReady = false);
+            players.forEach(p => {
+                if(p.conn && p.conn.open) p.conn.send({type: 'prepare_start'});
+            });
+
+            startTimeout = setTimeout(() => {
+                const missing = players.filter(p => !p.isReady).map(p => p.name).join(', ');
+                showModal("Error", `No response from: ${missing}`);
+                btn.disabled = false;
+                btn.innerText = "START GAME";
+            }, 5000); 
+        }
+
+        function finalizeGameStart() {
             showScreen('screen-host');
             players.forEach((p, i) => { 
                 deal(p.conn, 7, i); 
@@ -666,7 +703,6 @@
             peer.on('open', () => {
                 conn = peer.connect(c);
                 conn.on('open', () => {
-                    // Always try handshake/join logic
                     conn.send({type:'join', name:n, userId: userId});
                 });
                 
@@ -691,6 +727,10 @@
 
                     if(d.type === 'ping') {
                         conn.send({type: 'pong', userId: userId});
+                    }
+
+                    if(d.type === 'prepare_start') {
+                        conn.send({type: 'ready_start', userId: userId});
                     }
 
                     if(d.type === 'lobby_update') {
