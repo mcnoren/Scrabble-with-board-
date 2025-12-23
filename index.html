@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Host Master</title>
+    <title>Scrabble Pro - Fixed Persistence</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -56,14 +56,14 @@
         .btn-danger { background: var(--danger); color: white; }
         .btn-sm { padding: 8px 15px; font-size: 0.85rem; width: auto; margin: 0; }
 
-        /* SAVED SESSIONS LIST */
-        .session-list { margin-top: 20px; width: 300px; max-height: 200px; overflow-y: auto; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid #444; }
+        /* SESSION LISTS */
+        .session-list { margin-top: 10px; width: 320px; max-height: 250px; overflow-y: auto; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid #444; }
         .session-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #444; font-size: 0.9rem; text-align: left; }
         .session-item:last-child { border-bottom: none; }
-        .session-info { display: flex; flex-direction: column; }
-        .session-code { font-weight: bold; color: var(--accent); letter-spacing: 1px; }
-        .session-name { color: #bdc3c7; font-size: 0.8rem; }
-
+        .session-info { display: flex; flex-direction: column; gap: 2px; }
+        .session-code { font-weight: bold; color: var(--accent); letter-spacing: 1px; font-size: 1.1rem; }
+        .session-meta { color: #95a5a6; font-size: 0.75rem; }
+        
         /* HOST LAYOUT */
         #screen-host { flex-direction: row; overflow: hidden; }
         .sidebar { 
@@ -207,12 +207,11 @@
             <button onclick="initHost()" style="width:280px; padding:20px; font-size:1.3rem;">Host New Game</button>
             <button onclick="showJoinScreen()" class="btn-secondary" style="width:280px; padding:20px; font-size:1.3rem;">Join New Game</button>
             
-            <div id="host-resume-area" style="display:none; margin-top:5px; width:280px;">
-                <button onclick="resumeHostSession()" class="btn-warning" style="width:100%;">Resume Host</button>
-            </div>
+            <div id="host-resume-area" style="display:none; width:320px;">
+                </div>
 
             <div id="sessions-area" style="display:none; margin-top:10px;">
-                <div style="font-size:0.8rem; text-transform:uppercase; color:#7f8c8d; letter-spacing:1px; margin-bottom:5px;">Saved Sessions</div>
+                <div style="font-size:0.8rem; text-transform:uppercase; color:#7f8c8d; letter-spacing:1px; margin-bottom:5px;">Saved Player Sessions</div>
                 <div id="session-list" class="session-list"></div>
             </div>
         </div>
@@ -296,7 +295,7 @@
 
         let peer, conn, dictionary = new Set(), bag=[], players=[], turnIndex=0, myTurn=false, isFirstTurn=true;
         let currentTurnPoints = 0, pendingBlankTile = null, selectedTilesOrder = [];
-        let currentSessionCode = null;
+        let currentSessionCode = null; 
         
         // PERSISTENCE KEYS
         const STORAGE_HOST_DATA = 'scrabble_host_state';
@@ -323,16 +322,43 @@
 
         // --- SESSION UI & LOGIC ---
         function renderHomeScreen() {
-            const hostData = localStorage.getItem(STORAGE_HOST_DATA);
-            if(hostData) document.getElementById('host-resume-area').style.display = 'block';
-            else document.getElementById('host-resume-area').style.display = 'none';
+            const hostArea = document.getElementById('host-resume-area');
+            const sessionList = document.getElementById('session-list');
+            const sessionArea = document.getElementById('sessions-area');
 
+            // HOST RESUME UI
+            const hostData = JSON.parse(localStorage.getItem(STORAGE_HOST_DATA));
+            if(hostData && hostData.roomCode) {
+                const created = new Date(hostData.createdAt || Date.now()).toLocaleDateString();
+                const lastSaved = new Date(hostData.lastSavedAt || Date.now()).toLocaleTimeString();
+                
+                hostArea.innerHTML = `
+                    <div style="font-size:0.8rem; text-transform:uppercase; color:#7f8c8d; letter-spacing:1px; margin-bottom:5px; text-align:left;">Host Session</div>
+                    <div class="session-list" style="width:100%; height:auto;">
+                        <div class="session-item">
+                            <div class="session-info">
+                                <span class="session-code">Room ${hostData.roomCode}</span>
+                                <span class="session-meta">Created: ${created}</span>
+                                <span class="session-meta">Saved: ${lastSaved}</span>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <button class="btn-warning btn-sm" onclick="initHost('${hostData.roomCode}', true)">Resume</button>
+                                <button class="btn-danger btn-sm" onclick="deleteHostSession()">✕</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                hostArea.style.display = 'block';
+            } else {
+                hostArea.style.display = 'none';
+            }
+
+            // PLAYER SESSIONS UI
             const sessions = JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]');
-            const list = document.getElementById('session-list');
-            list.innerHTML = '';
+            sessionList.innerHTML = '';
             
             if(sessions.length > 0) {
-                document.getElementById('sessions-area').style.display = 'block';
+                sessionArea.style.display = 'block';
                 sessions.forEach(s => {
                     const el = document.createElement('div');
                     el.className = 'session-item';
@@ -346,10 +372,10 @@
                             <button class="btn-danger btn-sm" onclick="deleteSession('${s.roomCode}')">✕</button>
                         </div>
                     `;
-                    list.appendChild(el);
+                    sessionList.appendChild(el);
                 });
             } else {
-                document.getElementById('sessions-area').style.display = 'none';
+                sessionArea.style.display = 'none';
             }
         }
 
@@ -360,6 +386,7 @@
             else sessions.push({ roomCode, name, userId });
             localStorage.setItem(STORAGE_SESSIONS, JSON.stringify(sessions));
             currentSessionCode = roomCode;
+            renderHomeScreen();
         }
 
         function deleteSession(roomCode) {
@@ -367,6 +394,13 @@
             sessions = sessions.filter(s => s.roomCode !== roomCode);
             localStorage.setItem(STORAGE_SESSIONS, JSON.stringify(sessions));
             renderHomeScreen();
+        }
+
+        function deleteHostSession() {
+            if(confirm("Delete saved Host game?")) {
+                localStorage.removeItem(STORAGE_HOST_DATA);
+                renderHomeScreen();
+            }
         }
 
         // --- HELPER UI ---
@@ -385,8 +419,16 @@
         }
 
         // --- HOST LOGIC ---
-        function initHost(existingId = null, savedState = null) {
+        function initHost(existingId = null, isResume = false) {
             if(peer) peer.destroy();
+            
+            // If resuming, load data first to get ID
+            let savedState = null;
+            if(isResume) {
+                savedState = JSON.parse(localStorage.getItem(STORAGE_HOST_DATA));
+                if(savedState && savedState.roomCode) existingId = savedState.roomCode;
+            }
+
             const id = existingId || genId();
             peer = new Peer(id);
             
@@ -397,16 +439,18 @@
                 document.getElementById('host-status-text').innerText = "Status: Ready";
                 
                 if(savedState) {
-                    players = savedState.players; 
+                    // RESTORE
+                    players = savedState.players || [];
                     bag = savedState.bag;
                     turnIndex = savedState.turnIndex;
                     isFirstTurn = savedState.isFirstTurn;
-                    renderBoard(); // Create empty grid
-                    restoreBoardTiles(savedState.grid); // Fill it
+                    renderBoard(); // Clears board
+                    restoreBoardTiles(savedState.grid); // Places tiles
                     showScreen('screen-host');
                     updateHostUI();
                     toast("Game Restored");
                 } else {
+                    // NEW GAME
                     initBag(); 
                     renderBoard(); 
                     players=[];
@@ -416,41 +460,57 @@
 
             peer.on('connection', c => { 
                 c.on('data', d => handleHostData(c, d)); 
-                c.on('close', () => { /* Disconnect */ });
             });
+            
+            // RETRY LOGIC FOR ID COLLISION
             peer.on('error', e => {
                 if(e.type === 'unavailable-id') {
-                    if(existingId) alert("Host session active elsewhere. Clear data to reset.");
+                    if(existingId) {
+                        console.log("ID Unavailable, retrying in 1s...");
+                        setTimeout(() => initHost(existingId, isResume), 1000);
+                    }
+                } else {
+                    console.error(e);
                 }
             });
         }
 
-        function resumeHostSession() {
-            const data = JSON.parse(localStorage.getItem(STORAGE_HOST_DATA));
-            if(data && data.roomCode) initHost(data.roomCode, data);
-        }
-
         function saveHostState(id) {
             const grid = getGrid();
-            // Store EVERYTHING
-            const state = { roomCode: id, players, bag, turnIndex, isFirstTurn, grid };
+            const hostData = JSON.parse(localStorage.getItem(STORAGE_HOST_DATA) || '{}');
+            const createdAt = hostData.createdAt || Date.now();
+            
+            const state = { 
+                roomCode: id, 
+                players, 
+                bag, 
+                turnIndex, 
+                isFirstTurn, 
+                grid,
+                createdAt: createdAt,
+                lastSavedAt: Date.now()
+            };
             localStorage.setItem(STORAGE_HOST_DATA, JSON.stringify(state));
         }
 
-        function restoreBoardTiles(grid) {
-            if(!grid) return;
+        // Updated to force tiles into 'locked' state visually and logically
+        function restoreBoardTiles(savedGrid) {
+            if(!savedGrid) return;
             for(let r=0; r<15; r++) {
                 for(let c=0; c<15; c++) {
-                    let val = grid[r][c];
-                    if(val) {
+                    const letter = savedGrid[r][c];
+                    if(letter) {
                         const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
                         if(cell) {
-                            const t = document.createElement('div');
-                            t.className = 'tile';
-                            t.dataset.letter = val;
-                            t.dataset.locked = "true"; // Important: lock restored tiles
-                            if(val === '_') { t.innerHTML = ''; t.dataset.letter = '_'; }
-                            else t.innerHTML = `${val}<span class="score">${SCORES[val]}</span>`;
+                            cell.innerHTML = ''; // Clear any existing
+                            const t = document.createElement('div'); 
+                            t.className = 'tile'; 
+                            t.dataset.letter = letter; 
+                            t.dataset.locked = "true"; // VITAL: Ensure it's locked
+                            
+                            if(letter === '_') { t.innerHTML=''; t.dataset.letter='_'; } 
+                            else t.innerHTML = `${letter}<span class="score">${SCORES[letter]}</span>`;
+                            
                             cell.appendChild(t);
                         }
                     }
@@ -459,37 +519,27 @@
         }
 
         function handleHostData(c, data) {
-            // Player Identifying by userId
             if(data.type === 'join') {
                 const incomingId = data.userId;
                 let p = players.find(x => x.userId === incomingId);
                 
                 if(!p) {
-                    // New Player
-                    p = { 
-                        userId: incomingId, 
-                        name: data.name, 
-                        score: 0, 
-                        lastScore: 0, 
-                        tiles: [], // HOST stores tiles
-                        conn: c 
-                    };
+                    p = { userId: incomingId, name: data.name, score: 0, lastScore: 0, tiles: [], conn: c };
                     players.push(p);
                     toast(`${data.name} joined`);
                 } else {
-                    // Reconnecting Player
-                    p.conn = c;
+                    p.conn = c; // Update connection reference
                     toast(`${p.name} reconnected`);
                 }
 
-                // Send ACK (contains tiles if reconnection)
+                // Send ACK
                 c.send({
                     type: 'ack_join',
                     success: true,
                     name: p.name,
                     activePlayer: players[turnIndex] ? players[turnIndex].name : null,
                     myTurn: (players.indexOf(p) === turnIndex),
-                    tiles: p.tiles, // Sync tiles from Host Memory to Player Device
+                    tiles: p.tiles,
                     isGameRunning: document.getElementById('screen-host').classList.contains('active')
                 });
 
@@ -497,26 +547,27 @@
                     broadcastLobby();
                     updateLobbyUI();
                 }
-                
                 saveHostState(peer.id);
-                return;
             }
 
             if(data.type === 'play') {
                 const p = players[turnIndex];
-                if(!p || (c.peer !== p.conn.peer)) { c.send({type:'toast', msg:"Not your turn!"}); return; }
+                if(!p || (p.userId !== players.find(x=>x.conn===c)?.userId)) { 
+                    c.send({type:'toast', msg:"Not your turn!"}); return; 
+                }
                 
                 data.tiles.forEach(l => {
                     const idx = p.tiles.indexOf(l);
                     if(idx > -1) p.tiles.splice(idx, 1);
                     createHostTile(l, p.userId);
                 });
-
                 saveHostState(peer.id);
             }
             
             if(data.type === 'pass') {
-                if(c.peer !== players[turnIndex].conn.peer) return;
+                const p = players.find(x=>x.conn===c);
+                if(!p || players[turnIndex].userId !== p.userId) return;
+                
                 players[turnIndex].lastScore = 0;
                 turnIndex = (turnIndex + 1) % players.length;
                 updateHostUI();
@@ -526,31 +577,21 @@
         }
 
         function deal(c, n, targetPlayerIndex) {
-            let p = null;
-            if(targetPlayerIndex !== undefined) p = players[targetPlayerIndex];
-            else p = players.find(pl => pl.conn === c);
-            
+            let p = players[targetPlayerIndex];
             if(!p) return;
-
             let newTiles = [];
             for(let i=0; i<n; i++) if(bag.length) newTiles.push(bag.pop());
-            
             p.tiles.push(...newTiles);
-            
-            if(p.conn && p.conn.open) {
-                p.conn.send({type:'hand', tiles: newTiles});
-            }
+            if(p.conn && p.conn.open) p.conn.send({type:'hand', tiles: newTiles});
         }
 
         function hostStartGame() {
             if(players.length === 0) { showModal("Wait", "Need players to start."); return; }
             showScreen('screen-host');
-            
             players.forEach((p, i) => { 
                 deal(p.conn, 7, i); 
                 if(p.conn && p.conn.open) p.conn.send({type:'gamestart'});
             });
-            
             notifyTurn();
             saveHostState(peer.id);
         }
@@ -564,7 +605,6 @@
             const btn = document.getElementById('btn-join');
             if(btn) { btn.disabled = true; btn.innerText = "Connecting..."; }
 
-            // Use provided ID (resume) or generate new
             const userId = idOverride || generateUUID();
 
             peer = new Peer();
@@ -577,21 +617,17 @@
                 conn.on('data', d => {
                     if(d.type === 'ack_join') {
                         if(d.success === false) { alert(d.msg); return; }
-
-                        // Save session immediately upon success
-                        saveSession(c, n, userId);
+                        
+                        saveSession(c, n, userId); // Save session on success
 
                         if(d.isGameRunning) {
                             showScreen('screen-player');
                             document.getElementById('my-display-name').innerText = n;
-                            
-                            // Restore Tiles from Host
                             document.getElementById('my-rack').innerHTML = '';
                             if(d.tiles) addRack(d.tiles);
                             Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
-                            
                             updateTurnUI(d.myTurn, d.activePlayer);
-                            toast("Reconnected to Game");
+                            toast("Reconnected");
                         } else {
                             showScreen('screen-player-lobby');
                         }
@@ -610,12 +646,6 @@
                     if(d.type==='return') { addRack([d.tile]); toast("Tile returned"); }
                     if(d.type==='toast') toast(d.msg);
                     if(d.type==='turn_update') updateTurnUI(d.myTurn, d.activePlayer);
-                });
-                
-                conn.on('close', () => {
-                    if(document.getElementById('screen-player').classList.contains('active')) {
-                        toast("Disconnected.");
-                    }
                 });
             });
         }
@@ -636,7 +666,7 @@
             }
         }
 
-        // --- GAMEPLAY & DRAG ---
+        // --- GAMEPLAY ---
         let dragEl=null, clone=null;
         function onDragStart(e) {
             if(e.currentTarget.dataset.locked==="true") return;
@@ -682,7 +712,6 @@
         }
         function updateClonePos(x,y){ if(clone){ clone.style.left=(x-27.5)+'px'; clone.style.top=(y-27.5)+'px'; } }
 
-        // --- SHARED UTILS ---
         function assignBlank(l) {
             if(pendingBlankTile) {
                 pendingBlankTile.innerText=l; pendingBlankTile.dataset.letter=l; pendingBlankTile.dataset.isBlank="true"; pendingBlankTile.classList.add('is-blank-assigned');
@@ -699,26 +728,20 @@
             pill.innerText = `${currentTurnPoints} pts`; pill.classList.add('visible');
             newTiles.sort((a,b) => (parseInt(a.parentElement.dataset.r)-parseInt(b.parentElement.dataset.r)) || (parseInt(a.parentElement.dataset.c)-parseInt(b.parentElement.dataset.c)));
             
-            // --- PILL POSITION FIX (CLAMPED) ---
+            // PILL BOUNDS CHECK
             const lastTile = newTiles[newTiles.length-1];
             const rect = lastTile.getBoundingClientRect();
-            
             let top = rect.bottom + 10;
             let left = rect.right + 10;
-            
             const pW = pill.offsetWidth || 100; 
             const pH = pill.offsetHeight || 40;
             const pad = 10;
-
             if (left + pW + pad > window.innerWidth) left = window.innerWidth - pW - pad;
             if (top + pH + pad > window.innerHeight) top = rect.top - pH - pad;
             if (left < pad) left = pad;
-
-            pill.style.top = top + 'px'; 
-            pill.style.left = left + 'px';
+            pill.style.top = top + 'px'; pill.style.left = left + 'px';
         }
 
-        // --- ACTIONS ---
         function confirmTurn() {
             if(!document.getElementById('score-pill').classList.contains('visible')) { showModal("Invalid", "Invalid placement."); return; }
             if(isFirstTurn) {
@@ -790,16 +813,11 @@
             });
         }
         
-        // STANDARD UTILS
         function genId(){const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let r="";for(let i=0;i<4;i++)r+=c.charAt(Math.floor(Math.random()*c.length));return r;}
         function initBag(){bag=[];for(let l in BAG_INIT)for(let i=0;i<BAG_INIT[l];i++)bag.push(l);for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}}
         function returnTile(l,oid){
             const p = players.find(x => x.userId === oid);
-            if(p) {
-                p.tiles.push(l);
-                if(p.conn && p.conn.open) p.conn.send({type:'return', tile:l});
-                saveHostState(peer.id);
-            }
+            if(p) { p.tiles.push(l); if(p.conn && p.conn.open) p.conn.send({type:'return', tile:l}); saveHostState(peer.id); }
             updateScorePill();
         }
         function recallTiles(){const inbox=document.getElementById('host-inbox');document.querySelectorAll('.cell .tile[data-new="true"]').forEach(t=>inbox.appendChild(t));updateScorePill();}
