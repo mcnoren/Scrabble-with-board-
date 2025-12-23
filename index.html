@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Inbox Fix</title>
+    <title>Scrabble Pro - Inbox Clear Fix</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -528,7 +528,6 @@
                 const p = players[turnIndex];
                 if(!p || (p.userId !== players.find(x=>x.conn===c)?.userId)) { c.send({type:'toast', msg:"Not your turn!"}); return; }
                 
-                // HOST AUTHORITY VALIDATION
                 data.tiles.forEach(l => {
                     const idx = p.tiles.indexOf(l);
                     if(idx > -1) {
@@ -685,7 +684,6 @@
                 hostInbox.splice(idx, 1);
             }
             returnTile(tile.dataset.letter, tile.dataset.owner);
-            
             tile.remove(); 
             renderInbox(); 
         }
@@ -810,7 +808,7 @@
             });
             
             if(returnedIds.size > 0) toast(`Returned ${returnedIds.size} tiles`);
-            renderInbox(); // Wipes DOM based on empty hostInbox
+            document.getElementById('host-inbox').innerHTML = ''; // Force Clean
 
             isFirstTurn = false;
             turnIndex = (turnIndex + 1) % players.length;
@@ -847,7 +845,9 @@
         function returnTile(l,oid){
             const p = players.find(x => x.userId === oid);
             if(p) { 
+                // HOST AUTHORITY: Add to player's memory hand
                 p.tiles.push(l); 
+                // Send to player device
                 if(p.conn && p.conn.open) p.conn.send({type:'return', tile:l}); 
                 saveHostState(peer.id); 
             }
