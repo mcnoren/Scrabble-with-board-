@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Multi-Session</title>
+    <title>Scrabble Pro - Host Master</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -115,10 +115,10 @@
             font-weight: 800; font-size: 1.1rem; 
             box-shadow: 0 5px 15px rgba(0,0,0,0.4); 
             pointer-events: none; z-index: 2000; 
-            transition: opacity 0.2s; /* No transform transition for snappier boundary fix */
+            transition: opacity 0.2s; 
             opacity: 0; transform: scale(0.5); 
             border: 2px solid rgba(255,255,255,0.8);
-            white-space: nowrap; /* Prevent squishing */
+            white-space: nowrap; 
         }
         #score-pill.visible { opacity: 1; transform: scale(1); }
         .flying-score { position: fixed; z-index: 99999; background: #f1c40f; color: #000; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 1.5rem; box-shadow: 0 0 20px #f1c40f; transition: all 1s ease-in-out; pointer-events: none; }
@@ -296,7 +296,7 @@
 
         let peer, conn, dictionary = new Set(), bag=[], players=[], turnIndex=0, myTurn=false, isFirstTurn=true;
         let currentTurnPoints = 0, pendingBlankTile = null, selectedTilesOrder = [];
-        let currentSessionCode = null; // Track which room we are currently connected to (Player side)
+        let currentSessionCode = null;
         
         // PERSISTENCE KEYS
         const STORAGE_HOST_DATA = 'scrabble_host_state';
@@ -323,11 +323,10 @@
 
         // --- SESSION UI & LOGIC ---
         function renderHomeScreen() {
-            // Check for Host Data
             const hostData = localStorage.getItem(STORAGE_HOST_DATA);
             if(hostData) document.getElementById('host-resume-area').style.display = 'block';
+            else document.getElementById('host-resume-area').style.display = 'none';
 
-            // Check for Player Sessions
             const sessions = JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]');
             const list = document.getElementById('session-list');
             list.innerHTML = '';
@@ -356,13 +355,9 @@
 
         function saveSession(roomCode, name, userId) {
             let sessions = JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]');
-            // Update or add
             const idx = sessions.findIndex(s => s.roomCode === roomCode);
-            if(idx >= 0) {
-                sessions[idx] = { roomCode, name, userId };
-            } else {
-                sessions.push({ roomCode, name, userId });
-            }
+            if(idx >= 0) sessions[idx] = { roomCode, name, userId };
+            else sessions.push({ roomCode, name, userId });
             localStorage.setItem(STORAGE_SESSIONS, JSON.stringify(sessions));
             currentSessionCode = roomCode;
         }
@@ -406,8 +401,8 @@
                     bag = savedState.bag;
                     turnIndex = savedState.turnIndex;
                     isFirstTurn = savedState.isFirstTurn;
-                    renderBoard();
-                    restoreBoardTiles(savedState.grid);
+                    renderBoard(); // Create empty grid
+                    restoreBoardTiles(savedState.grid); // Fill it
                     showScreen('screen-host');
                     updateHostUI();
                     toast("Game Restored");
@@ -421,7 +416,7 @@
 
             peer.on('connection', c => { 
                 c.on('data', d => handleHostData(c, d)); 
-                c.on('close', () => { /* Handle disconnect silently */ });
+                c.on('close', () => { /* Disconnect */ });
             });
             peer.on('error', e => {
                 if(e.type === 'unavailable-id') {
@@ -437,23 +432,27 @@
 
         function saveHostState(id) {
             const grid = getGrid();
-            // Save everything including player tiles
+            // Store EVERYTHING
             const state = { roomCode: id, players, bag, turnIndex, isFirstTurn, grid };
             localStorage.setItem(STORAGE_HOST_DATA, JSON.stringify(state));
         }
 
-        function restoreBoardTiles(savedGrid) {
-            if(!savedGrid) return;
+        function restoreBoardTiles(grid) {
+            if(!grid) return;
             for(let r=0; r<15; r++) {
                 for(let c=0; c<15; c++) {
-                    const letter = savedGrid[r][c];
-                    if(letter) {
+                    let val = grid[r][c];
+                    if(val) {
                         const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-                        const t = document.createElement('div'); 
-                        t.className = 'tile'; t.dataset.letter = letter; t.dataset.locked = "true";
-                        if(letter === '_') { t.innerHTML=''; t.dataset.letter='_'; } 
-                        else t.innerHTML = `${letter}<span class="score">${SCORES[letter]}</span>`;
-                        cell.appendChild(t);
+                        if(cell) {
+                            const t = document.createElement('div');
+                            t.className = 'tile';
+                            t.dataset.letter = val;
+                            t.dataset.locked = "true"; // Important: lock restored tiles
+                            if(val === '_') { t.innerHTML = ''; t.dataset.letter = '_'; }
+                            else t.innerHTML = `${val}<span class="score">${SCORES[val]}</span>`;
+                            cell.appendChild(t);
+                        }
                     }
                 }
             }
@@ -490,7 +489,7 @@
                     name: p.name,
                     activePlayer: players[turnIndex] ? players[turnIndex].name : null,
                     myTurn: (players.indexOf(p) === turnIndex),
-                    tiles: p.tiles, // Send stored tiles
+                    tiles: p.tiles, // Sync tiles from Host Memory to Player Device
                     isGameRunning: document.getElementById('screen-host').classList.contains('active')
                 });
 
@@ -572,7 +571,6 @@
             peer.on('open', () => {
                 conn = peer.connect(c);
                 conn.on('open', () => {
-                    // Send Join Request
                     conn.send({type:'join', name:n, userId: userId});
                 });
                 
@@ -712,15 +710,8 @@
             const pH = pill.offsetHeight || 40;
             const pad = 10;
 
-            // Prevent going off right
-            if (left + pW + pad > window.innerWidth) {
-                left = window.innerWidth - pW - pad;
-            }
-            // Prevent going off bottom
-            if (top + pH + pad > window.innerHeight) {
-                top = rect.top - pH - pad;
-            }
-            // Prevent going off left (unlikely but safe)
+            if (left + pW + pad > window.innerWidth) left = window.innerWidth - pW - pad;
+            if (top + pH + pad > window.innerHeight) top = rect.top - pH - pad;
             if (left < pad) left = pad;
 
             pill.style.top = top + 'px'; 
@@ -738,7 +729,6 @@
             const invalid = words.filter(w => !dictionary.has(w) && dictionary.size > 0);
             if(invalid.length > 0) { showModal("Invalid Word", invalid.join(', ')); return; }
             
-            // SCORE ANIMATION
             const pill = document.getElementById('score-pill');
             const pillRect = pill.getBoundingClientRect();
             pill.classList.remove('visible');
