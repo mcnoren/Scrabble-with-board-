@@ -269,6 +269,7 @@
     </div>
 
     <script>
+        // CONFIG
         const SCORES = {'A':1,'B':3,'C':3,'D':2,'E':1,'F':4,'G':2,'H':4,'I':1,'J':8,'K':5,'L':1,'M':3,'N':1,'O':1,'P':3,'Q':10,'R':1,'S':1,'T':1,'U':1,'V':4,'W':4,'X':8,'Y':4,'Z':10,'_':0};
         const BAG_INIT = {'A':9,'B':2,'C':2,'D':4,'E':12,'F':2,'G':3,'H':2,'I':9,'J':1,'K':1,'L':4,'M':2,'N':6,'O':8,'P':2,'Q':1,'R':6,'S':4,'T':6,'U':4,'V':2,'W':2,'X':1,'Y':2,'Z':1,'_':2};
         const LAYOUT = [[1,0,0,4,0,0,0,1,0,0,0,4,0,0,1],[0,2,0,0,0,3,0,0,0,3,0,0,0,2,0],[0,0,2,0,0,0,4,0,4,0,0,0,2,0,0],[4,0,0,2,0,0,0,4,0,0,0,2,0,0,4],[0,0,0,0,2,0,0,0,0,0,2,0,0,0,0],[0,3,0,0,0,3,0,0,0,3,0,0,0,3,0],[0,0,4,0,0,0,4,0,4,0,0,0,4,0,0],[1,0,0,4,0,0,0,5,0,0,0,4,0,0,1],[0,0,4,0,0,0,4,0,4,0,0,0,4,0,0],[0,3,0,0,0,3,0,0,0,3,0,0,0,3,0],[0,0,0,0,2,0,0,0,0,0,2,0,0,0,0],[4,0,0,2,0,0,0,4,0,0,0,2,0,0,4],[0,0,2,0,0,0,4,0,4,0,0,0,2,0,0],[0,2,0,0,0,3,0,0,0,3,0,0,0,2,0],[1,0,0,4,0,0,0,1,0,0,0,4,0,0,1]];
@@ -471,10 +472,9 @@
             }
         }
 
-        // FULL INBOX RENDER to avoid spacing issues
         function renderInbox() {
             const inbox = document.getElementById('host-inbox');
-            inbox.innerHTML = '';
+            inbox.innerHTML = ''; // Full clear
             hostInbox.forEach(item => {
                 const t = document.createElement('div'); t.className = 'tile'; 
                 t.dataset.letter = item.letter; t.dataset.owner = item.owner; t.dataset.id = item.id; t.dataset.new = "true";
@@ -635,7 +635,7 @@
             }
         }
 
-        // --- GAMEPLAY ---
+        // --- DRAG & DROP LOGIC ---
         let dragEl=null, clone=null;
         function onDragStart(e) {
             if(e.currentTarget.dataset.locked==="true") return;
@@ -656,7 +656,7 @@
             document.removeEventListener('pointermove', onDragMove); document.removeEventListener('pointerup', onDragEnd);
             
             if(clone) { clone.remove(); clone=null; }
-            if(dragEl) dragEl.style.display = 'none';
+            if(dragEl) dragEl.style.display = 'none'; // Hide to check under
             const el = document.elementFromPoint(e.clientX, e.clientY);
             if(dragEl) dragEl.style.display = 'flex';
             
@@ -665,52 +665,74 @@
                 const ret = el.closest('.return-zone');
                 
                 if(ret && dragEl) { 
-                    returnTile(dragEl.dataset.letter, dragEl.dataset.owner); 
-                    hostInbox = hostInbox.filter(t => t.id !== dragEl.dataset.id);
-                    dragEl.remove(); // Remove immediately
-                    renderInbox(); // Re-render to clear spaces
-                    saveHostState(peer.id);
+                    // RETURN TO RACK
+                    handleReturn(dragEl);
                 }
                 else if(cell && dragEl) {
-                    const existing = cell.querySelector('.tile');
-                    if(!existing) {
-                        cell.appendChild(dragEl); // Move
-                        hostInbox = hostInbox.filter(t => t.id !== dragEl.dataset.id);
-                        if(dragEl.dataset.letter==='_') { pendingBlankTile=dragEl; document.getElementById('blank-overlay').style.display="flex"; }
-                    } else {
-                        if(existing.dataset.locked!=="true") {
-                            existing.remove(); // SWAP
-                            if(existing.dataset.isBlank==="true") { existing.dataset.letter='_'; existing.innerHTML=''; existing.classList.remove('is-blank-assigned'); delete existing.dataset.isBlank; }
-                            
-                            hostInbox.push({id: existing.dataset.id, letter: existing.dataset.letter, owner: existing.dataset.owner});
-                            cell.appendChild(dragEl);
-                            hostInbox = hostInbox.filter(t => t.id !== dragEl.dataset.id);
-                            
-                            renderInbox(); // Update visual inbox
-                            if(dragEl.dataset.letter==='_') { pendingBlankTile=dragEl; document.getElementById('blank-overlay').style.display="flex"; }
-                        }
-                    }
+                    // PLACEMENT / SWAP
+                    handleBoardPlacement(dragEl, cell);
                 } else if(dragEl) {
-                    // Invalid drop
-                    if(!dragEl.closest('.cell')) {
-                        if(!hostInbox.some(t => t.id === dragEl.dataset.id)) {
-                             hostInbox.push({id: dragEl.dataset.id, letter: dragEl.dataset.letter, owner: dragEl.dataset.owner});
-                        }
-                        renderInbox();
-                    }
+                    // INBOX DROP (Default)
+                    handleInboxDrop(dragEl);
                 }
             } else if(dragEl) {
-                // Outside window
-                if(!hostInbox.some(t => t.id === dragEl.dataset.id)) {
-                     hostInbox.push({id: dragEl.dataset.id, letter: dragEl.dataset.letter, owner: dragEl.dataset.owner});
-                }
-                renderInbox();
+                // OUTSIDE
+                handleInboxDrop(dragEl);
             }
             
             if(dragEl && dragEl.parentNode) dragEl.removeAttribute('style');
             dragEl=null; updateScorePill(); saveHostState(peer.id);
         }
-        
+
+        // --- ACTION HANDLERS ---
+        function handleReturn(tile) {
+            returnTile(tile.dataset.letter, tile.dataset.owner);
+            // Remove from inbox array explicitly
+            hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id);
+            // Re-render to ensure DOM matches Data
+            renderInbox(); 
+            // If dragging from board, ensure it's removed from there too
+            if(tile.parentElement) tile.remove();
+        }
+
+        function handleBoardPlacement(tile, cell) {
+            const existing = cell.querySelector('.tile');
+            if(!existing) {
+                // Empty cell: Move tile here
+                cell.appendChild(tile);
+                // Remove from Inbox Array
+                hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id);
+                // Trigger blank logic
+                if(tile.dataset.letter==='_') { pendingBlankTile=tile; document.getElementById('blank-overlay').style.display="flex"; }
+            } else {
+                if(existing.dataset.locked!=="true") {
+                    // Swap: Existing goes to inbox, Tile goes to cell
+                    existing.remove();
+                    if(existing.dataset.isBlank==="true") { existing.dataset.letter='_'; existing.innerHTML=''; existing.classList.remove('is-blank-assigned'); delete existing.dataset.isBlank; }
+                    
+                    // Add existing back to Inbox Data
+                    hostInbox.push({id: existing.dataset.id, letter: existing.dataset.letter, owner: existing.dataset.owner});
+                    
+                    cell.appendChild(tile);
+                    // Remove new tile from Inbox Data
+                    hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id);
+                    
+                    renderInbox(); // Update visual inbox
+                    if(tile.dataset.letter==='_') { pendingBlankTile=tile; document.getElementById('blank-overlay').style.display="flex"; }
+                }
+            }
+        }
+
+        function handleInboxDrop(tile) {
+            // Ensure tile is in hostInbox array
+            if(!hostInbox.some(t => t.id === tile.dataset.id)) {
+                hostInbox.push({id: tile.dataset.id, letter: tile.dataset.letter, owner: tile.dataset.owner});
+            }
+            // If it was on board, remove from board DOM (renderInbox handles the append)
+            if(tile.parentElement) tile.remove();
+            renderInbox();
+        }
+
         function updateClonePos(x,y){ if(clone){ clone.style.left=(x-27.5)+'px'; clone.style.top=(y-27.5)+'px'; } }
 
         function assignBlank(l) {
@@ -771,7 +793,7 @@
             turnIndex = (turnIndex + 1) % players.length;
             notifyTurn();
             
-            // Return leftovers from inbox
+            // Auto-return leftovers
             hostInbox.forEach(t => returnTile(t.letter, t.owner));
             hostInbox = []; 
             renderInbox();
