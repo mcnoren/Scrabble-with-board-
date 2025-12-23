@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Host Persistence</title>
+    <title>Scrabble Pro - Multi-Session</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -15,13 +15,12 @@
             --accent: #27ae60;
             --accent-hover: #2ecc71;
             --danger: #c0392b;
+            --warning: #f39c12;
             
-            /* WOOD COLORS */
             --wood-frame: #5d4037;
             --rack-color: #d2b48c; 
             --rack-shadow: #8d6e63;
             
-            /* TILE COLORS */
             --tile-face: #fdf5e6;
             --tile-shadow: #bcaaa4;
             --tile-active: #f1c40f;
@@ -35,7 +34,7 @@
         body { margin: 0; font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
         /* SCREENS */
-        .screen { display: none; width: 100%; height: 100%; position: absolute; top:0; left:0; background: var(--bg); z-index: 10; }
+        .screen { display: none; width: 100%; height: 100%; position: absolute; top:0; left:0; background: var(--bg); z-index: 10; overflow-y: auto; }
         .active { display: flex; z-index: 20; }
         .center-screen { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 
@@ -53,12 +52,20 @@
         button:active { transform: translateY(2px); box-shadow: none; }
         button:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; box-shadow: none; }
         .btn-secondary { background: #7f8c8d; }
-        .btn-warning { background: #f39c12; color: #222; }
+        .btn-warning { background: var(--warning); color: #222; }
         .btn-danger { background: var(--danger); color: white; }
         .btn-sm { padding: 8px 15px; font-size: 0.85rem; width: auto; margin: 0; }
 
+        /* SAVED SESSIONS LIST */
+        .session-list { margin-top: 20px; width: 300px; max-height: 200px; overflow-y: auto; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid #444; }
+        .session-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #444; font-size: 0.9rem; text-align: left; }
+        .session-item:last-child { border-bottom: none; }
+        .session-info { display: flex; flex-direction: column; }
+        .session-code { font-weight: bold; color: var(--accent); letter-spacing: 1px; }
+        .session-name { color: #bdc3c7; font-size: 0.8rem; }
+
         /* HOST LAYOUT */
-        #screen-host { flex-direction: row; }
+        #screen-host { flex-direction: row; overflow: hidden; }
         .sidebar { 
             width: 340px; height: 100%; background: var(--panel); border-right: 1px solid #444; 
             display: flex; flex-direction: column; padding: 20px; z-index: 50; 
@@ -91,7 +98,6 @@
         .tile.is-blank-assigned { color: var(--tile-blank-text); }
         .tile span.score { font-size: 0.55rem; position: absolute; bottom: 2px; right: 2px; font-weight: 600; }
         
-        /* DRAG - Centered */
         .tile.dragging { 
             position: fixed; z-index: 99999; 
             width: 55px !important; height: 55px !important; 
@@ -101,10 +107,7 @@
             margin: 0; transform: none; 
         }
 
-        /* ANIMATIONS & OVERLAYS */
-        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.5); color: #f1c40f; } 100% { transform: scale(1); } }
-        .score-pop { animation: pop 0.4s ease-in-out; }
-        
+        /* SCORE PILL */
         #score-pill { 
             position: fixed; top: 0; left: 0; 
             background: #2980b9; color: white; 
@@ -112,7 +115,7 @@
             font-weight: 800; font-size: 1.1rem; 
             box-shadow: 0 5px 15px rgba(0,0,0,0.4); 
             pointer-events: none; z-index: 2000; 
-            transition: opacity 0.2s, transform 0.2s; /* Removed top/left transition for snap */
+            transition: opacity 0.2s; /* No transform transition for snappier boundary fix */
             opacity: 0; transform: scale(0.5); 
             border: 2px solid rgba(255,255,255,0.8);
             white-space: nowrap; /* Prevent squishing */
@@ -142,7 +145,7 @@
         .lobby-row { padding: 12px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center; }
 
         /* PLAYER MOBILE UI */
-        #player-ui { background: #1a1a1a; justify-content: flex-start; flex-direction: column; height: 100vh; }
+        #player-ui { background: #1a1a1a; justify-content: flex-start; flex-direction: column; height: 100vh; overflow: hidden; }
         .player-hud { position: absolute; top: 0; left: 0; width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); z-index: 100; }
         .hud-name { font-weight: bold; color: #fff; font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
         .hud-status { background: rgba(255,255,255,0.1); backdrop-filter: blur(5px); padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; color: #ccc; font-weight: 600; border: 1px solid rgba(255,255,255,0.1); }
@@ -198,13 +201,19 @@
     <div id="toast">Notification</div>
 
     <div id="screen-home" class="screen active center-screen">
-        <h1 style="font-size:3.5rem; margin-bottom:40px; color:#ecf0f1;">Scrabble<span style="color:var(--accent)">Pro</span></h1>
-        <div style="display:flex; flex-direction:column; gap:20px;">
+        <h1 style="font-size:3.5rem; margin-bottom:30px; color:#ecf0f1;">Scrabble<span style="color:var(--accent)">Pro</span></h1>
+        
+        <div style="display:flex; flex-direction:column; gap:15px; align-items: center;">
             <button onclick="initHost()" style="width:280px; padding:20px; font-size:1.3rem;">Host New Game</button>
-            <button onclick="showJoinScreen()" class="btn-secondary" style="width:280px; padding:20px; font-size:1.3rem;">Join Game</button>
-            <div id="resume-area" style="display:none; margin-top:10px;">
-                <p style="color:#7f8c8d; font-size:0.9rem;">Game in progress detected</p>
-                <button onclick="resumeSession()" class="btn-warning" style="width:280px;">Resume</button>
+            <button onclick="showJoinScreen()" class="btn-secondary" style="width:280px; padding:20px; font-size:1.3rem;">Join New Game</button>
+            
+            <div id="host-resume-area" style="display:none; margin-top:5px; width:280px;">
+                <button onclick="resumeHostSession()" class="btn-warning" style="width:100%;">Resume Host</button>
+            </div>
+
+            <div id="sessions-area" style="display:none; margin-top:10px;">
+                <div style="font-size:0.8rem; text-transform:uppercase; color:#7f8c8d; letter-spacing:1px; margin-bottom:5px;">Saved Sessions</div>
+                <div id="session-list" class="session-list"></div>
             </div>
         </div>
     </div>
@@ -287,16 +296,15 @@
 
         let peer, conn, dictionary = new Set(), bag=[], players=[], turnIndex=0, myTurn=false, isFirstTurn=true;
         let currentTurnPoints = 0, pendingBlankTile = null, selectedTilesOrder = [];
+        let currentSessionCode = null; // Track which room we are currently connected to (Player side)
         
         // PERSISTENCE KEYS
-        const STORAGE_ROLE = 'scrabble_role'; // 'HOST' or 'PLAYER'
         const STORAGE_HOST_DATA = 'scrabble_host_state';
-        const STORAGE_PLAYER_SESSIONS = 'scrabble_user_sessions'; // Only stores ID per room
+        const STORAGE_SESSIONS = 'scrabble_player_sessions'; 
 
-        // --- INIT & PERSISTENCE CHECK ---
+        // --- INIT ---
         window.onload = () => {
-            const role = localStorage.getItem(STORAGE_ROLE);
-            if(role) document.getElementById('resume-area').style.display = 'block';
+            renderHomeScreen();
             
             const selector = document.getElementById('blank-selector');
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(l => {
@@ -313,42 +321,62 @@
             });
         }
 
-        // --- SESSION MANAGEMENT ---
-        function resumeSession() {
-            const role = localStorage.getItem(STORAGE_ROLE);
-            if(role === 'HOST') {
-                const data = JSON.parse(localStorage.getItem(STORAGE_HOST_DATA));
-                if(data && data.roomCode) initHost(data.roomCode, data);
-            } else if (role === 'PLAYER') {
-                // For player, we just go to join screen and try to auto-fill or just let them hit connect
-                // The sessions are stored in STORAGE_PLAYER_SESSIONS
-                showJoinScreen();
+        // --- SESSION UI & LOGIC ---
+        function renderHomeScreen() {
+            // Check for Host Data
+            const hostData = localStorage.getItem(STORAGE_HOST_DATA);
+            if(hostData) document.getElementById('host-resume-area').style.display = 'block';
+
+            // Check for Player Sessions
+            const sessions = JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]');
+            const list = document.getElementById('session-list');
+            list.innerHTML = '';
+            
+            if(sessions.length > 0) {
+                document.getElementById('sessions-area').style.display = 'block';
+                sessions.forEach(s => {
+                    const el = document.createElement('div');
+                    el.className = 'session-item';
+                    el.innerHTML = `
+                        <div class="session-info">
+                            <span class="session-code">${s.roomCode}</span>
+                            <span class="session-name">as ${s.name}</span>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn-warning btn-sm" onclick="joinGame('${s.roomCode}', '${s.name}', '${s.userId}')">Resume</button>
+                            <button class="btn-danger btn-sm" onclick="deleteSession('${s.roomCode}')">✕</button>
+                        </div>
+                    `;
+                    list.appendChild(el);
+                });
+            } else {
+                document.getElementById('sessions-area').style.display = 'none';
             }
         }
 
-        function clearSession() {
-            localStorage.removeItem(STORAGE_ROLE);
-            localStorage.removeItem(STORAGE_HOST_DATA);
-            // We DO NOT clear player sessions here, as they might want to rejoin later
-            // We only clear the "active role" indicator
-            location.reload();
-        }
-        
-        // Helper to get stored ID for a room
-        function getStoredIdentity(roomCode) {
-            const sessions = JSON.parse(localStorage.getItem(STORAGE_PLAYER_SESSIONS) || '{}');
-            return sessions[roomCode]; // Returns { userId, name } or undefined
+        function saveSession(roomCode, name, userId) {
+            let sessions = JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]');
+            // Update or add
+            const idx = sessions.findIndex(s => s.roomCode === roomCode);
+            if(idx >= 0) {
+                sessions[idx] = { roomCode, name, userId };
+            } else {
+                sessions.push({ roomCode, name, userId });
+            }
+            localStorage.setItem(STORAGE_SESSIONS, JSON.stringify(sessions));
+            currentSessionCode = roomCode;
         }
 
-        function storeIdentity(roomCode, userId, name) {
-            const sessions = JSON.parse(localStorage.getItem(STORAGE_PLAYER_SESSIONS) || '{}');
-            sessions[roomCode] = { userId, name };
-            localStorage.setItem(STORAGE_PLAYER_SESSIONS, JSON.stringify(sessions));
+        function deleteSession(roomCode) {
+            let sessions = JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]');
+            sessions = sessions.filter(s => s.roomCode !== roomCode);
+            localStorage.setItem(STORAGE_SESSIONS, JSON.stringify(sessions));
+            renderHomeScreen();
         }
 
         // --- HELPER UI ---
         function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
-        function showHomeScreen() { showScreen('screen-home'); }
+        function showHomeScreen() { showScreen('screen-home'); renderHomeScreen(); }
         function showJoinScreen() { showScreen('screen-join-login'); }
         function toast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
         function showModal(title, msg) { document.getElementById('modal-title').innerText=title; document.getElementById('modal-msg').innerText=msg; document.getElementById('notification-overlay').style.display="flex"; }
@@ -374,7 +402,7 @@
                 document.getElementById('host-status-text').innerText = "Status: Ready";
                 
                 if(savedState) {
-                    players = savedState.players; // Includes tiles!
+                    players = savedState.players; 
                     bag = savedState.bag;
                     turnIndex = savedState.turnIndex;
                     isFirstTurn = savedState.isFirstTurn;
@@ -388,8 +416,6 @@
                     renderBoard(); 
                     players=[];
                 }
-
-                localStorage.setItem(STORAGE_ROLE, 'HOST');
                 saveHostState(id);
             });
 
@@ -399,14 +425,19 @@
             });
             peer.on('error', e => {
                 if(e.type === 'unavailable-id') {
-                    if(existingId) alert("Session active elsewhere. Please clear data.");
+                    if(existingId) alert("Host session active elsewhere. Clear data to reset.");
                 }
             });
         }
 
+        function resumeHostSession() {
+            const data = JSON.parse(localStorage.getItem(STORAGE_HOST_DATA));
+            if(data && data.roomCode) initHost(data.roomCode, data);
+        }
+
         function saveHostState(id) {
             const grid = getGrid();
-            // We save the full player object which includes the 'tiles' array
+            // Save everything including player tiles
             const state = { roomCode: id, players, bag, turnIndex, isFirstTurn, grid };
             localStorage.setItem(STORAGE_HOST_DATA, JSON.stringify(state));
         }
@@ -429,48 +460,41 @@
         }
 
         function handleHostData(c, data) {
-            // HANDSHAKE or JOIN logic
-            // Logic: Identify player by userId, NOT by socket connection
-            if(data.type === 'join' || data.type === 'handshake') {
+            // Player Identifying by userId
+            if(data.type === 'join') {
                 const incomingId = data.userId;
                 let p = players.find(x => x.userId === incomingId);
                 
                 if(!p) {
-                    // New Player (or new session ID)
-                    if(data.type === 'join') {
-                        // Create new player record on host
-                        p = { 
-                            userId: incomingId, 
-                            name: data.name, 
-                            score: 0, 
-                            lastScore: 0, 
-                            tiles: [], // HOST tracks tiles now
-                            conn: c 
-                        };
-                        players.push(p);
-                        toast(`${data.name} joined`);
-                    } else {
-                        // Handshake from unknown ID -> fail
-                        c.send({type: 'handshake_ack', success: false, msg: "Session expired or invalid."});
-                        return;
-                    }
+                    // New Player
+                    p = { 
+                        userId: incomingId, 
+                        name: data.name, 
+                        score: 0, 
+                        lastScore: 0, 
+                        tiles: [], // HOST stores tiles
+                        conn: c 
+                    };
+                    players.push(p);
+                    toast(`${data.name} joined`);
                 } else {
-                    // Existing Player Reconnecting
+                    // Reconnecting Player
                     p.conn = c;
                     toast(`${p.name} reconnected`);
                 }
 
-                // Send ACK with current state
+                // Send ACK (contains tiles if reconnection)
                 c.send({
-                    type: data.type === 'join' ? 'joined_lobby' : 'handshake_ack',
+                    type: 'ack_join',
                     success: true,
                     name: p.name,
-                    activePlayer: players[turnIndex].name,
+                    activePlayer: players[turnIndex] ? players[turnIndex].name : null,
                     myTurn: (players.indexOf(p) === turnIndex),
-                    tiles: p.tiles // Send the tiles stored on HOST to the player
+                    tiles: p.tiles, // Send stored tiles
+                    isGameRunning: document.getElementById('screen-host').classList.contains('active')
                 });
 
-                if(data.type === 'join') {
+                if(document.getElementById('screen-host').classList.contains('active') === false) {
                     broadcastLobby();
                     updateLobbyUI();
                 }
@@ -480,15 +504,13 @@
             }
 
             if(data.type === 'play') {
-                // Find player by index/connection
                 const p = players[turnIndex];
                 if(!p || (c.peer !== p.conn.peer)) { c.send({type:'toast', msg:"Not your turn!"}); return; }
                 
-                // Remove played tiles from Host's record of player's hand
                 data.tiles.forEach(l => {
                     const idx = p.tiles.indexOf(l);
                     if(idx > -1) p.tiles.splice(idx, 1);
-                    createHostTile(l, p.userId); // Add to inbox visually
+                    createHostTile(l, p.userId);
                 });
 
                 saveHostState(peer.id);
@@ -506,7 +528,6 @@
 
         function deal(c, n, targetPlayerIndex) {
             let p = null;
-            // Find player object. If targetPlayerIndex provided, use it.
             if(targetPlayerIndex !== undefined) p = players[targetPlayerIndex];
             else p = players.find(pl => pl.conn === c);
             
@@ -515,10 +536,8 @@
             let newTiles = [];
             for(let i=0; i<n; i++) if(bag.length) newTiles.push(bag.pop());
             
-            // Add to Host's record
             p.tiles.push(...newTiles);
             
-            // Send to Client
             if(p.conn && p.conn.open) {
                 p.conn.send({type:'hand', tiles: newTiles});
             }
@@ -528,9 +547,8 @@
             if(players.length === 0) { showModal("Wait", "Need players to start."); return; }
             showScreen('screen-host');
             
-            // Deal initial hands
             players.forEach((p, i) => { 
-                deal(p.conn, 7, i); // Pass index to ensure correct player gets tiles
+                deal(p.conn, 7, i); 
                 if(p.conn && p.conn.open) p.conn.send({type:'gamestart'});
             });
             
@@ -539,7 +557,7 @@
         }
 
         // --- PLAYER LOGIC ---
-        function joinGame(codeOverride=null, nameOverride=null) {
+        function joinGame(codeOverride=null, nameOverride=null, idOverride=null) {
             const n = nameOverride || document.getElementById('join-name').value.trim();
             const c = (codeOverride || document.getElementById('join-code').value.trim()).toUpperCase();
             if(!n || c.length!==4) return;
@@ -547,47 +565,37 @@
             const btn = document.getElementById('btn-join');
             if(btn) { btn.disabled = true; btn.innerText = "Connecting..."; }
 
-            // Resolve Identity
-            let identity = getStoredIdentity(c);
-            let userId;
-            if (identity && identity.name === n) {
-                userId = identity.userId; // Reuse ID
-            } else {
-                userId = generateUUID(); // New ID
-                storeIdentity(c, userId, n);
-            }
+            // Use provided ID (resume) or generate new
+            const userId = idOverride || generateUUID();
 
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(c);
                 conn.on('open', () => {
-                    // Always send JOIN or HANDSHAKE with userId
-                    // If we have an identity, treating it as handshake/join is handled by host
-                    // But effectively we send 'join' to ensure lobby update if needed, 
-                    // or 'handshake' if strictly reconnecting. 
-                    // Let's use 'join' for initial connect flow, Host handles dedup.
+                    // Send Join Request
                     conn.send({type:'join', name:n, userId: userId});
-                    
-                    localStorage.setItem(STORAGE_ROLE, 'PLAYER');
                 });
                 
                 conn.on('data', d => {
-                    if(d.type === 'joined_lobby' || d.type === 'handshake_ack') {
-                        if(d.success === false) { alert(d.msg); clearSession(); return; }
+                    if(d.type === 'ack_join') {
+                        if(d.success === false) { alert(d.msg); return; }
 
-                        if(d.type === 'joined_lobby') showScreen('screen-player-lobby');
-                        else {
-                            // Handshake ACK - Restore Game
+                        // Save session immediately upon success
+                        saveSession(c, n, userId);
+
+                        if(d.isGameRunning) {
                             showScreen('screen-player');
                             document.getElementById('my-display-name').innerText = n;
-                            // Tiles come from Host now
-                            if(d.tiles) {
-                                document.getElementById('my-rack').innerHTML = '';
-                                addRack(d.tiles);
-                                Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
-                            }
+                            
+                            // Restore Tiles from Host
+                            document.getElementById('my-rack').innerHTML = '';
+                            if(d.tiles) addRack(d.tiles);
+                            Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
+                            
                             updateTurnUI(d.myTurn, d.activePlayer);
-                            toast("Connected");
+                            toast("Reconnected to Game");
+                        } else {
+                            showScreen('screen-player-lobby');
                         }
                     }
 
@@ -608,7 +616,7 @@
                 
                 conn.on('close', () => {
                     if(document.getElementById('screen-player').classList.contains('active')) {
-                        toast("Connection lost. Refresh to rejoin.");
+                        toast("Disconnected.");
                     }
                 });
             });
@@ -693,25 +701,28 @@
             pill.innerText = `${currentTurnPoints} pts`; pill.classList.add('visible');
             newTiles.sort((a,b) => (parseInt(a.parentElement.dataset.r)-parseInt(b.parentElement.dataset.r)) || (parseInt(a.parentElement.dataset.c)-parseInt(b.parentElement.dataset.c)));
             
-            // PILL POSITION FIX
+            // --- PILL POSITION FIX (CLAMPED) ---
             const lastTile = newTiles[newTiles.length-1];
             const rect = lastTile.getBoundingClientRect();
             
             let top = rect.bottom + 10;
             let left = rect.right + 10;
             
-            // Bounds Check
             const pW = pill.offsetWidth || 100; 
             const pH = pill.offsetHeight || 40;
-            
-            // If going off right edge, flip to left side of tile
-            if(left + pW > window.innerWidth) left = rect.left - pW - 10;
-            // If still off screen (small screen), clamp to right edge
-            if(left + pW > window.innerWidth) left = window.innerWidth - pW - 5;
-            
-            // If going off bottom, flip to top
-            if(top + pH > window.innerHeight) top = rect.top - pH - 10;
-            
+            const pad = 10;
+
+            // Prevent going off right
+            if (left + pW + pad > window.innerWidth) {
+                left = window.innerWidth - pW - pad;
+            }
+            // Prevent going off bottom
+            if (top + pH + pad > window.innerHeight) {
+                top = rect.top - pH - pad;
+            }
+            // Prevent going off left (unlikely but safe)
+            if (left < pad) left = pad;
+
             pill.style.top = top + 'px'; 
             pill.style.left = left + 'px';
         }
@@ -746,19 +757,28 @@
 
             const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
             newTiles.forEach(t => { t.removeAttribute('data-new'); t.dataset.locked="true"; t.style.cursor="default"; });
-            deal(players[turnIndex].conn, newTiles.length, turnIndex); // Resupply current player
+            deal(players[turnIndex].conn, newTiles.length, turnIndex); 
             isFirstTurn = false;
             turnIndex = (turnIndex + 1) % players.length;
             notifyTurn();
             
-            // Clean inbox & SAVE
             const inbox = document.getElementById('host-inbox');
             while(inbox.firstChild) { returnTile(inbox.firstChild.dataset.letter, inbox.firstChild.dataset.owner); inbox.firstChild.remove(); }
             saveHostState(peer.id);
         }
 
-        function promptLeaveGame() { showConfirm("Leave Game?", "You can rejoin later.", clearSession); }
-        function promptEndGame() { showConfirm("End Game?", "This will kick all players and delete the session.", clearSession); }
+        function promptLeaveGame() { 
+            showConfirm("Leave Room?", "You will exit this session.", () => {
+                if(currentSessionCode) deleteSession(currentSessionCode);
+                location.reload();
+            }); 
+        }
+        function promptEndGame() { 
+            showConfirm("End Game?", "This will delete all data for this room.", () => {
+                localStorage.removeItem(STORAGE_HOST_DATA);
+                location.reload();
+            }); 
+        }
 
         function playSelected() {
             if(!myTurn) { toast("Not your turn!"); return; }
@@ -766,7 +786,6 @@
             const t=[]; selectedTilesOrder.forEach(x=>{ t.push(x.dataset.letter); x.remove(); });
             selectedTilesOrder = [];
             conn.send({type:'play', tiles:t});
-            // Player no longer saves rack locally, relies on Host
         }
 
         function addRack(t) {
@@ -785,10 +804,9 @@
         function genId(){const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let r="";for(let i=0;i<4;i++)r+=c.charAt(Math.floor(Math.random()*c.length));return r;}
         function initBag(){bag=[];for(let l in BAG_INIT)for(let i=0;i<BAG_INIT[l];i++)bag.push(l);for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}}
         function returnTile(l,oid){
-            // Return to specific player object on host
             const p = players.find(x => x.userId === oid);
             if(p) {
-                p.tiles.push(l); // Add back to memory
+                p.tiles.push(l);
                 if(p.conn && p.conn.open) p.conn.send({type:'return', tile:l});
                 saveHostState(peer.id);
             }
