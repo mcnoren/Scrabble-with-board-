@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Persistent</title>
+    <title>Scrabble Pro - Host Persistence</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -18,8 +18,8 @@
             
             /* WOOD COLORS */
             --wood-frame: #5d4037;
-            --rack-color: #d2b48c; /* Solid Tan Wood */
-            --rack-shadow: #8d6e63; /* Darker edge */
+            --rack-color: #d2b48c; 
+            --rack-shadow: #8d6e63;
             
             /* TILE COLORS */
             --tile-face: #fdf5e6;
@@ -104,7 +104,19 @@
         /* ANIMATIONS & OVERLAYS */
         @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.5); color: #f1c40f; } 100% { transform: scale(1); } }
         .score-pop { animation: pop 0.4s ease-in-out; }
-        #score-pill { position: fixed; top: 0; left: 0; background: #2980b9; color: white; padding: 8px 18px; border-radius: 30px; font-weight: 800; font-size: 1.1rem; box-shadow: 0 5px 15px rgba(0,0,0,0.4); pointer-events: none; z-index: 2000; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0; transform: scale(0.5); border: 2px solid rgba(255,255,255,0.8); }
+        
+        #score-pill { 
+            position: fixed; top: 0; left: 0; 
+            background: #2980b9; color: white; 
+            padding: 8px 18px; border-radius: 30px; 
+            font-weight: 800; font-size: 1.1rem; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4); 
+            pointer-events: none; z-index: 2000; 
+            transition: opacity 0.2s, transform 0.2s; /* Removed top/left transition for snap */
+            opacity: 0; transform: scale(0.5); 
+            border: 2px solid rgba(255,255,255,0.8);
+            white-space: nowrap; /* Prevent squishing */
+        }
         #score-pill.visible { opacity: 1; transform: scale(1); }
         .flying-score { position: fixed; z-index: 99999; background: #f1c40f; color: #000; padding: 10px 20px; border-radius: 50px; font-weight: bold; font-size: 1.5rem; box-shadow: 0 0 20px #f1c40f; transition: all 1s ease-in-out; pointer-events: none; }
 
@@ -279,7 +291,7 @@
         // PERSISTENCE KEYS
         const STORAGE_ROLE = 'scrabble_role'; // 'HOST' or 'PLAYER'
         const STORAGE_HOST_DATA = 'scrabble_host_state';
-        const STORAGE_PLAYER_DATA = 'scrabble_player_state';
+        const STORAGE_PLAYER_SESSIONS = 'scrabble_user_sessions'; // Only stores ID per room
 
         // --- INIT & PERSISTENCE CHECK ---
         window.onload = () => {
@@ -294,22 +306,44 @@
             fetch('https://raw.githubusercontent.com/redbo/scrabble/master/dictionary.txt').then(r=>r.text()).then(t => t.toUpperCase().split(/\s+/).forEach(w => dictionary.add(w)));
         };
 
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        // --- SESSION MANAGEMENT ---
         function resumeSession() {
             const role = localStorage.getItem(STORAGE_ROLE);
             if(role === 'HOST') {
                 const data = JSON.parse(localStorage.getItem(STORAGE_HOST_DATA));
                 if(data && data.roomCode) initHost(data.roomCode, data);
             } else if (role === 'PLAYER') {
-                const data = JSON.parse(localStorage.getItem(STORAGE_PLAYER_DATA));
-                if(data && data.roomCode) joinGame(data.roomCode, data.name, true);
+                // For player, we just go to join screen and try to auto-fill or just let them hit connect
+                // The sessions are stored in STORAGE_PLAYER_SESSIONS
+                showJoinScreen();
             }
         }
 
         function clearSession() {
             localStorage.removeItem(STORAGE_ROLE);
             localStorage.removeItem(STORAGE_HOST_DATA);
-            localStorage.removeItem(STORAGE_PLAYER_DATA);
+            // We DO NOT clear player sessions here, as they might want to rejoin later
+            // We only clear the "active role" indicator
             location.reload();
+        }
+        
+        // Helper to get stored ID for a room
+        function getStoredIdentity(roomCode) {
+            const sessions = JSON.parse(localStorage.getItem(STORAGE_PLAYER_SESSIONS) || '{}');
+            return sessions[roomCode]; // Returns { userId, name } or undefined
+        }
+
+        function storeIdentity(roomCode, userId, name) {
+            const sessions = JSON.parse(localStorage.getItem(STORAGE_PLAYER_SESSIONS) || '{}');
+            sessions[roomCode] = { userId, name };
+            localStorage.setItem(STORAGE_PLAYER_SESSIONS, JSON.stringify(sessions));
         }
 
         // --- HELPER UI ---
@@ -340,8 +374,7 @@
                 document.getElementById('host-status-text').innerText = "Status: Ready";
                 
                 if(savedState) {
-                    // RESTORE STATE
-                    players = savedState.players;
+                    players = savedState.players; // Includes tiles!
                     bag = savedState.bag;
                     turnIndex = savedState.turnIndex;
                     isFirstTurn = savedState.isFirstTurn;
@@ -356,26 +389,25 @@
                     players=[];
                 }
 
-                // SAVE INITIAL SESSION
                 localStorage.setItem(STORAGE_ROLE, 'HOST');
                 saveHostState(id);
             });
 
             peer.on('connection', c => { 
                 c.on('data', d => handleHostData(c, d)); 
-                c.on('close', () => { /* Handle disconnect silently, wait for rejoin */ });
+                c.on('close', () => { /* Handle disconnect silently */ });
             });
             peer.on('error', e => {
                 if(e.type === 'unavailable-id') {
-                    // ID taken (ghost session), try generating new one if strictly new game, else alert
-                    if(existingId) alert("Session is still active in another tab or expired. Please clear data.");
+                    if(existingId) alert("Session active elsewhere. Please clear data.");
                 }
             });
         }
 
         function saveHostState(id) {
             const grid = getGrid();
-            const state = { roomCode: id, players: players.map(p=>({name:p.name, score:p.score, id:p.id})), bag, turnIndex, isFirstTurn, grid };
+            // We save the full player object which includes the 'tiles' array
+            const state = { roomCode: id, players, bag, turnIndex, isFirstTurn, grid };
             localStorage.setItem(STORAGE_HOST_DATA, JSON.stringify(state));
         }
 
@@ -397,46 +429,73 @@
         }
 
         function handleHostData(c, data) {
-            if(data.type === 'handshake') {
-                // HANDSHAKE / REJOIN
-                const p = players.find(x => x.name === data.name);
-                if(p) {
-                    p.conn = c; // Update connection
-                    // Send ACK with full state
-                    c.send({
-                        type: 'handshake_ack', 
-                        success: true,
-                        activePlayer: players[turnIndex].name,
-                        myTurn: (players.indexOf(p) === turnIndex),
-                        boardState: getGrid() // Send board so player can see it (optional for simple view)
-                    });
-                    toast(`${data.name} reconnected`);
+            // HANDSHAKE or JOIN logic
+            // Logic: Identify player by userId, NOT by socket connection
+            if(data.type === 'join' || data.type === 'handshake') {
+                const incomingId = data.userId;
+                let p = players.find(x => x.userId === incomingId);
+                
+                if(!p) {
+                    // New Player (or new session ID)
+                    if(data.type === 'join') {
+                        // Create new player record on host
+                        p = { 
+                            userId: incomingId, 
+                            name: data.name, 
+                            score: 0, 
+                            lastScore: 0, 
+                            tiles: [], // HOST tracks tiles now
+                            conn: c 
+                        };
+                        players.push(p);
+                        toast(`${data.name} joined`);
+                    } else {
+                        // Handshake from unknown ID -> fail
+                        c.send({type: 'handshake_ack', success: false, msg: "Session expired or invalid."});
+                        return;
+                    }
                 } else {
-                    // Player not found in restored state
-                    c.send({type: 'handshake_ack', success: false, msg: "Game not found or you were removed."});
+                    // Existing Player Reconnecting
+                    p.conn = c;
+                    toast(`${p.name} reconnected`);
                 }
+
+                // Send ACK with current state
+                c.send({
+                    type: data.type === 'join' ? 'joined_lobby' : 'handshake_ack',
+                    success: true,
+                    name: p.name,
+                    activePlayer: players[turnIndex].name,
+                    myTurn: (players.indexOf(p) === turnIndex),
+                    tiles: p.tiles // Send the tiles stored on HOST to the player
+                });
+
+                if(data.type === 'join') {
+                    broadcastLobby();
+                    updateLobbyUI();
+                }
+                
+                saveHostState(peer.id);
                 return;
             }
 
-            if(data.type === 'join') {
-                const existing = players.find(p => p.name === data.name);
-                if(existing) { 
-                    existing.conn = c; 
-                    c.send({type:'joined_lobby', name: data.name});
-                } else { 
-                    players.push({ id:c.peer, name:data.name, score:0, lastScore:0, conn:c }); 
-                    c.send({type:'joined_lobby', name: data.name});
-                }
-                broadcastLobby();
-                updateLobbyUI();
+            if(data.type === 'play') {
+                // Find player by index/connection
+                const p = players[turnIndex];
+                if(!p || (c.peer !== p.conn.peer)) { c.send({type:'toast', msg:"Not your turn!"}); return; }
+                
+                // Remove played tiles from Host's record of player's hand
+                data.tiles.forEach(l => {
+                    const idx = p.tiles.indexOf(l);
+                    if(idx > -1) p.tiles.splice(idx, 1);
+                    createHostTile(l, p.userId); // Add to inbox visually
+                });
+
                 saveHostState(peer.id);
             }
-            if(data.type === 'play') {
-                if(c.peer !== players[turnIndex].id && players[turnIndex].conn !== c) { c.send({type:'toast', msg:"Not your turn!"}); return; }
-                data.tiles.forEach(l => createHostTile(l, c.peer)); 
-            }
+            
             if(data.type === 'pass') {
-                if(c.peer !== players[turnIndex].id && players[turnIndex].conn !== c) return;
+                if(c.peer !== players[turnIndex].conn.peer) return;
                 players[turnIndex].lastScore = 0;
                 turnIndex = (turnIndex + 1) % players.length;
                 updateHostUI();
@@ -445,62 +504,93 @@
             }
         }
 
+        function deal(c, n, targetPlayerIndex) {
+            let p = null;
+            // Find player object. If targetPlayerIndex provided, use it.
+            if(targetPlayerIndex !== undefined) p = players[targetPlayerIndex];
+            else p = players.find(pl => pl.conn === c);
+            
+            if(!p) return;
+
+            let newTiles = [];
+            for(let i=0; i<n; i++) if(bag.length) newTiles.push(bag.pop());
+            
+            // Add to Host's record
+            p.tiles.push(...newTiles);
+            
+            // Send to Client
+            if(p.conn && p.conn.open) {
+                p.conn.send({type:'hand', tiles: newTiles});
+            }
+        }
+
         function hostStartGame() {
             if(players.length === 0) { showModal("Wait", "Need players to start."); return; }
             showScreen('screen-host');
-            players.forEach(p => { 
-                if(p.conn && p.conn.open) { 
-                    p.conn.send({type:'gamestart'}); 
-                    deal(p.conn, 7); 
-                } 
+            
+            // Deal initial hands
+            players.forEach((p, i) => { 
+                deal(p.conn, 7, i); // Pass index to ensure correct player gets tiles
+                if(p.conn && p.conn.open) p.conn.send({type:'gamestart'});
             });
+            
             notifyTurn();
             saveHostState(peer.id);
         }
 
         // --- PLAYER LOGIC ---
-        function joinGame(codeOverride=null, nameOverride=null, isRejoin=false) {
+        function joinGame(codeOverride=null, nameOverride=null) {
             const n = nameOverride || document.getElementById('join-name').value.trim();
-            const c = codeOverride || document.getElementById('join-code').value.trim().toUpperCase();
+            const c = (codeOverride || document.getElementById('join-code').value.trim()).toUpperCase();
             if(!n || c.length!==4) return;
             
             const btn = document.getElementById('btn-join');
-            if(btn) { btn.disabled = true; btn.innerText = isRejoin ? "Rejoining..." : "Connecting..."; }
+            if(btn) { btn.disabled = true; btn.innerText = "Connecting..."; }
+
+            // Resolve Identity
+            let identity = getStoredIdentity(c);
+            let userId;
+            if (identity && identity.name === n) {
+                userId = identity.userId; // Reuse ID
+            } else {
+                userId = generateUUID(); // New ID
+                storeIdentity(c, userId, n);
+            }
 
             peer = new Peer();
             peer.on('open', () => {
                 conn = peer.connect(c);
                 conn.on('open', () => {
-                    if(isRejoin) {
-                        // SEND HANDSHAKE
-                        conn.send({type: 'handshake', name: n});
-                    } else {
-                        conn.send({type:'join', name:n});
-                    }
-                    // Save session immediately
+                    // Always send JOIN or HANDSHAKE with userId
+                    // If we have an identity, treating it as handshake/join is handled by host
+                    // But effectively we send 'join' to ensure lobby update if needed, 
+                    // or 'handshake' if strictly reconnecting. 
+                    // Let's use 'join' for initial connect flow, Host handles dedup.
+                    conn.send({type:'join', name:n, userId: userId});
+                    
                     localStorage.setItem(STORAGE_ROLE, 'PLAYER');
-                    savePlayerState(c, n, []); 
                 });
                 
                 conn.on('data', d => {
-                    // HANDSHAKE ACK
-                    if(d.type === 'handshake_ack') {
-                        if(d.success) {
+                    if(d.type === 'joined_lobby' || d.type === 'handshake_ack') {
+                        if(d.success === false) { alert(d.msg); clearSession(); return; }
+
+                        if(d.type === 'joined_lobby') showScreen('screen-player-lobby');
+                        else {
+                            // Handshake ACK - Restore Game
                             showScreen('screen-player');
                             document.getElementById('my-display-name').innerText = n;
-                            restorePlayerRack(); // Load tiles from local storage
+                            // Tiles come from Host now
+                            if(d.tiles) {
+                                document.getElementById('my-rack').innerHTML = '';
+                                addRack(d.tiles);
+                                Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
+                            }
                             updateTurnUI(d.myTurn, d.activePlayer);
-                            toast("Connected to Host");
-                        } else {
-                            alert(d.msg);
-                            clearSession();
+                            toast("Connected");
                         }
                     }
 
-                    if(d.type === 'joined_lobby') {
-                        showScreen('screen-player-lobby');
-                        savePlayerState(c, n, getCurrentRack());
-                    }
                     if(d.type === 'lobby_update') {
                         document.getElementById('player-lobby-list').innerHTML = d.names.map(name => `<div class="lobby-row"><span>${name}</span><span style="color:#2ecc71;">Joined</span></div>`).join('');
                     }
@@ -510,13 +600,12 @@
                         Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
                         toast("Game Started!");
                     }
-                    if(d.type==='hand') { addRack(d.tiles); savePlayerState(c, n, getCurrentRack()); }
-                    if(d.type==='return') { addRack([d.tile]); savePlayerState(c, n, getCurrentRack()); toast("Tile returned"); }
+                    if(d.type==='hand') { addRack(d.tiles); }
+                    if(d.type==='return') { addRack([d.tile]); toast("Tile returned"); }
                     if(d.type==='toast') toast(d.msg);
                     if(d.type==='turn_update') updateTurnUI(d.myTurn, d.activePlayer);
                 });
                 
-                // If connection closes, peerjs might auto-close. We don't auto-reload here to allow "Leave" button to work.
                 conn.on('close', () => {
                     if(document.getElementById('screen-player').classList.contains('active')) {
                         toast("Connection lost. Refresh to rejoin.");
@@ -541,25 +630,7 @@
             }
         }
 
-        function savePlayerState(roomCode, name, tiles) {
-            localStorage.setItem(STORAGE_PLAYER_DATA, JSON.stringify({roomCode, name, tiles}));
-        }
-
-        function getCurrentRack() {
-            return Array.from(document.querySelectorAll('#my-rack .tile')).map(t => t.dataset.letter);
-        }
-
-        function restorePlayerRack() {
-            const data = JSON.parse(localStorage.getItem(STORAGE_PLAYER_DATA));
-            if(data && data.tiles) {
-                document.getElementById('my-rack').innerHTML = ''; // clear
-                addRack(data.tiles);
-                Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
-            }
-        }
-
         // --- GAMEPLAY & DRAG ---
-        // (Drag logic same as previous but integrated with host saving)
         let dragEl=null, clone=null;
         function onDragStart(e) {
             if(e.currentTarget.dataset.locked==="true") return;
@@ -621,8 +692,28 @@
             currentTurnPoints = calculateComplexScore(newTiles);
             pill.innerText = `${currentTurnPoints} pts`; pill.classList.add('visible');
             newTiles.sort((a,b) => (parseInt(a.parentElement.dataset.r)-parseInt(b.parentElement.dataset.r)) || (parseInt(a.parentElement.dataset.c)-parseInt(b.parentElement.dataset.c)));
-            const rect = newTiles[newTiles.length-1].getBoundingClientRect();
-            pill.style.top = (rect.bottom + 10) + 'px'; pill.style.left = (rect.right + 10) + 'px';
+            
+            // PILL POSITION FIX
+            const lastTile = newTiles[newTiles.length-1];
+            const rect = lastTile.getBoundingClientRect();
+            
+            let top = rect.bottom + 10;
+            let left = rect.right + 10;
+            
+            // Bounds Check
+            const pW = pill.offsetWidth || 100; 
+            const pH = pill.offsetHeight || 40;
+            
+            // If going off right edge, flip to left side of tile
+            if(left + pW > window.innerWidth) left = rect.left - pW - 10;
+            // If still off screen (small screen), clamp to right edge
+            if(left + pW > window.innerWidth) left = window.innerWidth - pW - 5;
+            
+            // If going off bottom, flip to top
+            if(top + pH > window.innerHeight) top = rect.top - pH - 10;
+            
+            pill.style.top = top + 'px'; 
+            pill.style.left = left + 'px';
         }
 
         // --- ACTIONS ---
@@ -655,7 +746,7 @@
 
             const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
             newTiles.forEach(t => { t.removeAttribute('data-new'); t.dataset.locked="true"; t.style.cursor="default"; });
-            deal(players[turnIndex].conn, newTiles.length);
+            deal(players[turnIndex].conn, newTiles.length, turnIndex); // Resupply current player
             isFirstTurn = false;
             turnIndex = (turnIndex + 1) % players.length;
             notifyTurn();
@@ -666,7 +757,7 @@
             saveHostState(peer.id);
         }
 
-        function promptLeaveGame() { showConfirm("Leave Game?", "You will lose your tiles and progress.", clearSession); }
+        function promptLeaveGame() { showConfirm("Leave Game?", "You can rejoin later.", clearSession); }
         function promptEndGame() { showConfirm("End Game?", "This will kick all players and delete the session.", clearSession); }
 
         function playSelected() {
@@ -675,7 +766,7 @@
             const t=[]; selectedTilesOrder.forEach(x=>{ t.push(x.dataset.letter); x.remove(); });
             selectedTilesOrder = [];
             conn.send({type:'play', tiles:t});
-            savePlayerState(localStorage.getItem(STORAGE_PLAYER_DATA)?.roomCode, document.getElementById('my-display-name').innerText, getCurrentRack());
+            // Player no longer saves rack locally, relies on Host
         }
 
         function addRack(t) {
@@ -693,10 +784,18 @@
         // STANDARD UTILS
         function genId(){const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let r="";for(let i=0;i<4;i++)r+=c.charAt(Math.floor(Math.random()*c.length));return r;}
         function initBag(){bag=[];for(let l in BAG_INIT)for(let i=0;i<BAG_INIT[l];i++)bag.push(l);for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}}
-        function deal(c,n){let h=[];for(let i=0;i<n;i++)if(bag.length)h.push(bag.pop());if(h.length)c.send({type:'hand',tiles:h});}
-        function returnTile(l,oid){const p=players.find(x=>x.id===oid);if(p)p.conn.send({type:'return',tile:l});updateScorePill();}
+        function returnTile(l,oid){
+            // Return to specific player object on host
+            const p = players.find(x => x.userId === oid);
+            if(p) {
+                p.tiles.push(l); // Add back to memory
+                if(p.conn && p.conn.open) p.conn.send({type:'return', tile:l});
+                saveHostState(peer.id);
+            }
+            updateScorePill();
+        }
         function recallTiles(){const inbox=document.getElementById('host-inbox');document.querySelectorAll('.cell .tile[data-new="true"]').forEach(t=>inbox.appendChild(t));updateScorePill();}
-        function notifyTurn(){players.forEach((p,i)=>p.conn.send({type:'turn_update',myTurn:(i===turnIndex),activePlayer:players[turnIndex].name}));updateHostUI();}
+        function notifyTurn(){players.forEach((p,i)=>p.conn && p.conn.open && p.conn.send({type:'turn_update',myTurn:(i===turnIndex),activePlayer:players[turnIndex].name}));updateHostUI();}
         function broadcastLobby(){const names=players.map(p=>p.name);players.forEach(p=>{if(p.conn&&p.conn.open)p.conn.send({type:'lobby_update',names:names});});}
         function updateLobbyUI(){document.getElementById('lobby-player-list').innerHTML=players.map(p=>`<div class="lobby-row"><span>${p.name}</span><span style="color:#2ecc71;">Joined</span></div>`).join('');}
         function updateHostUI(){
