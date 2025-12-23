@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Final Logic</title>
+    <title>Scrabble Pro - Multi-Save & Sync</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -46,6 +46,7 @@
         .btn-danger { background: var(--danger); color: white; }
         .btn-sm { padding: 8px 15px; font-size: 0.85rem; width: auto; margin: 0; }
         .btn-kick { padding: 4px 8px; font-size: 0.7rem; background: var(--danger); margin-left: 10px; }
+        .btn-resync { padding: 4px 8px; font-size: 0.7rem; background: #3498db; margin-left: 5px; color: white; border-radius: 4px; border:none; cursor: pointer; }
 
         /* MENU DRAWER */
         #host-side-menu { position: fixed; top: 0; left: -320px; width: 300px; height: 100%; background: #222; border-right: 1px solid #444; z-index: 2000; transition: left 0.3s ease; display: flex; flex-direction: column; padding: 20px; box-shadow: 5px 0 30px rgba(0,0,0,0.8); }
@@ -95,7 +96,7 @@
         #score-pill.visible { opacity: 1; transform: scale(1); }
         .player-row { display: flex; justify-content: space-between; align-items: center; height: 64px; padding: 0 15px; border-bottom: 1px solid #444; background: rgba(255,255,255,0.02); transition: background 0.3s; }
         .player-row.active-turn { border-left: 4px solid var(--accent); background: rgba(255,255,255,0.08); }
-        .player-name-display { font-weight: bold; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; display: flex; align-items: center; }
+        .player-name-display { font-weight: bold; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; display: flex; align-items: center; }
         .score-box { text-align: right; width: 80px; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; }
         .total-score { font-size: 1.4rem; font-weight: 800; color: var(--accent); line-height: 1; }
         .last-turn { font-size: 0.8rem; color: #95a5a6; font-weight: 600; height: 14px; margin-top: 2px; }
@@ -136,6 +137,7 @@
         .status-dot { height: 10px; width: 10px; background-color: #7f8c8d; border-radius: 50%; display: inline-block; margin-right: 6px; margin-left:6px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
         .status-online { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
         .status-offline { background-color: #c0392b; }
+        .save-badge { background: #2ecc71; color: #111; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; margin-left: auto; }
     </style>
 </head>
 <body>
@@ -171,7 +173,11 @@
             <button onclick="initHost()" style="width:280px; padding:20px; font-size:1.3rem;">Host New Game</button>
             <button onclick="showJoinScreen()" class="btn-secondary" style="width:280px; padding:20px; font-size:1.3rem;">Join New Game</button>
             
-            <div id="host-resume-area" style="display:none; width:320px;"></div>
+            <div id="host-saved-list" style="display:none; width:320px; margin-top:20px;">
+                <div style="font-size:0.8rem; text-transform:uppercase; color:#7f8c8d; letter-spacing:1px; margin-bottom:5px; text-align:left;">Saved Host Games</div>
+                <div id="host-sessions-container" class="session-list" style="width:100%;"></div>
+            </div>
+
             <div id="sessions-area" style="display:none; margin-top:10px;">
                 <div style="font-size:0.8rem; text-transform:uppercase; color:#7f8c8d; letter-spacing:1px; margin-bottom:5px;">Saved Player Sessions</div>
                 <div id="session-list" class="session-list"></div>
@@ -275,13 +281,15 @@
 
         let peer, conn, dictionary = new Set(), bag=[], players=[], turnIndex=0, myTurn=false, isFirstTurn=true;
         let currentTurnPoints = 0, pendingBlankTile = null, selectedTilesOrder = [];
-        let currentSessionCode = null; 
+        let currentSessionCode = null; // Client side
+        let currentHostRoomCode = null; // Host side
         let heartbeatInterval = null;
         let startTimeout = null;
         let soundsEnabled = true;
         let hostInbox = []; // Stores {id, letter, owner}
         
-        const STORAGE_HOST_DATA = 'scrabble_host_state';
+        // --- STORAGE KEYS ---
+        const STORAGE_HOST_SAVES = 'scrabble_host_saves_v2'; // Stores object { 'CODE': stateObj }
         const STORAGE_SESSIONS = 'scrabble_player_sessions'; 
 
         window.onload = () => {
@@ -316,28 +324,46 @@
             if (!document.fullscreenElement) document.documentElement.requestFullscreen();
             else if (document.exitFullscreen) document.exitFullscreen();
         }
-        function toggleSound() { soundsEnabled = document.getElementById('toggle-sound').checked; }
+        function toggleSound() { soundsEnabled = document.getElementById('toggle-sound').checked; saveHostState(currentHostRoomCode); }
 
+        // --- HOME & STORAGE UI ---
         function renderHomeScreen() {
-            const hostArea = document.getElementById('host-resume-area');
+            // RENDER SAVED HOST GAMES
+            const hostArea = document.getElementById('host-saved-list');
+            const hostListContainer = document.getElementById('host-sessions-container');
+            const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
+            const saveKeys = Object.keys(allSaves);
+
+            hostListContainer.innerHTML = '';
+            if(saveKeys.length > 0) {
+                hostArea.style.display = 'block';
+                // Sort by date descending
+                saveKeys.sort((a,b) => (allSaves[b].lastSavedAt || 0) - (allSaves[a].lastSavedAt || 0));
+                
+                saveKeys.forEach(code => {
+                    const data = allSaves[code];
+                    const dateStr = new Date(data.lastSavedAt || Date.now()).toLocaleDateString() + ' ' + new Date(data.lastSavedAt || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    const pCount = data.players ? data.players.length : 0;
+                    
+                    const el = document.createElement('div'); el.className = 'session-item';
+                    el.innerHTML = `
+                        <div class="session-info">
+                            <span class="session-code">Room ${code}</span>
+                            <span class="session-meta">${pCount} players • ${dateStr}</span>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn-warning btn-sm" onclick="initHost('${code}', true)">Resume</button>
+                            <button class="btn-danger btn-sm" onclick="deleteHostGame('${code}')">✕</button>
+                        </div>`;
+                    hostListContainer.appendChild(el);
+                });
+            } else {
+                hostArea.style.display = 'none';
+            }
+
+            // RENDER SAVED PLAYER SESSIONS
             const sessionList = document.getElementById('session-list');
             const sessionArea = document.getElementById('sessions-area');
-
-            const hostData = JSON.parse(localStorage.getItem(STORAGE_HOST_DATA));
-            if(hostData && hostData.roomCode) {
-                const created = new Date(hostData.createdAt || Date.now()).toLocaleDateString();
-                const lastSaved = new Date(hostData.lastSavedAt || Date.now()).toLocaleTimeString();
-                hostArea.innerHTML = `
-                    <div style="font-size:0.8rem; text-transform:uppercase; color:#7f8c8d; letter-spacing:1px; margin-bottom:5px; text-align:left;">Host Session</div>
-                    <div class="session-list" style="width:100%; height:auto;">
-                        <div class="session-item">
-                            <div class="session-info"><span class="session-code">Room ${hostData.roomCode}</span><span class="session-meta">Saved: ${lastSaved}</span></div>
-                            <div style="display:flex; gap:10px;"><button class="btn-warning btn-sm" onclick="initHost('${hostData.roomCode}', true)">Resume</button><button class="btn-danger btn-sm" onclick="deleteHostSession()">✕</button></div>
-                        </div>
-                    </div>`;
-                hostArea.style.display = 'block';
-            } else { hostArea.style.display = 'none'; }
-
             const sessions = JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]');
             sessionList.innerHTML = '';
             if(sessions.length > 0) {
@@ -363,8 +389,13 @@
             localStorage.setItem(STORAGE_SESSIONS, JSON.stringify(sessions));
             renderHomeScreen();
         }
-        function deleteHostSession() {
-            if(confirm("Delete saved Host game?")) { localStorage.removeItem(STORAGE_HOST_DATA); renderHomeScreen(); }
+        function deleteHostGame(code) {
+            if(confirm("Delete this saved game? Cannot be undone.")) { 
+                const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
+                delete allSaves[code];
+                localStorage.setItem(STORAGE_HOST_SAVES, JSON.stringify(allSaves));
+                renderHomeScreen(); 
+            }
         }
 
         function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
@@ -380,18 +411,22 @@
             document.getElementById('confirm-overlay').style.display="flex";
         }
 
+        // --- HOST LOGIC ---
+
         function initHost(existingId = null, isResume = false) {
             if(peer) peer.destroy();
             if(heartbeatInterval) clearInterval(heartbeatInterval);
             if(startTimeout) clearTimeout(startTimeout);
             
             let savedState = null;
-            if(isResume) {
-                savedState = JSON.parse(localStorage.getItem(STORAGE_HOST_DATA));
-                if(savedState && savedState.roomCode) existingId = savedState.roomCode;
+            if(isResume && existingId) {
+                const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
+                savedState = allSaves[existingId];
             }
 
+            // Generate ID if not resuming, or use existing
             const id = existingId || genId();
+            currentHostRoomCode = id;
             peer = new Peer(id);
             
             peer.on('open', id => {
@@ -402,14 +437,28 @@
                 document.getElementById('host-status-text').innerText = "Status: Ready";
                 
                 if(savedState) {
-                    players = savedState.players || []; bag = savedState.bag; turnIndex = savedState.turnIndex;
-                    isFirstTurn = savedState.isFirstTurn; hostInbox = savedState.hostInbox || [];
-                    renderBoard(); restoreBoardTiles(savedState.grid); renderInbox();
-                    showScreen('screen-host'); updateHostUI(); toast("Game Restored");
+                    players = savedState.players || []; 
+                    bag = savedState.bag; 
+                    turnIndex = savedState.turnIndex;
+                    isFirstTurn = savedState.isFirstTurn; 
+                    hostInbox = savedState.hostInbox || [];
+                    soundsEnabled = savedState.settings ? savedState.settings.soundsEnabled : true;
+                    document.getElementById('toggle-sound').checked = soundsEnabled;
+                    
+                    renderBoard(); 
+                    restoreBoardTiles(savedState.grid); 
+                    renderInbox();
+                    
+                    showScreen('screen-host'); 
+                    updateHostUI(); 
+                    toast("Game Resumed");
+                    // Force sync immediately upon resume to catch any reconnected peers
+                    startHeartbeat();
                 } else {
                     initBag(); renderBoard(); players=[]; hostInbox=[];
                 }
-                saveHostState(id); startHeartbeat();
+                saveHostState(id); 
+                startHeartbeat();
             });
 
             peer.on('connection', c => { c.on('data', d => handleHostData(c, d)); });
@@ -442,13 +491,34 @@
         }
 
         function saveHostState(id) {
+            if(!id) return;
             const grid = getGrid();
-            const hostData = JSON.parse(localStorage.getItem(STORAGE_HOST_DATA) || '{}');
-            const state = { 
-                roomCode: id, players, bag, turnIndex, isFirstTurn, grid, hostInbox, 
-                createdAt: hostData.createdAt || Date.now(), lastSavedAt: Date.now()
+            const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
+            
+            // Clean circular references (connections) before saving
+            const cleanPlayers = players.map(p => ({
+                userId: p.userId,
+                name: p.name,
+                score: p.score,
+                lastScore: p.lastScore,
+                tiles: p.tiles,
+                isOffline: p.isOffline,
+                lastSeen: p.lastSeen
+            }));
+
+            allSaves[id] = { 
+                roomCode: id, 
+                players: cleanPlayers, 
+                bag, 
+                turnIndex, 
+                isFirstTurn, 
+                grid, 
+                hostInbox, 
+                settings: { soundsEnabled },
+                createdAt: allSaves[id] ? allSaves[id].createdAt : Date.now(), 
+                lastSavedAt: Date.now()
             };
-            localStorage.setItem(STORAGE_HOST_DATA, JSON.stringify(state));
+            localStorage.setItem(STORAGE_HOST_SAVES, JSON.stringify(allSaves));
         }
 
         function restoreBoardTiles(savedGrid) {
@@ -490,25 +560,28 @@
                 
                 if(!p) {
                     if(data.type === 'handshake') { c.send({type: 'ack_join', success: false, msg: "Session invalid."}); return; }
+                    // New Player
                     p = { userId: incomingId, name: data.name, score: 0, lastScore: 0, tiles: [], conn: c, lastSeen: Date.now(), isOffline: false };
                     players.push(p);
                     toast(`${data.name} joined`);
                 } else {
+                    // Reconnecting Player
                     p.conn = c; p.lastSeen = Date.now(); p.isOffline = false;
                     toast(`${p.name} reconnected`);
                 }
 
+                // Send immediate sync packet
                 c.send({
                     type: 'ack_join', success: true, name: p.name,
                     activePlayer: players[turnIndex] ? players[turnIndex].name : null,
                     myTurn: (players.indexOf(p) === turnIndex),
-                    tiles: p.tiles,
+                    tiles: p.tiles, // AUTO-RECOVERY: Sends the rack stored in DB
                     isGameRunning: document.getElementById('screen-host').classList.contains('active'),
                     grid: getGrid()
                 });
 
                 if(document.getElementById('screen-host').classList.contains('active') === false) { broadcastLobby(); updateLobbyUI(); } else { updateHostUI(); }
-                saveHostState(peer.id);
+                saveHostState(currentHostRoomCode);
                 return;
             }
             if(data.type === 'pong') {
@@ -536,23 +609,51 @@
                         createHostTile(l, p.userId); // add to inbox
                     }
                 });
-                saveHostState(peer.id);
+                saveHostState(currentHostRoomCode);
             }
             if(data.type === 'pass') {
                 const p = players.find(x=>x.conn===c);
                 if(!p || players[turnIndex].userId !== p.userId) return;
                 players[turnIndex].lastScore = 0; turnIndex = (turnIndex + 1) % players.length;
-                updateHostUI(); notifyTurn(); saveHostState(peer.id);
+                updateHostUI(); notifyTurn(); saveHostState(currentHostRoomCode);
             }
         }
 
-        function deal(c, n, targetPlayerIndex) {
+        function deal(conn, n, targetPlayerIndex) {
             let p = players[targetPlayerIndex];
             if(!p) return;
             let newTiles = [];
             for(let i=0; i<n; i++) if(bag.length) newTiles.push(bag.pop());
             p.tiles.push(...newTiles);
-            if(p.conn && p.conn.open) p.conn.send({type:'hand', tiles: newTiles});
+            
+            // Check connection before sending
+            if(p.conn && p.conn.open) {
+                p.conn.send({type:'hand', tiles: newTiles});
+            } else {
+                // Offline Logic
+                showModal("Delivery Failure", `${p.name} is offline. Tiles saved to storage. They will sync upon reconnect.`);
+                p.isOffline = true;
+                updateHostUI();
+            }
+        }
+        
+        function resyncPlayer(index) {
+            const p = players[index];
+            if(!p) return;
+            if(!p.conn || !p.conn.open) { toast("Player is offline"); return; }
+            toast("Syncing data to " + p.name);
+            p.conn.send({
+                type: 'gamestart', // Triggers a full state refresh on client
+            });
+            p.conn.send({
+                type: 'hand',
+                tiles: p.tiles
+            });
+            p.conn.send({
+                type: 'turn_update',
+                myTurn: (index === turnIndex),
+                activePlayer: players[turnIndex].name
+            });
         }
 
         function hostStartGame() {
@@ -571,8 +672,11 @@
 
         function finalizeGameStart() {
             showScreen('screen-host');
-            players.forEach((p, i) => { deal(p.conn, 7, i); if(p.conn && p.conn.open) p.conn.send({type:'gamestart'}); });
-            notifyTurn(); saveHostState(peer.id);
+            players.forEach((p, i) => { 
+                deal(p.conn, 7, i); 
+                if(p.conn && p.conn.open) p.conn.send({type:'gamestart'}); 
+            });
+            notifyTurn(); saveHostState(currentHostRoomCode);
         }
 
         function kickPlayer(index) {
@@ -581,7 +685,7 @@
             if(confirm(`Kick ${p.name}?`)) {
                 if(p.conn && p.conn.open) p.conn.close();
                 players.splice(index, 1);
-                updateLobbyUI(); broadcastLobby(); saveHostState(peer.id);
+                updateLobbyUI(); broadcastLobby(); saveHostState(currentHostRoomCode);
             }
         }
 
@@ -607,7 +711,7 @@
                             if(d.tiles) addRack(d.tiles);
                             Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
                             updateTurnUI(d.myTurn, d.activePlayer);
-                            toast("Reconnected");
+                            toast("Sync Complete");
                         } else { showScreen('screen-player-lobby'); }
                     }
                     if(d.type === 'ping') conn.send({type: 'pong', userId: userId});
@@ -619,7 +723,12 @@
                         Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
                         toast("Game Started!");
                     }
-                    if(d.type==='hand') addRack(d.tiles);
+                    if(d.type==='hand') {
+                        // Clear existing rack if this is a fresh sync (heuristic: if receiving 7 tiles and rack is empty)
+                        const r = document.getElementById('my-rack');
+                        if(d.tiles.length === 7 && r.children.length === 0) r.innerHTML = '';
+                        addRack(d.tiles);
+                    }
                     if(d.type==='return') { addRack([d.tile]); toast("Tile returned"); }
                     if(d.type==='toast') toast(d.msg);
                     if(d.type==='turn_update') updateTurnUI(d.myTurn, d.activePlayer);
@@ -675,7 +784,7 @@
             }
             
             if(dragEl && dragEl.parentNode) dragEl.removeAttribute('style');
-            dragEl=null; updateScorePill(); saveHostState(peer.id);
+            dragEl=null; updateScorePill(); saveHostState(currentHostRoomCode);
         }
 
         // HANDLERS
@@ -737,7 +846,6 @@
             const pill = document.getElementById('score-pill');
             const hasUnassignedBlank = newTiles.some(t => t.dataset.letter === '_');
             
-            // VALIDATION FIX: Ensure letters are read from extracted object, not raw object
             if (newTiles.length === 0 || !isPlacementShapeValid(newTiles) || hasUnassignedBlank) { pill.classList.remove('visible'); currentTurnPoints = 0; return; }
             currentTurnPoints = calculateComplexScore(newTiles);
             pill.innerText = `${currentTurnPoints} pts`; pill.classList.add('visible');
@@ -781,12 +889,10 @@
             const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
             
             // 1. Lock Tiles on Board & Remove from hostInbox memory
-            // This ensures we ONLY have true leftovers in hostInbox
             newTiles.forEach(t => { 
                 t.removeAttribute('data-new'); 
                 t.dataset.locked="true"; 
                 t.style.cursor="default"; 
-                // CRITICAL: Filter this specific tile out of inbox memory
                 hostInbox = hostInbox.filter(x => x.id !== t.dataset.id);
             });
 
@@ -794,14 +900,10 @@
             deal(players[turnIndex].conn, newTiles.length, turnIndex); 
             
             // 3. FORCE RETURN leftovers
-            // Any tile remaining in hostInbox is unused and must be returned
             if(hostInbox.length > 0) {
                 const count = hostInbox.length;
-                // Loop through and return each to its specific owner
                 hostInbox.forEach(t => returnTile(t.letter, t.owner, false)); // false = skip individual save
                 toast(`Returned ${count} unused tiles`);
-                
-                // Clear Memory & UI
                 hostInbox = []; 
                 renderInbox();
             }
@@ -809,11 +911,16 @@
             isFirstTurn = false;
             turnIndex = (turnIndex + 1) % players.length;
             notifyTurn();
-            saveHostState(peer.id); // Save state once at the end
+            saveHostState(currentHostRoomCode); // Save state once at the end
         }
 
         function promptLeaveGame() { showConfirm("Leave Room?", "You will exit this session.", () => { if(currentSessionCode) deleteSession(currentSessionCode); location.reload(); }); }
-        function promptEndGame() { showConfirm("End Game?", "This will delete all data for this room.", () => { localStorage.removeItem(STORAGE_HOST_DATA); location.reload(); }); }
+        function promptEndGame() { showConfirm("End Game?", "This will delete all data for this room.", () => { 
+            const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
+            delete allSaves[currentHostRoomCode];
+            localStorage.setItem(STORAGE_HOST_SAVES, JSON.stringify(allSaves));
+            location.reload(); 
+        }); }
 
         function playSelected() {
             if(!myTurn) { toast("Not your turn!"); return; }
@@ -841,11 +948,10 @@
         function returnTile(l, oid, shouldSave=true){
             const p = players.find(x => x.userId === oid);
             if(p) { 
-                // HOST AUTHORITY: Add to player's memory hand
                 p.tiles.push(l); 
-                // Send to player device
                 if(p.conn && p.conn.open) p.conn.send({type:'return', tile:l}); 
-                if(shouldSave) saveHostState(peer.id); 
+                else toast(`${p.name} offline. Return saved.`);
+                if(shouldSave) saveHostState(currentHostRoomCode); 
             }
             updateScorePill();
         }
@@ -854,7 +960,21 @@
         function notifyTurn(){players.forEach((p,i)=>p.conn && p.conn.open && p.conn.send({type:'turn_update',myTurn:(i===turnIndex),activePlayer:players[turnIndex].name}));updateHostUI();}
         function broadcastLobby(){const names=players.map(p=>p.name);players.forEach(p=>{if(p.conn&&p.conn.open)p.conn.send({type:'lobby_update',names:names});});}
         function updateLobbyUI(){document.getElementById('lobby-player-list').innerHTML=players.map((p, i)=>`<div class="lobby-row"><div><span class="status-dot ${p.isOffline?'status-offline':'status-online'}"></span><span>${p.name}</span></div><button class="btn-kick" onclick="kickPlayer(${i})">X</button></div>`).join('');}
-        function updateHostUI(){document.getElementById('sidebar-list').innerHTML=players.map((p,i)=>`<div class="player-row ${i===turnIndex?'active-turn':''}" data-index="${i}"><div class="player-name-display"><span class="status-dot ${p.isOffline?'status-offline':'status-online'}"></span>${p.name}</div><div class="score-box"><div class="total-score">${p.score}</div>${p.lastScore>0?`<div class="last-turn">+${p.lastScore}</div>`:'<div class="last-turn" style="opacity:0;">+0</div>'}</div></div>`).join('');if(players[turnIndex])document.getElementById('turn-indicator').innerText=players[turnIndex].name;}
+        function updateHostUI(){
+            document.getElementById('sidebar-list').innerHTML=players.map((p,i)=>`
+                <div class="player-row ${i===turnIndex?'active-turn':''}" data-index="${i}">
+                    <div class="player-name-display">
+                        <span class="status-dot ${p.isOffline?'status-offline':'status-online'}"></span>
+                        ${p.name}
+                        ${(p.isOffline || (!p.conn || !p.conn.open)) ? `<button class="btn-resync" onclick="resyncPlayer(${i})">Sync</button>` : ''}
+                    </div>
+                    <div class="score-box">
+                        <div class="total-score">${p.score}</div>
+                        ${p.lastScore>0?`<div class="last-turn">+${p.lastScore}</div>`:'<div class="last-turn" style="opacity:0;">+0</div>'}
+                    </div>
+                </div>`).join('');
+            if(players[turnIndex])document.getElementById('turn-indicator').innerText=players[turnIndex].name;
+        }
 
         function createHostTile(l,owner){
             const id = generateUUID();
