@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Host Master</title>
+    <title>Scrabble Pro - Host Authority</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -69,10 +69,12 @@
         /* HOST LAYOUT */
         #screen-host { flex-direction: row; overflow: hidden; position: relative; }
         .sidebar { width: 340px; height: 100%; background: var(--panel); border-right: 1px solid #444; display: flex; flex-direction: column; padding: 15px; z-index: 50; box-shadow: 5px 0 20px rgba(0,0,0,0.5); }
-        .sidebar-header { display: flex; gap: 10px; align-items: stretch; margin-bottom: 10px; height: 70px; }
-        #host-menu-btn { background: rgba(255,255,255,0.1); border: 1px solid #444; color: #ecf0f1; font-size: 1.8rem; cursor: pointer; border-radius: 8px; padding: 0 15px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+        
+        .sidebar-header { display: flex; gap: 15px; align-items: center; margin-bottom: 15px; height: 60px; }
+        #host-menu-btn { background: rgba(255,255,255,0.1); border: 1px solid #444; color: #ecf0f1; font-size: 1.5rem; cursor: pointer; border-radius: 8px; height: 100%; width: 50px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; margin: 0; }
         #host-menu-btn:hover { background: rgba(255,255,255,0.2); }
-        .info-panel { background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid #444; flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .info-panel { background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid #444; flex-grow: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+
         .board-wrapper { flex-grow: 1; height: 100%; display: flex; align-items: center; justify-content: center; background: #111; position: relative; }
 
         /* BOARD GRID */
@@ -269,7 +271,6 @@
     </div>
 
     <script>
-        // CONFIG
         const SCORES = {'A':1,'B':3,'C':3,'D':2,'E':1,'F':4,'G':2,'H':4,'I':1,'J':8,'K':5,'L':1,'M':3,'N':1,'O':1,'P':3,'Q':10,'R':1,'S':1,'T':1,'U':1,'V':4,'W':4,'X':8,'Y':4,'Z':10,'_':0};
         const BAG_INIT = {'A':9,'B':2,'C':2,'D':4,'E':12,'F':2,'G':3,'H':2,'I':9,'J':1,'K':1,'L':4,'M':2,'N':6,'O':8,'P':2,'Q':1,'R':6,'S':4,'T':6,'U':4,'V':2,'W':2,'X':1,'Y':2,'Z':1,'_':2};
         const LAYOUT = [[1,0,0,4,0,0,0,1,0,0,0,4,0,0,1],[0,2,0,0,0,3,0,0,0,3,0,0,0,2,0],[0,0,2,0,0,0,4,0,4,0,0,0,2,0,0],[4,0,0,2,0,0,0,4,0,0,0,2,0,0,4],[0,0,0,0,2,0,0,0,0,0,2,0,0,0,0],[0,3,0,0,0,3,0,0,0,3,0,0,0,3,0],[0,0,4,0,0,0,4,0,4,0,0,0,4,0,0],[1,0,0,4,0,0,0,5,0,0,0,4,0,0,1],[0,0,4,0,0,0,4,0,4,0,0,0,4,0,0],[0,3,0,0,0,3,0,0,0,3,0,0,0,3,0],[0,0,0,0,2,0,0,0,0,0,2,0,0,0,0],[4,0,0,2,0,0,0,4,0,0,0,2,0,0,4],[0,0,2,0,0,0,4,0,4,0,0,0,2,0,0],[0,2,0,0,0,3,0,0,0,3,0,0,0,2,0],[1,0,0,4,0,0,0,1,0,0,0,4,0,0,1]];
@@ -474,7 +475,7 @@
 
         function renderInbox() {
             const inbox = document.getElementById('host-inbox');
-            inbox.innerHTML = ''; // Full clear
+            inbox.innerHTML = '';
             hostInbox.forEach(item => {
                 const t = document.createElement('div'); t.className = 'tile'; 
                 t.dataset.letter = item.letter; t.dataset.owner = item.owner; t.dataset.id = item.id; t.dataset.new = "true";
@@ -528,10 +529,14 @@
             if(data.type === 'play') {
                 const p = players[turnIndex];
                 if(!p || (p.userId !== players.find(x=>x.conn===c)?.userId)) { c.send({type:'toast', msg:"Not your turn!"}); return; }
+                
+                // STRICT CHECK: Does player actually have these tiles?
                 data.tiles.forEach(l => {
                     const idx = p.tiles.indexOf(l);
-                    if(idx > -1) p.tiles.splice(idx, 1);
-                    createHostTile(l, p.userId);
+                    if(idx > -1) {
+                        p.tiles.splice(idx, 1);
+                        createHostTile(l, p.userId);
+                    }
                 });
                 saveHostState(peer.id);
             }
@@ -635,7 +640,7 @@
             }
         }
 
-        // --- DRAG & DROP LOGIC ---
+        // --- DRAG LOGIC ---
         let dragEl=null, clone=null;
         function onDragStart(e) {
             if(e.currentTarget.dataset.locked==="true") return;
@@ -656,7 +661,7 @@
             document.removeEventListener('pointermove', onDragMove); document.removeEventListener('pointerup', onDragEnd);
             
             if(clone) { clone.remove(); clone=null; }
-            if(dragEl) dragEl.style.display = 'none'; // Hide to check under
+            if(dragEl) dragEl.style.display = 'none'; // Check under
             const el = document.elementFromPoint(e.clientX, e.clientY);
             if(dragEl) dragEl.style.display = 'flex';
             
@@ -664,19 +669,10 @@
                 const cell = el.closest('.cell');
                 const ret = el.closest('.return-zone');
                 
-                if(ret && dragEl) { 
-                    // RETURN TO RACK
-                    handleReturn(dragEl);
-                }
-                else if(cell && dragEl) {
-                    // PLACEMENT / SWAP
-                    handleBoardPlacement(dragEl, cell);
-                } else if(dragEl) {
-                    // INBOX DROP (Default)
-                    handleInboxDrop(dragEl);
-                }
+                if(ret && dragEl) handleReturn(dragEl);
+                else if(cell && dragEl) handleBoardPlacement(dragEl, cell);
+                else if(dragEl) handleInboxDrop(dragEl);
             } else if(dragEl) {
-                // OUTSIDE
                 handleInboxDrop(dragEl);
             }
             
@@ -684,30 +680,31 @@
             dragEl=null; updateScorePill(); saveHostState(peer.id);
         }
 
-        // --- ACTION HANDLERS ---
+        // HANDLERS
         function handleReturn(tile) {
-            returnTile(tile.dataset.letter, tile.dataset.owner);
-            // Remove from inbox array explicitly
-            hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id);
-            // Re-render to ensure DOM matches Data
+            // 1. Remove from Inbox memory
+            const idx = hostInbox.findIndex(t => t.id === tile.dataset.id);
+            if(idx > -1) {
+                hostInbox.splice(idx, 1);
+                // 2. ONLY return if successfully removed from inbox
+                returnTile(tile.dataset.letter, tile.dataset.owner);
+            }
+            
+            // 3. Remove DOM element
+            tile.remove(); 
+            // 4. Force Re-render to clear gaps
             renderInbox(); 
-            // If dragging from board, ensure it's removed from there too
-            if(tile.parentElement) tile.remove();
         }
 
         function handleBoardPlacement(tile, cell) {
             const existing = cell.querySelector('.tile');
             if(!existing) {
-                // Empty cell: Move tile here
-                cell.appendChild(tile);
-                // Remove from Inbox Array
-                hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id);
-                // Trigger blank logic
+                cell.appendChild(tile); // Move
+                hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id); // Remove from inbox
                 if(tile.dataset.letter==='_') { pendingBlankTile=tile; document.getElementById('blank-overlay').style.display="flex"; }
             } else {
                 if(existing.dataset.locked!=="true") {
-                    // Swap: Existing goes to inbox, Tile goes to cell
-                    existing.remove();
+                    existing.remove(); // SWAP
                     if(existing.dataset.isBlank==="true") { existing.dataset.letter='_'; existing.innerHTML=''; existing.classList.remove('is-blank-assigned'); delete existing.dataset.isBlank; }
                     
                     // Add existing back to Inbox Data
@@ -729,7 +726,7 @@
                 hostInbox.push({id: tile.dataset.id, letter: tile.dataset.letter, owner: tile.dataset.owner});
             }
             // If it was on board, remove from board DOM (renderInbox handles the append)
-            if(tile.parentElement) tile.remove();
+            if(tile.parentElement && tile.parentElement.id !== 'host-inbox') tile.remove();
             renderInbox();
         }
 
@@ -793,10 +790,12 @@
             turnIndex = (turnIndex + 1) % players.length;
             notifyTurn();
             
-            // Auto-return leftovers
-            hostInbox.forEach(t => returnTile(t.letter, t.owner));
+            const inbox = document.getElementById('host-inbox');
+            while(inbox.firstChild) { 
+                returnTile(inbox.firstChild.dataset.letter, inbox.firstChild.dataset.owner); 
+                inbox.firstChild.remove(); 
+            }
             hostInbox = []; 
-            renderInbox();
             saveHostState(peer.id);
         }
 
