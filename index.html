@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Validation Fix</title>
+    <title>Scrabble Pro - Final Logic</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -69,12 +69,10 @@
         /* HOST LAYOUT */
         #screen-host { flex-direction: row; overflow: hidden; position: relative; }
         .sidebar { width: 340px; height: 100%; background: var(--panel); border-right: 1px solid #444; display: flex; flex-direction: column; padding: 15px; z-index: 50; box-shadow: 5px 0 20px rgba(0,0,0,0.5); }
-        
-        .sidebar-header { display: flex; gap: 15px; align-items: center; margin-bottom: 15px; height: 60px; }
-        #host-menu-btn { background: rgba(255,255,255,0.1); border: 1px solid #444; color: #ecf0f1; font-size: 1.5rem; cursor: pointer; border-radius: 8px; height: 100%; width: 50px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; margin: 0; }
+        .sidebar-header { display: flex; gap: 10px; align-items: stretch; margin-bottom: 10px; height: 70px; }
+        #host-menu-btn { background: rgba(255,255,255,0.1); border: 1px solid #444; color: #ecf0f1; font-size: 1.8rem; cursor: pointer; border-radius: 8px; padding: 0 15px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
         #host-menu-btn:hover { background: rgba(255,255,255,0.2); }
-        .info-panel { background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid #444; flex-grow: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-
+        .info-panel { background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid #444; flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
         .board-wrapper { flex-grow: 1; height: 100%; display: flex; align-items: center; justify-content: center; background: #111; position: relative; }
 
         /* BOARD GRID */
@@ -680,15 +678,15 @@
             dragEl=null; updateScorePill(); saveHostState(peer.id);
         }
 
+        // HANDLERS
         function handleReturn(tile) {
-            // CRITICAL FIX: Ensure tile is removed from board/inbox memory BEFORE returning
+            // Remove from inbox memory array explicitly using ID
             const idx = hostInbox.findIndex(t => t.id === tile.dataset.id);
             if(idx > -1) {
                 hostInbox.splice(idx, 1);
             }
             
-            // Only return if it's not already on the board (prevents double counting if logic failed elsewhere)
-            // But since we are dragging it, we can assume intent.
+            // Only return if it's not already on the board (prevents double counting)
             returnTile(tile.dataset.letter, tile.dataset.owner);
             
             tile.remove(); 
@@ -781,15 +779,29 @@
             updateHostUI();
 
             const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
-            newTiles.forEach(t => { t.removeAttribute('data-new'); t.dataset.locked="true"; t.style.cursor="default"; });
+            
+            // 1. Lock Tiles on Board & Remove from hostInbox memory (safety)
+            newTiles.forEach(t => { 
+                t.removeAttribute('data-new'); 
+                t.dataset.locked="true"; 
+                t.style.cursor="default"; 
+                hostInbox = hostInbox.filter(x => x.id !== t.dataset.id);
+            });
+
+            // 2. Deal new tiles
             deal(players[turnIndex].conn, newTiles.length, turnIndex); 
+            
+            // 3. Return leftovers in inbox
+            if(hostInbox.length > 0) {
+                hostInbox.forEach(t => returnTile(t.letter, t.owner));
+                toast(`Returned ${hostInbox.length} tiles`);
+                hostInbox = []; 
+                renderInbox();
+            }
+
             isFirstTurn = false;
             turnIndex = (turnIndex + 1) % players.length;
             notifyTurn();
-            
-            hostInbox.forEach(t => returnTile(t.letter, t.owner));
-            hostInbox = []; 
-            renderInbox();
             saveHostState(peer.id);
         }
 
