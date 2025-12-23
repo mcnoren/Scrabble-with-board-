@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Strict Handshake</title>
+    <title>Scrabble Pro - Host Menu</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -57,6 +57,38 @@
         .btn-sm { padding: 8px 15px; font-size: 0.85rem; width: auto; margin: 0; }
         .btn-kick { padding: 4px 8px; font-size: 0.7rem; background: var(--danger); margin-left: 10px; }
 
+        /* MENU DRAWER */
+        #host-menu-btn {
+            position: absolute; top: 15px; left: 15px; z-index: 100;
+            font-size: 2rem; cursor: pointer; color: #ecf0f1;
+            background: rgba(0,0,0,0.6); padding: 2px 12px; border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        #host-menu-btn:hover { background: rgba(255,255,255,0.2); }
+
+        #host-side-menu {
+            position: fixed; top: 0; left: -320px; width: 300px; height: 100%;
+            background: #222; border-right: 1px solid #444;
+            z-index: 2000; transition: left 0.3s ease;
+            display: flex; flex-direction: column; padding: 20px;
+            box-shadow: 5px 0 30px rgba(0,0,0,0.8);
+        }
+        #host-side-menu.open { left: 0; }
+        
+        #host-menu-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 1500;
+            display: none; opacity: 0; transition: opacity 0.3s;
+            backdrop-filter: blur(2px);
+        }
+        #host-menu-overlay.open { display: block; opacity: 1; }
+
+        .menu-header { font-size: 1.5rem; font-weight: bold; margin-bottom: 30px; border-bottom: 1px solid #444; padding-bottom: 10px; color: var(--accent); }
+        .menu-section { flex-grow: 1; }
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 1.1rem; cursor: pointer; padding: 5px; border-radius: 4px; transition: background 0.2s; }
+        .toggle-row:hover { background: rgba(255,255,255,0.05); }
+        .toggle-row input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+
         /* SESSION LISTS */
         .session-list { margin-top: 10px; width: 320px; max-height: 250px; overflow-y: auto; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid #444; }
         .session-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #444; font-size: 0.9rem; text-align: left; }
@@ -66,11 +98,11 @@
         .session-meta { color: #95a5a6; font-size: 0.75rem; }
         
         /* HOST LAYOUT */
-        #screen-host { flex-direction: row; overflow: hidden; }
+        #screen-host { flex-direction: row; overflow: hidden; position: relative; }
         .sidebar { 
             width: 340px; height: 100%; background: var(--panel); border-right: 1px solid #444; 
             display: flex; flex-direction: column; padding: 20px; z-index: 50; 
-            box-shadow: 5px 0 20px rgba(0,0,0,0.5);
+            box-shadow: 5px 0 20px rgba(0,0,0,0.5); padding-top: 70px; /* Space for menu btn */
         }
         .board-wrapper { flex-grow: 1; height: 100%; display: flex; align-items: center; justify-content: center; background: #111; position: relative; }
 
@@ -253,6 +285,22 @@
     </div>
 
     <div id="screen-host" class="screen">
+        <div id="host-menu-btn" onclick="toggleHostMenu()">☰</div>
+        <div id="host-menu-overlay" onclick="toggleHostMenu()"></div>
+        <div id="host-side-menu">
+            <div class="menu-header">Game Menu</div>
+            <div class="menu-section">
+                <label class="toggle-row">
+                    <span>Sound Effects</span>
+                    <input type="checkbox" id="toggle-sound" checked onchange="toggleSound()">
+                </label>
+                <button onclick="toggleFullscreen()" class="btn-secondary" style="width:100%; margin-top:10px;">Toggle Fullscreen</button>
+            </div>
+            <div style="margin-top:auto;">
+                <button onclick="promptEndGame()" class="btn-danger" style="width:100%;">End Game</button>
+            </div>
+        </div>
+
         <div class="sidebar">
             <div class="info-panel">
                 <div style="font-size:0.7rem; color:#7f8c8d; letter-spacing:1px;">CURRENT TURN</div>
@@ -267,7 +315,6 @@
                 <div class="inbox-rack" id="host-inbox"></div>
                 <div class="return-zone" id="return-zone">Drag Here to Return</div>
                 <button onclick="confirmTurn()" style="width:100%; margin:0; padding:15px; margin-top:10px;">Confirm Turn</button>
-                <button onclick="promptEndGame()" class="btn-danger" style="width:100%; margin:10px 0 0 0;">End Game</button>
             </div>
         </div>
         <div class="board-wrapper"><div class="scrabble-board" id="board-grid"></div></div>
@@ -300,6 +347,7 @@
         let currentSessionCode = null; 
         let heartbeatInterval = null;
         let startTimeout = null;
+        let soundsEnabled = true;
         
         // PERSISTENCE KEYS
         const STORAGE_HOST_DATA = 'scrabble_host_state';
@@ -322,6 +370,26 @@
                 var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
                 return v.toString(16);
             });
+        }
+
+        // --- MENU LOGIC ---
+        function toggleHostMenu() {
+            document.getElementById('host-side-menu').classList.toggle('open');
+            const overlay = document.getElementById('host-menu-overlay');
+            if(overlay.classList.contains('open')) {
+                overlay.classList.remove('open');
+                setTimeout(() => overlay.style.display = 'none', 300);
+            } else {
+                overlay.style.display = 'block';
+                setTimeout(() => overlay.classList.add('open'), 10);
+            }
+        }
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+            else if (document.exitFullscreen) document.exitFullscreen();
+        }
+        function toggleSound() {
+            soundsEnabled = document.getElementById('toggle-sound').checked;
         }
 
         // --- SESSION UI & LOGIC ---
@@ -500,11 +568,11 @@
                     if(document.getElementById('screen-host').classList.contains('active')) updateHostUI();
                 }
 
-                // Check Lobby Start Button
+                // Check Lobby Start Button (Only if not already in handshake verify mode)
                 const btnStart = document.getElementById('btn-start-game');
                 if(btnStart && document.getElementById('screen-lobby').classList.contains('active')) {
-                    const anyOffline = players.some(p => p.isOffline);
                     if(btnStart.innerText !== "VERIFYING...") {
+                        const anyOffline = players.some(p => p.isOffline);
                         btnStart.disabled = players.length === 0 || anyOffline;
                         btnStart.innerText = anyOffline ? "WAITING FOR PLAYERS..." : "START GAME";
                     }
@@ -601,6 +669,7 @@
                 const p = players.find(x => x.userId === data.userId);
                 if(p) {
                     p.isReady = true;
+                    // Check if ALL are ready
                     if(players.every(pl => pl.isReady)) {
                         clearTimeout(startTimeout);
                         finalizeGameStart();
@@ -653,11 +722,15 @@
             btn.disabled = true;
             btn.innerText = "VERIFYING...";
 
+            // Reset ready state
             players.forEach(p => p.isReady = false);
+            
+            // Send Verify Signal
             players.forEach(p => {
                 if(p.conn && p.conn.open) p.conn.send({type: 'prepare_start'});
             });
 
+            // Start Timeout (fail safe)
             startTimeout = setTimeout(() => {
                 const missing = players.filter(p => !p.isReady).map(p => p.name).join(', ');
                 showModal("Error", `No response from: ${missing}`);
@@ -730,6 +803,7 @@
                     }
 
                     if(d.type === 'prepare_start') {
+                        // Immediately respond to start handshake
                         conn.send({type: 'ready_start', userId: userId});
                     }
 
