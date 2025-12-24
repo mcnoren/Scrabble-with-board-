@@ -16,6 +16,7 @@
             --accent-hover: #2ecc71;
             --danger: #c0392b;
             --warning: #f39c12;
+            --info: #3498db;
             
             --wood-frame: #5d4037;
             --rack-color: #d2b48c; 
@@ -44,6 +45,7 @@
         .btn-secondary { background: #7f8c8d; }
         .btn-warning { background: var(--warning); color: #222; }
         .btn-danger { background: var(--danger); color: white; }
+        .btn-info { background: var(--info); color: white; }
         .btn-sm { padding: 8px 15px; font-size: 0.85rem; width: auto; margin: 0; }
         .btn-kick { padding: 4px 8px; font-size: 0.7rem; background: var(--danger); margin-left: 10px; }
         .btn-resync { padding: 4px 8px; font-size: 0.7rem; background: #3498db; margin-left: 5px; color: white; border-radius: 4px; border:none; cursor: pointer; }
@@ -248,7 +250,10 @@
             <div class="inbox-area">
                 <div class="inbox-header">
                     <div style="font-size:0.7rem; color:#7f8c8d; text-transform:uppercase;">Tile Inbox</div>
-                    <button onclick="recallTiles()" class="btn-warning btn-sm">Recall</button>
+                    <div>
+                        <button id="btn-smart-fill" onclick="executeSmartFill()" class="btn-info btn-sm hidden" style="margin-right:5px;">Smart Fill</button>
+                        <button onclick="recallTiles()" class="btn-warning btn-sm">Recall</button>
+                    </div>
                 </div>
                 <div class="inbox-rack" id="host-inbox"></div>
                 <div class="return-zone" id="return-zone">Drag Here to Return</div>
@@ -857,7 +862,7 @@
             }
             
             if(dragEl && dragEl.parentNode) dragEl.removeAttribute('style');
-            dragEl=null; updateScorePill(); saveHostState(currentHostRoomCode);
+            dragEl=null; updateScorePill(); checkSmartFill(); saveHostState(currentHostRoomCode);
         }
 
         // HANDLERS
@@ -873,6 +878,7 @@
             
             tile.remove(); 
             renderInbox(); 
+            checkSmartFill();
         }
 
         function handleBoardPlacement(tile, cell) {
@@ -903,6 +909,7 @@
             }
             if(tile.parentElement && tile.parentElement.id !== 'host-inbox') tile.remove();
             renderInbox();
+            checkSmartFill();
         }
 
         function updateClonePos(x,y){ if(clone){ clone.style.left=(x-27.5)+'px'; clone.style.top=(y-27.5)+'px'; } }
@@ -931,6 +938,93 @@
             if (top + pH + pad > window.innerHeight) top = rect.top - pH - pad;
             if (left < pad) left = pad;
             pill.style.top = top + 'px'; pill.style.left = left + 'px';
+        }
+        
+        function checkSmartFill() {
+            const btn = document.getElementById('btn-smart-fill');
+            const newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
+            
+            // Only show if exactly 2 tiles, they are adjacent, and there are tiles left in inbox to fill
+            if (newTiles.length === 2 && hostInbox.length > 0) {
+                const t1 = newTiles[0].parentElement;
+                const t2 = newTiles[1].parentElement;
+                const r1 = parseInt(t1.dataset.r), c1 = parseInt(t1.dataset.c);
+                const r2 = parseInt(t2.dataset.r), c2 = parseInt(t2.dataset.c);
+                
+                // Check if adjacent horizontally or vertically
+                const isHoriz = (r1 === r2 && Math.abs(c1 - c2) === 1);
+                const isVert = (c1 === c2 && Math.abs(r1 - r2) === 1);
+                
+                if (isHoriz || isVert) {
+                    btn.classList.remove('hidden');
+                    return;
+                }
+            }
+            btn.classList.add('hidden');
+        }
+        
+        function executeSmartFill() {
+             const newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
+             if (newTiles.length !== 2) return;
+             
+             // Sort tiles to find the "end" of the current sequence
+             newTiles.sort((a,b) => {
+                 const pa = a.parentElement, pb = b.parentElement;
+                 return (parseInt(pa.dataset.r) - parseInt(pb.dataset.r)) || (parseInt(pa.dataset.c) - parseInt(pb.dataset.c));
+             });
+             
+             const lastTile = newTiles[1].parentElement;
+             let r = parseInt(lastTile.dataset.r);
+             let c = parseInt(lastTile.dataset.c);
+             
+             // Determine Direction
+             const firstTile = newTiles[0].parentElement;
+             const dr = r - parseInt(firstTile.dataset.r);
+             const dc = c - parseInt(firstTile.dataset.c);
+             
+             // Get visual order of inbox tiles to match user expectation
+             const inboxContainer = document.getElementById('host-inbox');
+             const tilesToPlace = Array.from(inboxContainer.children).map(div => {
+                 return {
+                     id: div.dataset.id,
+                     letter: div.dataset.letter,
+                     owner: div.dataset.owner
+                 };
+             });
+             
+             if(tilesToPlace.length === 0) return;
+             
+             // Place tiles
+             tilesToPlace.forEach(item => {
+                 let placed = false;
+                 // Find next available empty slot
+                 while (!placed) {
+                     r += dr; c += dc;
+                     if(r < 0 || r > 14 || c < 0 || c > 14) break; // Board boundary
+                     
+                     const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+                     if(!cell.querySelector('.tile')) {
+                         // Create tile on board
+                         const t = document.createElement('div'); t.className = 'tile'; 
+                         t.dataset.letter = item.letter; t.dataset.owner = item.owner; t.dataset.id = item.id; t.dataset.new = "true";
+                         if(item.letter === '_') t.innerHTML = ''; else t.innerHTML=`${item.letter}<span class="score">${SCORES[item.letter]}</span>`;
+                         t.addEventListener('pointerdown', onDragStart);
+                         cell.appendChild(t);
+                         
+                         // Remove from visual inbox (and memory array via handleBoardPlacement logic logic simulation)
+                         // Since we are bypassing drag drop, we manually update memory
+                         hostInbox = hostInbox.filter(x => x.id !== item.id);
+                         
+                         placed = true;
+                     }
+                     // If cell has a tile, loop continues and skips it (crossword style)
+                 }
+             });
+             
+             renderInbox();
+             checkSmartFill();
+             updateScorePill();
+             saveHostState(currentHostRoomCode);
         }
 
         function confirmTurn() {
@@ -984,6 +1078,8 @@
             isFirstTurn = false;
             turnIndex = (turnIndex + 1) % players.length;
             notifyTurn();
+            // Hide smart fill button if it was visible
+            document.getElementById('btn-smart-fill').classList.add('hidden');
             saveHostState(currentHostRoomCode); // Save state once at the end
         }
 
@@ -1039,7 +1135,7 @@
             updateScorePill();
         }
 
-        function recallTiles(){const inbox=document.getElementById('host-inbox');document.querySelectorAll('.cell .tile[data-new="true"]').forEach(t=>{ if(!hostInbox.some(x=>x.id===t.dataset.id)) hostInbox.push({id:t.dataset.id, letter:t.dataset.letter, owner:t.dataset.owner}); }); renderInbox(); document.querySelectorAll('.cell').forEach(c=>{ if(c.querySelector('.tile[data-new="true"]')) c.innerHTML = ''; }); updateScorePill();}
+        function recallTiles(){const inbox=document.getElementById('host-inbox');document.querySelectorAll('.cell .tile[data-new="true"]').forEach(t=>{ if(!hostInbox.some(x=>x.id===t.dataset.id)) hostInbox.push({id:t.dataset.id, letter:t.dataset.letter, owner:t.dataset.owner}); }); renderInbox(); document.querySelectorAll('.cell').forEach(c=>{ if(c.querySelector('.tile[data-new="true"]')) c.innerHTML = ''; }); updateScorePill(); checkSmartFill();}
         function notifyTurn(){players.forEach((p,i)=>p.conn && p.conn.open && p.conn.send({type:'turn_update',myTurn:(i===turnIndex),activePlayer:players[turnIndex].name}));updateHostUI();}
         function broadcastLobby(){const names=players.map(p=>p.name);players.forEach(p=>{if(p.conn&&p.conn.open)p.conn.send({type:'lobby_update',names:names});});}
         function updateLobbyUI(){document.getElementById('lobby-player-list').innerHTML=players.map((p, i)=>`<div class="lobby-row"><div><span class="status-dot ${p.isOffline?'status-offline':'status-online'}"></span><span>${p.name}</span></div><button class="btn-kick" onclick="kickPlayer(${i})">X</button></div>`).join('');}
@@ -1063,6 +1159,7 @@
             const id = generateUUID();
             hostInbox.push({id:id, letter:l, owner:owner});
             renderInbox();
+            checkSmartFill();
         }
         function renderBoard(){const b=document.getElementById('board-grid');b.innerHTML='';for(let r=0;r<15;r++)for(let c=0;c<15;c++){const d=document.createElement('div');d.className='cell';d.dataset.r=r;d.dataset.c=c;const t=LAYOUT[r][c];if(t===1){d.classList.add('tw');d.innerText='TW'}if(t===2){d.classList.add('dw');d.innerText='DW'}if(t===3){d.classList.add('tl');d.innerText='TL'}if(t===4){d.classList.add('dl');d.innerText='DL'}if(t===5){d.classList.add('star');d.innerHTML='★'}b.appendChild(d);}}
         
