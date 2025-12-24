@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Instant Connect</title>
+    <title>Scrabble Pro - Multi-Save & Sync</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -46,6 +46,7 @@
         .btn-danger { background: var(--danger); color: white; }
         .btn-sm { padding: 8px 15px; font-size: 0.85rem; width: auto; margin: 0; }
         .btn-kick { padding: 4px 8px; font-size: 0.7rem; background: var(--danger); margin-left: 10px; }
+        .btn-resync { padding: 4px 8px; font-size: 0.7rem; background: #3498db; margin-left: 5px; color: white; border-radius: 4px; border:none; cursor: pointer; }
 
         /* MENU DRAWER */
         #host-side-menu { position: fixed; top: 0; left: -320px; width: 300px; height: 100%; background: #222; border-right: 1px solid #444; z-index: 2000; transition: left 0.3s ease; display: flex; flex-direction: column; padding: 20px; box-shadow: 5px 0 30px rgba(0,0,0,0.8); }
@@ -95,7 +96,7 @@
         #score-pill.visible { opacity: 1; transform: scale(1); }
         .player-row { display: flex; justify-content: space-between; align-items: center; height: 64px; padding: 0 15px; border-bottom: 1px solid #444; background: rgba(255,255,255,0.02); transition: background 0.3s; }
         .player-row.active-turn { border-left: 4px solid var(--accent); background: rgba(255,255,255,0.08); }
-        .player-name-display { font-weight: bold; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; display: flex; align-items: center; }
+        .player-name-display { font-weight: bold; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; display: flex; align-items: center; }
         .score-box { text-align: right; width: 80px; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; }
         .total-score { font-size: 1.4rem; font-weight: 800; color: var(--accent); line-height: 1; }
         .last-turn { font-size: 0.8rem; color: #95a5a6; font-weight: 600; height: 14px; margin-top: 2px; }
@@ -125,7 +126,7 @@
         .mobile-controls button { margin: 0; flex: 1; padding: 20px; font-size: 1.1rem; border-radius: 12px; text-transform: uppercase; letter-spacing: 1px; }
 
         /* OVERLAYS & TOAST */
-        #notification-overlay, #blank-overlay, #confirm-overlay, #reconnect-overlay, #host-offline-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        #notification-overlay, #blank-overlay, #confirm-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal { background: #2c3e50; border: 1px solid #444; padding: 25px; border-radius: 12px; text-align: center; max-width: 320px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); color: white; }
         #blank-selector { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; }
         .letter-btn { width: 45px; height: 45px; background: var(--tile-face); border: none; border-radius: 3px; color: #2d3436; font-weight: 700; font-size: 1.3rem; cursor: pointer; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; aspect-ratio: 1 / 1; padding: 0; flex-shrink: 0; }
@@ -136,31 +137,13 @@
         .status-dot { height: 10px; width: 10px; background-color: #7f8c8d; border-radius: 50%; display: inline-block; margin-right: 6px; margin-left:6px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
         .status-online { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
         .status-offline { background-color: #c0392b; }
+        .save-badge { background: #2ecc71; color: #111; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; margin-left: auto; }
     </style>
 </head>
-<body onclick="resumeAudio()">
+<body>
 
     <div id="blank-overlay"><div class="modal"><h3 style="margin-top:0;">Assign Blank Tile</h3><div id="blank-selector"></div></div></div>
     
-    <div id="reconnect-overlay">
-        <div class="modal">
-            <h3 style="margin-top:0; color:#e74c3c;">Connecting...</h3>
-            <p style="color:#bdc3c7; margin-bottom:20px; font-size:0.9rem;">Connecting to host.</p>
-            <div class="spinner" style="margin:20px auto; border: 4px solid #f3f3f3; border-top: 4px solid #e74c3c; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite;"></div>
-            <button onclick="cancelJoin()" class="btn-secondary" style="width:100%; margin-top:10px;">Cancel</button>
-        </div>
-    </div>
-
-    <div id="host-offline-overlay">
-        <div class="modal">
-            <h3 style="margin-top:0; color:#f39c12;">Waiting for Host</h3>
-            <p style="color:#bdc3c7; margin-bottom:20px; font-size:0.9rem;">The host is temporarily offline.<br>Automatically retrying...</p>
-            <div class="spinner" style="margin:20px auto; border: 4px solid #f3f3f3; border-top: 4px solid #f39c12; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite;"></div>
-            <button onclick="location.reload()" class="btn-secondary" style="width:100%;">Leave Game</button>
-        </div>
-    </div>
-    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
-
     <div id="confirm-overlay">
         <div class="modal">
             <h3 id="confirm-title" style="margin-top:0; color:#e74c3c;">Confirm</h3>
@@ -208,7 +191,7 @@
         <input type="text" id="join-code" placeholder="ROOM CODE" maxlength="4">
         <br>
         <button id="btn-join" onclick="joinGame()" style="width:280px;">Connect</button>
-        <button onclick="cancelJoin()" class="btn-secondary" style="margin-top:10px;">Back</button>
+        <button onclick="showHomeScreen()" class="btn-secondary" style="margin-top:10px;">Back</button>
         <div id="connect-status" style="color:#e74c3c; font-size:0.8rem; margin-top:15px; height:20px;"></div>
     </div>
 
@@ -305,86 +288,9 @@
         let soundsEnabled = true;
         let hostInbox = []; // Stores {id, letter, owner}
         
-        // --- PEER MONITORING ---
-        let lastHostPulse = 0;
-        let playerMonitorInterval = null;
-        let isHostOffline = false;
-        let connectTimeout = null;
-
         // --- STORAGE KEYS ---
-        const STORAGE_HOST_SAVES = 'scrabble_host_saves_v2'; 
+        const STORAGE_HOST_SAVES = 'scrabble_host_saves_v2'; // Stores object { 'CODE': stateObj }
         const STORAGE_SESSIONS = 'scrabble_player_sessions'; 
-        
-        // --- CONFIG ---
-        const PEER_CONFIG = {
-            debug: 1,
-            config: {
-                iceServers: [
-                    { url: 'stun:stun.l.google.com:19302' },
-                    { url: 'stun:stun1.l.google.com:19302' },
-                    { url: 'stun:stun2.l.google.com:19302' }
-                ]
-            }
-        };
-        
-        // --- AUDIO SYSTEM ---
-        let audioCtx = null;
-        function resumeAudio() { if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); }
-        
-        function playSound(type) {
-            if(!soundsEnabled) return;
-            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if(audioCtx.state === 'suspended') audioCtx.resume();
-
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            const now = audioCtx.currentTime;
-
-            if(type === 'place' || type === 'click') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(800, now);
-                osc.frequency.exponentialRampToValueAtTime(300, now + 0.1);
-                gain.gain.setValueAtTime(0.1, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-                osc.start(now); osc.stop(now + 0.1);
-            } else if(type === 'chim') { // Success/Chime
-                const notes = [523.25, 659.25, 783.99]; 
-                notes.forEach((freq, i) => {
-                    const o = audioCtx.createOscillator();
-                    const g = audioCtx.createGain();
-                    o.connect(g); g.connect(audioCtx.destination);
-                    o.type = 'sine';
-                    o.frequency.value = freq;
-                    g.gain.setValueAtTime(0.05, now + i*0.05);
-                    g.gain.exponentialRampToValueAtTime(0.001, now + 0.6 + i*0.05);
-                    o.start(now + i*0.05); o.stop(now + 0.6 + i*0.05);
-                });
-            } else if(type === 'error') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(150, now);
-                osc.frequency.linearRampToValueAtTime(100, now + 0.3);
-                gain.gain.setValueAtTime(0.1, now);
-                gain.gain.linearRampToValueAtTime(0.001, now + 0.3);
-                osc.start(now); osc.stop(now + 0.3);
-            } else if(type === 'notify') {
-                const o1 = audioCtx.createOscillator(); const g1 = audioCtx.createGain();
-                o1.connect(g1); g1.connect(audioCtx.destination);
-                o1.frequency.setValueAtTime(880, now);
-                g1.gain.setValueAtTime(0.1, now);
-                g1.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-                o1.start(now); o1.stop(now + 0.5);
-
-                const o2 = audioCtx.createOscillator(); const g2 = audioCtx.createGain();
-                o2.connect(g2); g2.connect(audioCtx.destination);
-                o2.frequency.setValueAtTime(659.25, now + 0.4);
-                g2.gain.setValueAtTime(0.1, now + 0.4);
-                g2.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
-                o2.start(now + 0.4); o2.stop(now + 1.2);
-            }
-        }
 
         window.onload = () => {
             renderHomeScreen();
@@ -420,7 +326,9 @@
         }
         function toggleSound() { soundsEnabled = document.getElementById('toggle-sound').checked; saveHostState(currentHostRoomCode); }
 
+        // --- HOME & STORAGE UI ---
         function renderHomeScreen() {
+            // RENDER SAVED HOST GAMES
             const hostArea = document.getElementById('host-saved-list');
             const hostListContainer = document.getElementById('host-sessions-container');
             const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
@@ -429,17 +337,31 @@
             hostListContainer.innerHTML = '';
             if(saveKeys.length > 0) {
                 hostArea.style.display = 'block';
+                // Sort by date descending
                 saveKeys.sort((a,b) => (allSaves[b].lastSavedAt || 0) - (allSaves[a].lastSavedAt || 0));
+                
                 saveKeys.forEach(code => {
                     const data = allSaves[code];
                     const dateStr = new Date(data.lastSavedAt || Date.now()).toLocaleDateString() + ' ' + new Date(data.lastSavedAt || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                     const pCount = data.players ? data.players.length : 0;
+                    
                     const el = document.createElement('div'); el.className = 'session-item';
-                    el.innerHTML = `<div class="session-info"><span class="session-code">Room ${code}</span><span class="session-meta">${pCount} players • ${dateStr}</span></div><div style="display:flex; gap:10px;"><button class="btn-warning btn-sm" onclick="initHost('${code}', true)">Resume</button><button class="btn-danger btn-sm" onclick="deleteHostGame('${code}')">✕</button></div>`;
+                    el.innerHTML = `
+                        <div class="session-info">
+                            <span class="session-code">Room ${code}</span>
+                            <span class="session-meta">${pCount} players • ${dateStr}</span>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn-warning btn-sm" onclick="initHost('${code}', true)">Resume</button>
+                            <button class="btn-danger btn-sm" onclick="deleteHostGame('${code}')">✕</button>
+                        </div>`;
                     hostListContainer.appendChild(el);
                 });
-            } else { hostArea.style.display = 'none'; }
+            } else {
+                hostArea.style.display = 'none';
+            }
 
+            // RENDER SAVED PLAYER SESSIONS
             const sessionList = document.getElementById('session-list');
             const sessionArea = document.getElementById('sessions-area');
             const sessions = JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]');
@@ -468,7 +390,7 @@
             renderHomeScreen();
         }
         function deleteHostGame(code) {
-            if(confirm("Delete this saved game?")) { 
+            if(confirm("Delete this saved game? Cannot be undone.")) { 
                 const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
                 delete allSaves[code];
                 localStorage.setItem(STORAGE_HOST_SAVES, JSON.stringify(allSaves));
@@ -476,19 +398,11 @@
             }
         }
 
-        function showScreen(id) { 
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
-            document.getElementById(id).classList.add('active'); 
-            
-            // Auto-init peer if entering join screen to save time
-            if(id === 'screen-join-login' && (!peer || peer.disconnected)) {
-                initClientPeer();
-            }
-        }
+        function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
         function showHomeScreen() { showScreen('screen-home'); renderHomeScreen(); }
         function showJoinScreen() { showScreen('screen-join-login'); }
         function toast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
-        function showModal(title, msg) { playSound('error'); document.getElementById('modal-title').innerText=title; document.getElementById('modal-msg').innerText=msg; document.getElementById('notification-overlay').style.display="flex"; }
+        function showModal(title, msg) { document.getElementById('modal-title').innerText=title; document.getElementById('modal-msg').innerText=msg; document.getElementById('notification-overlay').style.display="flex"; }
         function closeModal() { document.getElementById('notification-overlay').style.display="none"; }
         function showConfirm(title, msg, onYes) {
             document.getElementById('confirm-title').innerText = title; document.getElementById('confirm-msg').innerText = msg;
@@ -500,9 +414,9 @@
         // --- HOST LOGIC ---
 
         function initHost(existingId = null, isResume = false) {
-            resumeAudio();
             if(peer) peer.destroy();
             if(heartbeatInterval) clearInterval(heartbeatInterval);
+            if(startTimeout) clearTimeout(startTimeout);
             
             let savedState = null;
             if(isResume && existingId) {
@@ -510,12 +424,11 @@
                 savedState = allSaves[existingId];
             }
 
+            // Generate ID if not resuming, or use existing
             const id = existingId || genId();
             currentHostRoomCode = id;
-            peer = new Peer(id, PEER_CONFIG);
+            peer = new Peer(id);
             
-            peer.on('disconnected', () => { toast("Connection lost. Reconnecting..."); peer.reconnect(); });
-
             peer.on('open', id => {
                 showScreen('screen-lobby');
                 document.getElementById('lobby-code-display').innerText = id;
@@ -524,25 +437,32 @@
                 document.getElementById('host-status-text').innerText = "Status: Ready";
                 
                 if(savedState) {
-                    players = savedState.players || []; bag = savedState.bag; turnIndex = savedState.turnIndex; isFirstTurn = savedState.isFirstTurn; 
+                    players = savedState.players || []; 
+                    bag = savedState.bag; 
+                    turnIndex = savedState.turnIndex;
+                    isFirstTurn = savedState.isFirstTurn; 
                     hostInbox = savedState.hostInbox || [];
                     soundsEnabled = savedState.settings ? savedState.settings.soundsEnabled : true;
                     document.getElementById('toggle-sound').checked = soundsEnabled;
-                    renderBoard(); restoreBoardTiles(savedState.grid); renderInbox();
-                    showScreen('screen-host'); updateHostUI(); toast("Game Resumed"); startHeartbeat();
+                    
+                    renderBoard(); 
+                    restoreBoardTiles(savedState.grid); 
+                    renderInbox();
+                    
+                    showScreen('screen-host'); 
+                    updateHostUI(); 
+                    toast("Game Resumed");
+                    // Force sync immediately upon resume to catch any reconnected peers
+                    startHeartbeat();
                 } else {
                     initBag(); renderBoard(); players=[]; hostInbox=[];
                 }
-                saveHostState(id); startHeartbeat();
+                saveHostState(id); 
+                startHeartbeat();
             });
 
             peer.on('connection', c => { c.on('data', d => handleHostData(c, d)); });
-            peer.on('error', e => { 
-                if(e.type === 'unavailable-id') { 
-                    showModal("ID Taken", "Recovering session...");
-                    setTimeout(() => initHost(existingId, isResume), 2000); 
-                }
-            });
+            peer.on('error', e => { if(e.type === 'unavailable-id' && existingId) setTimeout(() => initHost(existingId, isResume), 1000); });
         }
 
         function startHeartbeat() {
@@ -559,6 +479,14 @@
                     if(document.getElementById('screen-lobby').classList.contains('active')) updateLobbyUI();
                     if(document.getElementById('screen-host').classList.contains('active')) updateHostUI();
                 }
+                const btnStart = document.getElementById('btn-start-game');
+                if(btnStart && document.getElementById('screen-lobby').classList.contains('active')) {
+                    if(btnStart.innerText !== "VERIFYING...") {
+                        const anyOffline = players.some(p => p.isOffline);
+                        btnStart.disabled = players.length === 0 || anyOffline;
+                        btnStart.innerText = anyOffline ? "WAITING FOR PLAYERS..." : "START GAME";
+                    }
+                }
             }, 5000);
         }
 
@@ -566,36 +494,62 @@
             if(!id) return;
             const grid = getGrid();
             const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
-            const cleanPlayers = players.map(p => ({ userId: p.userId, name: p.name, score: p.score, lastScore: p.lastScore, tiles: p.tiles, isOffline: p.isOffline, lastSeen: p.lastSeen }));
-            allSaves[id] = { roomCode: id, players: cleanPlayers, bag, turnIndex, isFirstTurn, grid, hostInbox, settings: { soundsEnabled }, createdAt: allSaves[id] ? allSaves[id].createdAt : Date.now(), lastSavedAt: Date.now() };
+            
+            // Clean circular references (connections) before saving
+            const cleanPlayers = players.map(p => ({
+                userId: p.userId,
+                name: p.name,
+                score: p.score,
+                lastScore: p.lastScore,
+                tiles: p.tiles,
+                isOffline: p.isOffline,
+                lastSeen: p.lastSeen
+            }));
+
+            allSaves[id] = { 
+                roomCode: id, 
+                players: cleanPlayers, 
+                bag, 
+                turnIndex, 
+                isFirstTurn, 
+                grid, 
+                hostInbox, 
+                settings: { soundsEnabled },
+                createdAt: allSaves[id] ? allSaves[id].createdAt : Date.now(), 
+                lastSavedAt: Date.now()
+            };
             localStorage.setItem(STORAGE_HOST_SAVES, JSON.stringify(allSaves));
         }
 
         function restoreBoardTiles(savedGrid) {
             if(!savedGrid) return;
-            for(let r=0; r<15; r++) { for(let c=0; c<15; c++) {
-                const data = savedGrid[r][c];
-                if(data) {
-                    const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-                    if(cell) {
-                        cell.innerHTML = '';
-                        const t = document.createElement('div'); t.className = 'tile'; 
-                        t.dataset.letter = data.letter; t.dataset.id = data.id; t.dataset.owner = data.owner; t.dataset.locked = "true"; 
-                        if(data.letter === '_') { t.innerHTML=''; t.dataset.letter='_'; } 
-                        else t.innerHTML = `${data.letter}<span class="score">${SCORES[data.letter]}</span>`;
-                        cell.appendChild(t);
+            for(let r=0; r<15; r++) {
+                for(let c=0; c<15; c++) {
+                    const data = savedGrid[r][c];
+                    if(data) {
+                        const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+                        if(cell) {
+                            cell.innerHTML = '';
+                            const t = document.createElement('div'); t.className = 'tile'; 
+                            t.dataset.letter = data.letter; t.dataset.id = data.id; t.dataset.owner = data.owner; t.dataset.locked = "true"; 
+                            if(data.letter === '_') { t.innerHTML=''; t.dataset.letter='_'; } 
+                            else t.innerHTML = `${data.letter}<span class="score">${SCORES[data.letter]}</span>`;
+                            cell.appendChild(t);
+                        }
                     }
                 }
-            }}
+            }
         }
 
         function renderInbox() {
-            const inbox = document.getElementById('host-inbox'); inbox.innerHTML = '';
+            const inbox = document.getElementById('host-inbox');
+            inbox.innerHTML = '';
             hostInbox.forEach(item => {
                 const t = document.createElement('div'); t.className = 'tile'; 
                 t.dataset.letter = item.letter; t.dataset.owner = item.owner; t.dataset.id = item.id; t.dataset.new = "true";
                 if(item.letter === '_') t.innerHTML = ''; else t.innerHTML=`${item.letter}<span class="score">${SCORES[item.letter]}</span>`;
-                t.addEventListener('pointerdown', onDragStart); inbox.appendChild(t);
+                t.addEventListener('pointerdown', onDragStart);
+                inbox.appendChild(t);
             });
         }
 
@@ -603,53 +557,105 @@
             if(data.type === 'join' || data.type === 'handshake') {
                 const incomingId = data.userId;
                 let p = players.find(x => x.userId === incomingId);
+                
                 if(!p) {
                     if(data.type === 'handshake') { c.send({type: 'ack_join', success: false, msg: "Session invalid."}); return; }
+                    // New Player
                     p = { userId: incomingId, name: data.name, score: 0, lastScore: 0, tiles: [], conn: c, lastSeen: Date.now(), isOffline: false };
-                    players.push(p); toast(`${data.name} joined`);
+                    players.push(p);
+                    toast(`${data.name} joined`);
                 } else {
-                    p.conn = c; p.lastSeen = Date.now(); p.isOffline = false; toast(`${p.name} reconnected`);
+                    // Reconnecting Player
+                    p.conn = c; p.lastSeen = Date.now(); p.isOffline = false;
+                    toast(`${p.name} reconnected`);
                 }
+
+                // Send immediate sync packet
                 c.send({
-                    type: 'ack_join', success: true, name: p.name, activePlayer: players[turnIndex] ? players[turnIndex].name : null,
-                    myTurn: (players.indexOf(p) === turnIndex), tiles: p.tiles, isGameRunning: document.getElementById('screen-host').classList.contains('active'), grid: getGrid()
+                    type: 'ack_join', success: true, name: p.name,
+                    activePlayer: players[turnIndex] ? players[turnIndex].name : null,
+                    myTurn: (players.indexOf(p) === turnIndex),
+                    tiles: p.tiles, // AUTO-RECOVERY: Sends the rack stored in DB
+                    isGameRunning: document.getElementById('screen-host').classList.contains('active'),
+                    grid: getGrid()
                 });
+
                 if(document.getElementById('screen-host').classList.contains('active') === false) { broadcastLobby(); updateLobbyUI(); } else { updateHostUI(); }
-                saveHostState(currentHostRoomCode); return;
+                saveHostState(currentHostRoomCode);
+                return;
             }
             if(data.type === 'pong') {
                 const p = players.find(x => x.userId === data.userId);
-                if(p) { p.lastSeen = Date.now(); p.isOffline = false; } return;
+                if(p) { p.lastSeen = Date.now(); p.isOffline = false; }
+                return;
             }
             if(data.type === 'ready_start') {
                 const p = players.find(x => x.userId === data.userId);
-                if(p) { p.isReady = true; if(players.every(pl => pl.isReady)) { clearTimeout(startTimeout); finalizeGameStart(); } } return;
+                if(p) {
+                    p.isReady = true;
+                    if(players.every(pl => pl.isReady)) { clearTimeout(startTimeout); finalizeGameStart(); }
+                }
+                return;
             }
             if(data.type === 'play') {
                 const p = players[turnIndex];
                 if(!p || (p.userId !== players.find(x=>x.conn===c)?.userId)) { c.send({type:'toast', msg:"Not your turn!"}); return; }
-                data.tiles.forEach(l => { const idx = p.tiles.indexOf(l); if(idx > -1) { p.tiles.splice(idx, 1); createHostTile(l, p.userId); } });
+                
+                // HOST AUTHORITY VALIDATION
+                data.tiles.forEach(l => {
+                    const idx = p.tiles.indexOf(l);
+                    if(idx > -1) {
+                        p.tiles.splice(idx, 1); // remove from player hand memory
+                        createHostTile(l, p.userId); // add to inbox
+                    }
+                });
                 saveHostState(currentHostRoomCode);
             }
             if(data.type === 'pass') {
                 const p = players.find(x=>x.conn===c);
                 if(!p || players[turnIndex].userId !== p.userId) return;
-                advanceTurn();
+                players[turnIndex].lastScore = 0; turnIndex = (turnIndex + 1) % players.length;
+                updateHostUI(); notifyTurn(); saveHostState(currentHostRoomCode);
             }
-        }
-        
-        function advanceTurn() {
-            players[turnIndex].lastScore = 0; turnIndex = (turnIndex + 1) % players.length;
-            updateHostUI(); notifyTurn(); saveHostState(currentHostRoomCode);
         }
 
         function deal(conn, n, targetPlayerIndex) {
-            let p = players[targetPlayerIndex]; if(!p) return;
-            let newTiles = []; for(let i=0; i<n; i++) if(bag.length) newTiles.push(bag.pop());
+            let p = players[targetPlayerIndex];
+            if(!p) return;
+            let newTiles = [];
+            for(let i=0; i<n; i++) if(bag.length) newTiles.push(bag.pop());
             p.tiles.push(...newTiles);
-            if(p.conn && p.conn.open) { p.conn.send({type:'hand', tiles: newTiles}); } else { p.isOffline = true; updateHostUI(); }
+            
+            // Check connection before sending
+            if(p.conn && p.conn.open) {
+                p.conn.send({type:'hand', tiles: newTiles});
+            } else {
+                // Offline Logic
+                showModal("Delivery Failure", `${p.name} is offline. Tiles saved to storage. They will sync upon reconnect.`);
+                p.isOffline = true;
+                updateHostUI();
+            }
         }
         
+        function resyncPlayer(index) {
+            const p = players[index];
+            if(!p) return;
+            if(!p.conn || !p.conn.open) { toast("Player is offline"); return; }
+            toast("Syncing data to " + p.name);
+            p.conn.send({
+                type: 'gamestart', // Triggers a full state refresh on client
+            });
+            p.conn.send({
+                type: 'hand',
+                tiles: p.tiles
+            });
+            p.conn.send({
+                type: 'turn_update',
+                myTurn: (index === turnIndex),
+                activePlayer: players[turnIndex].name
+            });
+        }
+
         function hostStartGame() {
             if(players.length === 0) { showModal("Wait", "Need players to start."); return; }
             if(players.some(p => p.isOffline)) { showModal("Wait", "All players must be connected."); return; }
@@ -666,228 +672,164 @@
 
         function finalizeGameStart() {
             showScreen('screen-host');
-            players.forEach((p, i) => { deal(p.conn, 7, i); if(p.conn && p.conn.open) p.conn.send({type:'gamestart'}); });
+            players.forEach((p, i) => { 
+                deal(p.conn, 7, i); 
+                if(p.conn && p.conn.open) p.conn.send({type:'gamestart'}); 
+            });
             notifyTurn(); saveHostState(currentHostRoomCode);
         }
 
-        // --- JOIN & CANCEL LOGIC ---
-
-        function cancelJoin() {
-            // DO NOT destroy peer here, just close connection to keep ID ready for retry
-            if(conn) { conn.close(); conn = null; }
-            if(playerMonitorInterval) clearInterval(playerMonitorInterval);
-            if(connectTimeout) clearTimeout(connectTimeout);
-            document.getElementById('reconnect-overlay').style.display='none';
-            document.getElementById('btn-join').disabled = false;
-            document.getElementById('btn-join').innerText = "Connect";
-            showHomeScreen();
-        }
-
-        // Initialize Peer ONCE for client to avoid lag/race conditions
-        function initClientPeer() {
-            if(!peer || peer.disconnected) {
-                if(peer) peer.destroy();
-                peer = new Peer(null, PEER_CONFIG);
-                peer.on('error', e => console.log('Peer Error', e));
+        function kickPlayer(index) {
+            const p = players[index];
+            if(!p) return;
+            if(confirm(`Kick ${p.name}?`)) {
+                if(p.conn && p.conn.open) p.conn.close();
+                players.splice(index, 1);
+                updateLobbyUI(); broadcastLobby(); saveHostState(currentHostRoomCode);
             }
         }
 
         function joinGame(codeOverride=null, nameOverride=null, idOverride=null) {
-            resumeAudio();
-            document.getElementById('reconnect-overlay').style.display='none';
-            document.getElementById('host-offline-overlay').style.display='none';
-            
-            if(playerMonitorInterval) clearInterval(playerMonitorInterval);
-            if(connectTimeout) clearTimeout(connectTimeout);
-            
             const n = nameOverride || document.getElementById('join-name').value.trim();
             const c = (codeOverride || document.getElementById('join-code').value.trim()).toUpperCase();
             if(!n || c.length!==4) return;
-            
             const btn = document.getElementById('btn-join');
-            btn.disabled = true; btn.innerText = "Finding Room...";
-            
+            if(btn) { btn.disabled = true; btn.innerText = "Connecting..."; }
             const userId = idOverride || generateUUID();
-            currentSessionCode = c;
-
-            // Ensure we have a peer
-            if(!peer || peer.disconnected || peer.destroyed) {
-                peer = new Peer(null, PEER_CONFIG);
-                peer.on('open', () => doConnect(c, n, userId, btn));
-                peer.on('error', (err) => handleConnectError(err, btn));
-            } else if(peer.open) {
-                doConnect(c, n, userId, btn);
-            } else {
-                // Peer exists but not open, wait for it
-                peer.on('open', () => doConnect(c, n, userId, btn));
-            }
-        }
-
-        function handleConnectError(err, btn) {
-            if(connectTimeout) clearTimeout(connectTimeout);
-            btn.disabled = false; btn.innerText = "Connect";
-            if(err.type === 'peer-unavailable') { showModal("Room Not Found", "Check the code and try again."); } 
-            else { console.log(err); }
-        }
-
-        function doConnect(c, n, userId, btn) {
-            btn.innerText = "Handshaking...";
-            conn = peer.connect(c, { reliable: true }); // Removed serialization option to use default
-            
-            connectTimeout = setTimeout(() => {
-                if(!conn || !conn.open) { 
-                    conn.close(); 
-                    handleConnectError({type:'timeout'}, btn);
-                    showModal("Timeout", "Host not responding. Try again.");
-                }
-            }, 8000);
-
-            conn.on('open', () => {
-                clearTimeout(connectTimeout);
-                btn.innerText = "Connected!";
-                conn.send({type: 'join', name:n, userId: userId});
-                lastHostPulse = Date.now() + 10000; 
-                isHostOffline = false;
-                startPlayerMonitor(c, n, userId);
+            peer = new Peer();
+            peer.on('open', () => {
+                conn = peer.connect(c);
+                conn.on('open', () => { conn.send({type:'join', name:n, userId: userId}); });
+                conn.on('data', d => {
+                    if(d.type === 'ack_join') {
+                        if(d.success === false) { alert(d.msg); return; }
+                        saveSession(c, n, userId); 
+                        if(d.isGameRunning) {
+                            showScreen('screen-player');
+                            document.getElementById('my-display-name').innerText = n;
+                            document.getElementById('my-rack').innerHTML = '';
+                            if(d.tiles) addRack(d.tiles);
+                            Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
+                            updateTurnUI(d.myTurn, d.activePlayer);
+                            toast("Sync Complete");
+                        } else { showScreen('screen-player-lobby'); }
+                    }
+                    if(d.type === 'ping') conn.send({type: 'pong', userId: userId});
+                    if(d.type === 'prepare_start') conn.send({type: 'ready_start', userId: userId});
+                    if(d.type === 'lobby_update') document.getElementById('player-lobby-list').innerHTML = d.names.map(name => `<div class="lobby-row"><span>${name}</span><span style="color:#2ecc71;">Joined</span></div>`).join('');
+                    if(d.type==='gamestart') { 
+                        showScreen('screen-player'); 
+                        document.getElementById('my-display-name').innerText = n;
+                        Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
+                        toast("Game Started!");
+                    }
+                    if(d.type==='hand') {
+                        // Clear existing rack if this is a fresh sync (heuristic: if receiving 7 tiles and rack is empty)
+                        const r = document.getElementById('my-rack');
+                        if(d.tiles.length === 7 && r.children.length === 0) r.innerHTML = '';
+                        addRack(d.tiles);
+                    }
+                    if(d.type==='return') { addRack([d.tile]); toast("Tile returned"); }
+                    if(d.type==='toast') toast(d.msg);
+                    if(d.type==='turn_update') updateTurnUI(d.myTurn, d.activePlayer);
+                });
             });
-
-            conn.on('data', d => handlePeerData(d, n, userId));
-            conn.on('close', () => { document.getElementById('reconnect-overlay').style.display = 'flex'; });
-            conn.on('error', e => console.log("Conn Error", e));
-        }
-
-        function startPlayerMonitor(code, name, uid) {
-            playerMonitorInterval = setInterval(() => {
-                const now = Date.now();
-                if (now - lastHostPulse > 4000) {
-                     if(!isHostOffline && (!conn || !conn.open)) {
-                         conn = peer.connect(code); setupConnListeners(conn, name, uid);
-                     }
-                }
-                if (now - lastHostPulse > 8000) {
-                    if(!isHostOffline) {
-                        isHostOffline = true;
-                        document.getElementById('host-offline-overlay').style.display = 'flex';
-                        updateTurnUI(myTurn, "...");
-                    }
-                    if(!conn || !conn.open) {
-                        conn = peer.connect(code); setupConnListeners(conn, name, uid);
-                    } else { conn.send({type: 'handshake', name: name, userId: uid}); }
-                } else {
-                    if(isHostOffline) {
-                        isHostOffline = false;
-                        document.getElementById('host-offline-overlay').style.display = 'none';
-                        toast("Host Online!");
-                    }
-                }
-            }, 2000);
-        }
-
-        function setupConnListeners(c, name, uid) {
-            c.on('open', () => { c.send({type: 'handshake', name: name, userId: uid}); lastHostPulse = Date.now(); });
-            c.on('data', d => handlePeerData(d, name, uid));
-        }
-        
-        function handlePeerData(d, userName, userId) {
-            lastHostPulse = Date.now(); 
-            if(d.type === 'ack_join') {
-                if(d.success === false) { alert(d.msg); return; }
-                saveSession(currentSessionCode, userName, userId); 
-                if(d.isGameRunning) {
-                    showScreen('screen-player');
-                    document.getElementById('my-display-name').innerText = userName;
-                    document.getElementById('my-rack').innerHTML = '';
-                    if(d.tiles) addRack(d.tiles);
-                    Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
-                    updateTurnUI(d.myTurn, d.activePlayer);
-                } else { showScreen('screen-player-lobby'); }
-            }
-            if(d.type === 'ping') conn.send({type: 'pong', userId: userId});
-            if(d.type === 'prepare_start') conn.send({type: 'ready_start', userId: userId});
-            if(d.type === 'lobby_update') document.getElementById('player-lobby-list').innerHTML = d.names.map(name => `<div class="lobby-row"><span>${name}</span><span style="color:#2ecc71;">Joined</span></div>`).join('');
-            if(d.type==='gamestart') { 
-                showScreen('screen-player'); document.getElementById('my-display-name').innerText = userName;
-                Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' }); toast("Game Started!");
-            }
-            if(d.type==='hand') {
-                const r = document.getElementById('my-rack');
-                if(d.tiles.length === 7 && r.children.length === 0) r.innerHTML = '';
-                addRack(d.tiles);
-            }
-            if(d.type==='return') { addRack([d.tile]); toast("Tile returned"); }
-            if(d.type==='toast') toast(d.msg);
-            if(d.type==='turn_update') updateTurnUI(d.myTurn, d.activePlayer);
         }
 
         function updateTurnUI(isMyTurn, activeName) {
             myTurn = isMyTurn;
             const btn = document.getElementById('btn-play');
             const hudStatus = document.getElementById('status-msg');
-            if(isHostOffline) { btn.disabled = true; hudStatus.innerText = "HOST OFFLINE"; hudStatus.classList.remove('active'); return; }
             if(myTurn) {
-                btn.disabled = false; hudStatus.innerText = "YOUR TURN"; hudStatus.classList.add('active'); if(!document.hidden) { toast("It's your turn!"); playSound('notify'); }
-            } else { btn.disabled = true; hudStatus.innerText = `Turn: ${activeName}`; hudStatus.classList.remove('active'); }
+                btn.disabled = false; hudStatus.innerText = "YOUR TURN"; hudStatus.classList.add('active'); if(!document.hidden) toast("It's your turn!");
+            } else {
+                btn.disabled = true; hudStatus.innerText = `Turn: ${activeName}`; hudStatus.classList.remove('active');
+            }
         }
 
         // --- DRAG LOGIC ---
         let dragEl=null, clone=null;
         function onDragStart(e) {
             if(e.currentTarget.dataset.locked==="true") return;
-            e.preventDefault(); playSound('click');
+            e.preventDefault();
             dragEl = e.currentTarget;
             if(dragEl.dataset.isBlank==="true" || (dragEl.dataset.letter==='_' && dragEl.innerText!=='')) {
                 dragEl.dataset.letter='_'; dragEl.innerText=''; dragEl.classList.remove('is-blank-assigned'); delete dragEl.dataset.isBlank;
             }
             clone = dragEl.cloneNode(true); clone.classList.add('dragging'); document.body.appendChild(clone);
-            updateClonePos(e.clientX, e.clientY); dragEl.style.opacity = '0'; updateScorePill();
+            updateClonePos(e.clientX, e.clientY);
+            dragEl.style.opacity = '0';
+            updateScorePill();
             document.addEventListener('pointermove', onDragMove); document.addEventListener('pointerup', onDragEnd);
         }
         function onDragMove(e) { e.preventDefault(); updateClonePos(e.clientX, e.clientY); }
         
         function onDragEnd(e) {
             document.removeEventListener('pointermove', onDragMove); document.removeEventListener('pointerup', onDragEnd);
+            
             if(clone) { clone.remove(); clone=null; }
             if(dragEl) dragEl.style.display = 'none'; 
             const el = document.elementFromPoint(e.clientX, e.clientY);
             if(dragEl) dragEl.style.display = 'flex';
             
             if(el) {
-                const cell = el.closest('.cell'); const ret = el.closest('.return-zone');
+                const cell = el.closest('.cell');
+                const ret = el.closest('.return-zone');
+                
                 if(ret && dragEl) handleReturn(dragEl);
-                else if(cell && dragEl) { handleBoardPlacement(dragEl, cell); playSound('place'); }
+                else if(cell && dragEl) handleBoardPlacement(dragEl, cell);
                 else if(dragEl) handleInboxDrop(dragEl);
-            } else if(dragEl) { handleInboxDrop(dragEl); }
+            } else if(dragEl) {
+                handleInboxDrop(dragEl);
+            }
+            
             if(dragEl && dragEl.parentNode) dragEl.removeAttribute('style');
             dragEl=null; updateScorePill(); saveHostState(currentHostRoomCode);
         }
 
         // HANDLERS
         function handleReturn(tile) {
+            // Remove from inbox memory array explicitly using ID
             const idx = hostInbox.findIndex(t => t.id === tile.dataset.id);
-            if(idx > -1) { hostInbox.splice(idx, 1); }
+            if(idx > -1) {
+                hostInbox.splice(idx, 1);
+            }
+            
+            // Only return if it's not already on the board (prevents double counting)
             returnTile(tile.dataset.letter, tile.dataset.owner);
-            tile.remove(); renderInbox(); 
+            
+            tile.remove(); 
+            renderInbox(); 
         }
 
         function handleBoardPlacement(tile, cell) {
             const existing = cell.querySelector('.tile');
             if(!existing) {
-                cell.appendChild(tile); hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id); 
+                cell.appendChild(tile); 
+                hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id); 
                 if(tile.dataset.letter==='_') { pendingBlankTile=tile; document.getElementById('blank-overlay').style.display="flex"; }
             } else {
                 if(existing.dataset.locked!=="true") {
                     existing.remove(); 
                     if(existing.dataset.isBlank==="true") { existing.dataset.letter='_'; existing.innerHTML=''; existing.classList.remove('is-blank-assigned'); delete existing.dataset.isBlank; }
+                    
                     hostInbox.push({id: existing.dataset.id, letter: existing.dataset.letter, owner: existing.dataset.owner});
-                    cell.appendChild(tile); hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id);
-                    renderInbox(); if(tile.dataset.letter==='_') { pendingBlankTile=tile; document.getElementById('blank-overlay').style.display="flex"; }
+                    
+                    cell.appendChild(tile);
+                    hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id);
+                    
+                    renderInbox(); 
+                    if(tile.dataset.letter==='_') { pendingBlankTile=tile; document.getElementById('blank-overlay').style.display="flex"; }
                 }
             }
         }
 
         function handleInboxDrop(tile) {
-            if(!hostInbox.some(t => t.id === tile.dataset.id)) { hostInbox.push({id: tile.dataset.id, letter: tile.dataset.letter, owner: tile.dataset.owner}); }
-            if(tile.parentElement && tile.parentElement.id !== 'host-inbox') tile.remove(); renderInbox();
+            if(!hostInbox.some(t => t.id === tile.dataset.id)) {
+                hostInbox.push({id: tile.dataset.id, letter: tile.dataset.letter, owner: tile.dataset.owner});
+            }
+            if(tile.parentElement && tile.parentElement.id !== 'host-inbox') tile.remove();
+            renderInbox();
         }
 
         function updateClonePos(x,y){ if(clone){ clone.style.left=(x-27.5)+'px'; clone.style.top=(y-27.5)+'px'; } }
@@ -898,51 +840,13 @@
                 pendingBlankTile=null; document.getElementById('blank-overlay').style.display="none"; updateScorePill();
             }
         }
-
-        function isConnectedToExisting(newTiles) {
-            const lockedTiles = document.querySelectorAll('.cell .tile[data-locked="true"]');
-            if(lockedTiles.length === 0) return true;
-            return newTiles.some(tile => {
-                const r = parseInt(tile.parentElement.dataset.r);
-                const c = parseInt(tile.parentElement.dataset.c);
-                const neighbors = [ getCell(r-1, c), getCell(r+1, c), getCell(r, c-1), getCell(r, c+1) ];
-                return neighbors.some(cell => cell && cell.querySelector('.tile[data-locked="true"]'));
-            });
-        }
-
         function updateScorePill() {
             let newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
             if(dragEl) newTiles = newTiles.filter(t => t !== dragEl);
             const pill = document.getElementById('score-pill');
             const hasUnassignedBlank = newTiles.some(t => t.dataset.letter === '_');
             
-            // STRICT GAP CHECK
-            if(newTiles.length > 1) {
-                const coords = newTiles.map(t=>({r:parseInt(t.parentElement.dataset.r),c:parseInt(t.parentElement.dataset.c)}));
-                const isH = new Set(coords.map(k=>k.r)).size===1;
-                const isV = new Set(coords.map(k=>k.c)).size===1;
-                
-                if(isH) {
-                    coords.sort((a,b)=>a.c-b.c);
-                    const r = coords[0].r;
-                    for(let c=coords[0].c; c<=coords[coords.length-1].c; c++) {
-                        const cell = getCell(r,c);
-                        if(!cell || !cell.querySelector('.tile')) { pill.classList.remove('visible'); return; }
-                    }
-                } else if(isV) {
-                    coords.sort((a,b)=>a.r-b.r);
-                    const c = coords[0].c;
-                    for(let r=coords[0].r; r<=coords[coords.length-1].r; r++) {
-                        const cell = getCell(r,c);
-                        if(!cell || !cell.querySelector('.tile')) { pill.classList.remove('visible'); return; }
-                    }
-                }
-            }
-
-            if (newTiles.length === 0 || !isPlacementShapeValid(newTiles) || hasUnassignedBlank || !isConnectedToExisting(newTiles)) { 
-                pill.classList.remove('visible'); currentTurnPoints = 0; return; 
-            }
-
+            if (newTiles.length === 0 || !isPlacementShapeValid(newTiles) || hasUnassignedBlank) { pill.classList.remove('visible'); currentTurnPoints = 0; return; }
             currentTurnPoints = calculateComplexScore(newTiles);
             pill.innerText = `${currentTurnPoints} pts`; pill.classList.add('visible');
             newTiles.sort((a,b) => (parseInt(a.parentElement.dataset.r)-parseInt(b.parentElement.dataset.r)) || (parseInt(a.parentElement.dataset.c)-parseInt(b.parentElement.dataset.c)));
@@ -958,21 +862,14 @@
 
         function confirmTurn() {
             if(!document.getElementById('score-pill').classList.contains('visible')) { showModal("Invalid", "Invalid placement."); return; }
-            const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
-            
             if(isFirstTurn) {
-                const hasCenter = Array.from(newTiles).some(t => parseInt(t.parentElement.dataset.r)===7 && parseInt(t.parentElement.dataset.c)===7);
+                const hasCenter = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]')).some(t => parseInt(t.parentElement.dataset.r)===7 && parseInt(t.parentElement.dataset.c)===7);
                 if(!hasCenter) { showModal("Rule", "Must start at center."); return; }
-            } else {
-                if(!isConnectedToExisting(Array.from(newTiles))) { showModal("Invalid", "Must connect to existing tiles."); return; }
             }
-
             const grid=getGrid(); const words=getWords(grid);
             const invalid = words.filter(w => !dictionary.has(w) && dictionary.size > 0);
             if(invalid.length > 0) { showModal("Invalid Word", invalid.join(', ')); return; }
             
-            playSound('chim');
-
             const pill = document.getElementById('score-pill');
             const pillRect = pill.getBoundingClientRect();
             pill.classList.remove('visible');
@@ -989,22 +886,32 @@
             players[turnIndex].lastScore = currentTurnPoints;
             updateHostUI();
 
+            const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
+            
+            // 1. Lock Tiles on Board & Remove from hostInbox memory
             newTiles.forEach(t => { 
-                t.removeAttribute('data-new'); t.dataset.locked="true"; t.style.cursor="default"; 
+                t.removeAttribute('data-new'); 
+                t.dataset.locked="true"; 
+                t.style.cursor="default"; 
                 hostInbox = hostInbox.filter(x => x.id !== t.dataset.id);
             });
 
+            // 2. Deal new tiles
             deal(players[turnIndex].conn, newTiles.length, turnIndex); 
             
+            // 3. FORCE RETURN leftovers
             if(hostInbox.length > 0) {
                 const count = hostInbox.length;
-                hostInbox.forEach(t => returnTile(t.letter, t.owner, false)); 
+                hostInbox.forEach(t => returnTile(t.letter, t.owner, false)); // false = skip individual save
                 toast(`Returned ${count} unused tiles`);
-                hostInbox = []; renderInbox();
+                hostInbox = []; 
+                renderInbox();
             }
 
             isFirstTurn = false;
-            advanceTurn();
+            turnIndex = (turnIndex + 1) % players.length;
+            notifyTurn();
+            saveHostState(currentHostRoomCode); // Save state once at the end
         }
 
         function promptLeaveGame() { showConfirm("Leave Room?", "You will exit this session.", () => { if(currentSessionCode) deleteSession(currentSessionCode); location.reload(); }); }
@@ -1016,7 +923,6 @@
         }); }
 
         function playSelected() {
-            if(isHostOffline) { showModal("Offline", "Host is offline. Cannot play."); return; }
             if(!myTurn) { toast("Not your turn!"); return; }
             if(!selectedTilesOrder.length) return;
             const t=[]; selectedTilesOrder.forEach(x=>{ t.push(x.dataset.letter); x.remove(); });
@@ -1029,7 +935,6 @@
                 const d=document.createElement('div'); d.className='tile'; d.dataset.letter=l;
                 if(l === '_') d.innerHTML = ''; else d.innerHTML=`${l}<span class="score">${SCORES[l]}</span>`;
                 d.onclick=()=>{
-                    playSound('click');
                     if(d.classList.contains('selected')) { d.classList.remove('selected'); selectedTilesOrder = selectedTilesOrder.filter(tile => tile !== d); } 
                     else { d.classList.add('selected'); selectedTilesOrder.push(d); }
                 };
@@ -1058,22 +963,39 @@
         function updateHostUI(){
             document.getElementById('sidebar-list').innerHTML=players.map((p,i)=>`
                 <div class="player-row ${i===turnIndex?'active-turn':''}" data-index="${i}">
-                    <div class="player-name-display"><span class="status-dot ${p.isOffline?'status-offline':'status-online'}"></span>${p.name}</div>
-                    <div class="score-box"><div class="total-score">${p.score}</div>${p.lastScore>0?`<div class="last-turn">+${p.lastScore}</div>`:'<div class="last-turn" style="opacity:0;">+0</div>'}</div>
+                    <div class="player-name-display">
+                        <span class="status-dot ${p.isOffline?'status-offline':'status-online'}"></span>
+                        ${p.name}
+                        ${(p.isOffline || (!p.conn || !p.conn.open)) ? `<button class="btn-resync" onclick="resyncPlayer(${i})">Sync</button>` : ''}
+                    </div>
+                    <div class="score-box">
+                        <div class="total-score">${p.score}</div>
+                        ${p.lastScore>0?`<div class="last-turn">+${p.lastScore}</div>`:'<div class="last-turn" style="opacity:0;">+0</div>'}
+                    </div>
                 </div>`).join('');
             if(players[turnIndex])document.getElementById('turn-indicator').innerText=players[turnIndex].name;
         }
 
         function createHostTile(l,owner){
-            const id = generateUUID(); hostInbox.push({id:id, letter:l, owner:owner}); renderInbox();
+            const id = generateUUID();
+            hostInbox.push({id:id, letter:l, owner:owner});
+            renderInbox();
         }
         function renderBoard(){const b=document.getElementById('board-grid');b.innerHTML='';for(let r=0;r<15;r++)for(let c=0;c<15;c++){const d=document.createElement('div');d.className='cell';d.dataset.r=r;d.dataset.c=c;const t=LAYOUT[r][c];if(t===1){d.classList.add('tw');d.innerText='TW'}if(t===2){d.classList.add('dw');d.innerText='DW'}if(t===3){d.classList.add('tl');d.innerText='TL'}if(t===4){d.classList.add('dl');d.innerText='DL'}if(t===5){d.classList.add('star');d.innerHTML='★'}b.appendChild(d);}}
         
         function getGrid(){
             let g = Array(15).fill(null).map(() => Array(15).fill(null));
             document.querySelectorAll('.cell').forEach(c => {
-                const r = parseInt(c.dataset.r); const col = parseInt(c.dataset.c); const tile = c.querySelector('.tile');
-                if(tile) { g[r][col] = { letter: tile.dataset.letter, id: tile.dataset.id, owner: tile.dataset.owner }; }
+                const r = parseInt(c.dataset.r);
+                const col = parseInt(c.dataset.c);
+                const tile = c.querySelector('.tile');
+                if(tile) {
+                    g[r][col] = {
+                        letter: tile.dataset.letter,
+                        id: tile.dataset.id,
+                        owner: tile.dataset.owner
+                    };
+                }
             });
             return g;
         }
@@ -1083,10 +1005,13 @@
             for(let i=0;i<15;i++){
                 let rowStr="", colStr="";
                 for(let j=0;j<15;j++){
-                    let rVal = (g[i] && g[i][j]) ? g[i][j].letter : " "; let cVal = (g[j] && g[j][i]) ? g[j][i].letter : " ";
-                    rowStr += rVal; colStr += cVal;
+                    let rVal = (g[i] && g[i][j]) ? g[i][j].letter : " ";
+                    let cVal = (g[j] && g[j][i]) ? g[j][i].letter : " ";
+                    rowStr += rVal;
+                    colStr += cVal;
                 }
-                rowStr.split(" ").forEach(x=>{if(x.length>1)w.push(x)}); colStr.split(" ").forEach(x=>{if(x.length>1)w.push(x)});
+                rowStr.split(" ").forEach(x=>{if(x.length>1)w.push(x)});
+                colStr.split(" ").forEach(x=>{if(x.length>1)w.push(x)});
             }
             return w;
         }
