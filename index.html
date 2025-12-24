@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Host Recovery</title>
+    <title>Scrabble Pro - Smart Connect</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -46,7 +46,6 @@
         .btn-danger { background: var(--danger); color: white; }
         .btn-sm { padding: 8px 15px; font-size: 0.85rem; width: auto; margin: 0; }
         .btn-kick { padding: 4px 8px; font-size: 0.7rem; background: var(--danger); margin-left: 10px; }
-        .btn-resync { padding: 4px 8px; font-size: 0.7rem; background: #3498db; margin-left: 5px; color: white; border-radius: 4px; border:none; cursor: pointer; }
 
         /* MENU DRAWER */
         #host-side-menu { position: fixed; top: 0; left: -320px; width: 300px; height: 100%; background: #222; border-right: 1px solid #444; z-index: 2000; transition: left 0.3s ease; display: flex; flex-direction: column; padding: 20px; box-shadow: 5px 0 30px rgba(0,0,0,0.8); }
@@ -96,7 +95,7 @@
         #score-pill.visible { opacity: 1; transform: scale(1); }
         .player-row { display: flex; justify-content: space-between; align-items: center; height: 64px; padding: 0 15px; border-bottom: 1px solid #444; background: rgba(255,255,255,0.02); transition: background 0.3s; }
         .player-row.active-turn { border-left: 4px solid var(--accent); background: rgba(255,255,255,0.08); }
-        .player-name-display { font-weight: bold; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; display: flex; align-items: center; }
+        .player-name-display { font-weight: bold; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; display: flex; align-items: center; }
         .score-box { text-align: right; width: 80px; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; }
         .total-score { font-size: 1.4rem; font-weight: 800; color: var(--accent); line-height: 1; }
         .last-turn { font-size: 0.8rem; color: #95a5a6; font-weight: 600; height: 14px; margin-top: 2px; }
@@ -146,17 +145,17 @@
     
     <div id="reconnect-overlay">
         <div class="modal">
-            <h3 style="margin-top:0; color:#e74c3c;">Connection Lost</h3>
-            <p style="color:#bdc3c7; margin-bottom:20px; font-size:0.9rem;">The link to the host was interrupted.</p>
-            <button onclick="joinGame(currentSessionCode, null, null)" style="width:100%;">Reconnect</button>
-            <button onclick="location.reload()" class="btn-secondary" style="width:100%; margin-top:10px;">Return Home</button>
+            <h3 style="margin-top:0; color:#e74c3c;">Connecting...</h3>
+            <p style="color:#bdc3c7; margin-bottom:20px; font-size:0.9rem;">Restoring connection to host.</p>
+            <div class="spinner" style="margin:20px auto; border: 4px solid #f3f3f3; border-top: 4px solid #e74c3c; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite;"></div>
+            <button onclick="cancelJoin()" class="btn-secondary" style="width:100%; margin-top:10px;">Cancel</button>
         </div>
     </div>
 
     <div id="host-offline-overlay">
         <div class="modal">
             <h3 style="margin-top:0; color:#f39c12;">Waiting for Host</h3>
-            <p style="color:#bdc3c7; margin-bottom:20px; font-size:0.9rem;">The host has gone offline.<br>Do not close this window.<br>Retrying connection...</p>
+            <p style="color:#bdc3c7; margin-bottom:20px; font-size:0.9rem;">The host is temporarily offline.<br>Automatically retrying...</p>
             <div class="spinner" style="margin:20px auto; border: 4px solid #f3f3f3; border-top: 4px solid #f39c12; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite;"></div>
             <button onclick="location.reload()" class="btn-secondary" style="width:100%;">Leave Game</button>
         </div>
@@ -311,6 +310,7 @@
         let lastHostPulse = 0;
         let playerMonitorInterval = null;
         let isHostOffline = false;
+        let reconnectRetryInterval = null;
 
         // --- STORAGE KEYS ---
         const STORAGE_HOST_SAVES = 'scrabble_host_saves_v2'; 
@@ -731,22 +731,6 @@
             }
         }
         
-        function resyncPlayer(index) {
-            const p = players[index];
-            if(!p) return;
-            if(!p.conn || !p.conn.open) { toast("Player is offline"); return; }
-            toast("Syncing data to " + p.name);
-            p.conn.send({ type: 'gamestart' });
-            p.conn.send({ type: 'hand', tiles: p.tiles });
-            p.conn.send({ type: 'turn_update', myTurn: (index === turnIndex), activePlayer: players[turnIndex].name });
-        }
-        
-        function forceSkip(index) {
-             if(index !== turnIndex) return;
-             toast(`Skipped ${players[index].name}`);
-             advanceTurn();
-        }
-
         function hostStartGame() {
             if(players.length === 0) { showModal("Wait", "Need players to start."); return; }
             if(players.some(p => p.isOffline)) { showModal("Wait", "All players must be connected."); return; }
@@ -785,9 +769,88 @@
         function cancelJoin() {
             if(peer) { peer.destroy(); peer = null; }
             conn = null;
+            if(playerMonitorInterval) clearInterval(playerMonitorInterval);
+            if(reconnectRetryInterval) clearInterval(reconnectRetryInterval);
+            
+            document.getElementById('reconnect-overlay').style.display='none';
             document.getElementById('btn-join').disabled = false;
             document.getElementById('btn-join').innerText = "Connect";
             showHomeScreen();
+        }
+
+        function establishConnection(hostCode, userName, userId, isRetry = false) {
+             // Ensure peer is alive
+             if(!peer || peer.disconnected) {
+                 if(peer) peer.destroy();
+                 peer = new Peer();
+                 peer.on('error', e => {
+                    console.log("Peer error", e);
+                 });
+                 peer.on('open', () => {
+                     doConnect(hostCode, userName, userId, isRetry);
+                 });
+             } else {
+                 doConnect(hostCode, userName, userId, isRetry);
+             }
+        }
+
+        function doConnect(hostCode, userName, userId, isRetry) {
+             if(conn) { conn.close(); }
+             conn = peer.connect(hostCode);
+             
+             conn.on('open', () => {
+                 // Connection succeeded!
+                 if(isRetry) {
+                     document.getElementById('reconnect-overlay').style.display = 'none';
+                     toast("Reconnected!");
+                 }
+                 conn.send({type: isRetry ? 'handshake' : 'join', name: userName, userId: userId});
+                 lastHostPulse = Date.now();
+                 isHostOffline = false;
+                 document.getElementById('host-offline-overlay').style.display = 'none';
+             });
+
+             conn.on('data', d => {
+                 handlePeerData(d, userName, userId);
+             });
+             
+             conn.on('close', () => {
+                 // Trigger immediate retry logic via monitor
+             });
+        }
+        
+        function handlePeerData(d, userName, userId) {
+            lastHostPulse = Date.now(); // Alive signal
+            
+            if(d.type === 'ack_join') {
+                if(d.success === false) { alert(d.msg); return; }
+                saveSession(currentSessionCode, userName, userId); 
+                if(d.isGameRunning) {
+                    showScreen('screen-player');
+                    document.getElementById('my-display-name').innerText = userName;
+                    document.getElementById('my-rack').innerHTML = '';
+                    if(d.tiles) addRack(d.tiles);
+                    Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
+                    updateTurnUI(d.myTurn, d.activePlayer);
+                } else { showScreen('screen-player-lobby'); }
+            }
+            if(d.type === 'ping') conn.send({type: 'pong', userId: userId});
+            if(d.type === 'prepare_start') conn.send({type: 'ready_start', userId: userId});
+            if(d.type === 'lobby_update') document.getElementById('player-lobby-list').innerHTML = d.names.map(name => `<div class="lobby-row"><span>${name}</span><span style="color:#2ecc71;">Joined</span></div>`).join('');
+            if(d.type==='gamestart') { 
+                showScreen('screen-player'); 
+                document.getElementById('my-display-name').innerText = userName;
+                Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
+                toast("Game Started!");
+            }
+            if(d.type==='hand') {
+                const r = document.getElementById('my-rack');
+                if(d.tiles.length === 7 && r.children.length === 0) r.innerHTML = '';
+                addRack(d.tiles);
+            }
+            if(d.type==='return') { addRack([d.tile]); toast("Tile returned"); }
+            if(d.type==='toast') toast(d.msg);
+            if(d.type==='turn_update') updateTurnUI(d.myTurn, d.activePlayer);
         }
 
         function joinGame(codeOverride=null, nameOverride=null, idOverride=null) {
@@ -807,96 +870,49 @@
             const userId = idOverride || generateUUID();
             currentSessionCode = c;
 
-            if(peer) peer.destroy();
-            peer = new Peer();
-            
-            peer.on('error', (err) => {
-                 btn.disabled = false; btn.innerText = "Connect";
-                 showModal("Connection Error", "Could not reach server. Try again.");
-            });
-
-            peer.on('open', () => {
-                conn = peer.connect(c);
+            // Start Monitor Loop
+            playerMonitorInterval = setInterval(() => {
+                const now = Date.now();
+                // If we haven't heard from host in 4 seconds, mark suspect
+                if (now - lastHostPulse > 4000) {
+                     // Try to silently reconnect in background
+                     if(!isHostOffline) {
+                         // First time noticing silence
+                         console.log("Silence detected, attempting background reconnect...");
+                         establishConnection(c, n, userId, true);
+                     }
+                }
                 
-                // CLIENT SIDE HOST MONITORING
-                lastHostPulse = Date.now();
-                isHostOffline = false;
-                
-                playerMonitorInterval = setInterval(() => {
-                    const now = Date.now();
-                    // If no ping for 8 seconds, mark host offline
-                    if (now - lastHostPulse > 8000) {
+                // If really long silence (8s), show overlay
+                if (now - lastHostPulse > 8000) {
+                    if(!isHostOffline) {
                         isHostOffline = true;
                         document.getElementById('host-offline-overlay').style.display = 'flex';
-                        document.getElementById('btn-play').disabled = true;
-                        // Silently try to reconnect connection if it's dead
-                        if(!conn || !conn.open) {
-                             conn = peer.connect(c);
-                        }
-                    } else {
-                        if(isHostOffline) {
-                            // Recovered!
-                            isHostOffline = false;
-                            document.getElementById('host-offline-overlay').style.display = 'none';
-                            toast("Host Online!");
-                        }
+                        updateTurnUI(myTurn, "..."); // Updates disabled state
                     }
-                }, 1000);
+                    // Keep trying
+                    establishConnection(c, n, userId, true);
+                }
+            }, 2000);
 
-                conn.on('close', () => {
-                    document.getElementById('reconnect-overlay').style.display = 'flex';
-                });
-                
-                conn.on('open', () => { 
-                    conn.send({type:'join', name:n, userId: userId}); 
-                    lastHostPulse = Date.now(); // Connection open counts as a pulse
-                });
-                
-                conn.on('data', d => {
-                    lastHostPulse = Date.now(); // Any data resets the timeout
-                    
-                    if(d.type === 'ack_join') {
-                        if(d.success === false) { alert(d.msg); return; }
-                        saveSession(c, n, userId); 
-                        if(d.isGameRunning) {
-                            showScreen('screen-player');
-                            document.getElementById('my-display-name').innerText = n;
-                            document.getElementById('my-rack').innerHTML = '';
-                            if(d.tiles) addRack(d.tiles);
-                            Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
-                            updateTurnUI(d.myTurn, d.activePlayer);
-                            toast("Sync Complete");
-                        } else { showScreen('screen-player-lobby'); }
-                    }
-                    if(d.type === 'ping') conn.send({type: 'pong', userId: userId});
-                    if(d.type === 'prepare_start') conn.send({type: 'ready_start', userId: userId});
-                    if(d.type === 'lobby_update') document.getElementById('player-lobby-list').innerHTML = d.names.map(name => `<div class="lobby-row"><span>${name}</span><span style="color:#2ecc71;">Joined</span></div>`).join('');
-                    if(d.type==='gamestart') { 
-                        showScreen('screen-player'); 
-                        document.getElementById('my-display-name').innerText = n;
-                        Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
-                        toast("Game Started!");
-                    }
-                    if(d.type==='hand') {
-                        const r = document.getElementById('my-rack');
-                        if(d.tiles.length === 7 && r.children.length === 0) r.innerHTML = '';
-                        addRack(d.tiles);
-                    }
-                    if(d.type==='return') { addRack([d.tile]); toast("Tile returned"); }
-                    if(d.type==='toast') toast(d.msg);
-                    if(d.type==='turn_update') updateTurnUI(d.myTurn, d.activePlayer);
-                });
-            });
+            // Initial Connect
+            establishConnection(c, n, userId, false);
         }
 
         function updateTurnUI(isMyTurn, activeName) {
             myTurn = isMyTurn;
             const btn = document.getElementById('btn-play');
             const hudStatus = document.getElementById('status-msg');
+            
+            if(isHostOffline) {
+                btn.disabled = true;
+                hudStatus.innerText = "HOST OFFLINE";
+                hudStatus.classList.remove('active');
+                return;
+            }
+            
             if(myTurn) {
-                // If Host is offline, we force disable, otherwise enable
-                btn.disabled = isHostOffline; 
-                hudStatus.innerText = "YOUR TURN"; hudStatus.classList.add('active'); 
+                btn.disabled = false; hudStatus.innerText = "YOUR TURN"; hudStatus.classList.add('active'); 
                 if(!document.hidden) { toast("It's your turn!"); playSound('notify'); }
             } else {
                 btn.disabled = true; hudStatus.innerText = `Turn: ${activeName}`; hudStatus.classList.remove('active');
@@ -1137,8 +1153,6 @@
                     <div class="player-name-display">
                         <span class="status-dot ${p.isOffline?'status-offline':'status-online'}"></span>
                         ${p.name}
-                        ${(p.isOffline || (!p.conn || !p.conn.open)) ? `<button class="btn-resync" onclick="resyncPlayer(${i})">Sync</button>` : ''}
-                        ${(i === turnIndex && p.isOffline) ? `<button class="btn-resync" style="background:var(--warning);color:#000;" onclick="forceSkip(${i})">Skip</button>` : ''}
                     </div>
                     <div class="score-box">
                         <div class="total-score">${p.score}</div>
