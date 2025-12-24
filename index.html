@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Stable Connect</title>
+    <title>Scrabble Pro - Reliable Connect</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -146,7 +146,7 @@
     <div id="reconnect-overlay">
         <div class="modal">
             <h3 style="margin-top:0; color:#e74c3c;">Connecting...</h3>
-            <p style="color:#bdc3c7; margin-bottom:20px; font-size:0.9rem;">Restoring connection to host.</p>
+            <p style="color:#bdc3c7; margin-bottom:20px; font-size:0.9rem;">Connecting to host.</p>
             <div class="spinner" style="margin:20px auto; border: 4px solid #f3f3f3; border-top: 4px solid #e74c3c; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite;"></div>
             <button onclick="cancelJoin()" class="btn-secondary" style="width:100%; margin-top:10px;">Cancel</button>
         </div>
@@ -310,7 +310,7 @@
         let lastHostPulse = 0;
         let playerMonitorInterval = null;
         let isHostOffline = false;
-        let reconnectRetryInterval = null;
+        let connectTimeout = null;
 
         // --- STORAGE KEYS ---
         const STORAGE_HOST_SAVES = 'scrabble_host_saves_v2'; 
@@ -413,7 +413,6 @@
 
         // --- HOME & STORAGE UI ---
         function renderHomeScreen() {
-            // RENDER SAVED HOST GAMES
             const hostArea = document.getElementById('host-saved-list');
             const hostListContainer = document.getElementById('host-sessions-container');
             const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
@@ -422,7 +421,6 @@
             hostListContainer.innerHTML = '';
             if(saveKeys.length > 0) {
                 hostArea.style.display = 'block';
-                // Sort by date descending
                 saveKeys.sort((a,b) => (allSaves[b].lastSavedAt || 0) - (allSaves[a].lastSavedAt || 0));
                 
                 saveKeys.forEach(code => {
@@ -446,7 +444,6 @@
                 hostArea.style.display = 'none';
             }
 
-            // RENDER SAVED PLAYER SESSIONS
             const sessionList = document.getElementById('session-list');
             const sessionArea = document.getElementById('sessions-area');
             const sessions = JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]');
@@ -510,17 +507,11 @@
                 savedState = allSaves[existingId];
             }
 
-            // Generate ID if not resuming, or use existing
             const id = existingId || genId();
             currentHostRoomCode = id;
             peer = new Peer(id);
             
-            // HOST ZOMBIE RECOVERY
-            peer.on('disconnected', () => {
-                toast("Connection lost. Reconnecting...");
-                // Keep trying to reconnect to the same ID
-                peer.reconnect();
-            });
+            peer.on('disconnected', () => { toast("Connection lost. Reconnecting..."); peer.reconnect(); });
 
             peer.on('open', id => {
                 showScreen('screen-lobby');
@@ -555,7 +546,6 @@
 
             peer.on('connection', c => { c.on('data', d => handleHostData(c, d)); });
             peer.on('error', e => { 
-                // Retry if ID is unavailable (maybe zombie connection on server)
                 if(e.type === 'unavailable-id' && existingId) setTimeout(() => initHost(existingId, isResume), 2000); 
             });
         }
@@ -574,14 +564,6 @@
                     if(document.getElementById('screen-lobby').classList.contains('active')) updateLobbyUI();
                     if(document.getElementById('screen-host').classList.contains('active')) updateHostUI();
                 }
-                const btnStart = document.getElementById('btn-start-game');
-                if(btnStart && document.getElementById('screen-lobby').classList.contains('active')) {
-                    if(btnStart.innerText !== "VERIFYING...") {
-                        const anyOffline = players.some(p => p.isOffline);
-                        btnStart.disabled = players.length === 0 || anyOffline;
-                        btnStart.innerText = anyOffline ? "WAITING FOR PLAYERS..." : "START GAME";
-                    }
-                }
             }, 5000);
         }
 
@@ -591,26 +573,12 @@
             const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
             
             const cleanPlayers = players.map(p => ({
-                userId: p.userId,
-                name: p.name,
-                score: p.score,
-                lastScore: p.lastScore,
-                tiles: p.tiles,
-                isOffline: p.isOffline,
-                lastSeen: p.lastSeen
+                userId: p.userId, name: p.name, score: p.score, lastScore: p.lastScore, tiles: p.tiles, isOffline: p.isOffline, lastSeen: p.lastSeen
             }));
 
             allSaves[id] = { 
-                roomCode: id, 
-                players: cleanPlayers, 
-                bag, 
-                turnIndex, 
-                isFirstTurn, 
-                grid, 
-                hostInbox, 
-                settings: { soundsEnabled },
-                createdAt: allSaves[id] ? allSaves[id].createdAt : Date.now(), 
-                lastSavedAt: Date.now()
+                roomCode: id, players: cleanPlayers, bag, turnIndex, isFirstTurn, grid, hostInbox, settings: { soundsEnabled },
+                createdAt: allSaves[id] ? allSaves[id].createdAt : Date.now(), lastSavedAt: Date.now()
             };
             localStorage.setItem(STORAGE_HOST_SAVES, JSON.stringify(allSaves));
         }
@@ -662,7 +630,6 @@
                     toast(`${p.name} reconnected`);
                 }
 
-                // IMPORTANT: Send full state immediately upon join/rejoin
                 c.send({
                     type: 'ack_join', success: true, name: p.name,
                     activePlayer: players[turnIndex] ? players[turnIndex].name : null,
@@ -725,7 +692,6 @@
             if(p.conn && p.conn.open) {
                 p.conn.send({type:'hand', tiles: newTiles});
             } else {
-                showModal("Delivery Failure", `${p.name} is offline. Tiles saved to storage. They will sync upon reconnect.`);
                 p.isOffline = true;
                 updateHostUI();
             }
@@ -770,62 +736,128 @@
             if(peer) { peer.destroy(); peer = null; }
             conn = null;
             if(playerMonitorInterval) clearInterval(playerMonitorInterval);
-            if(reconnectRetryInterval) clearInterval(reconnectRetryInterval);
+            if(connectTimeout) clearTimeout(connectTimeout);
             
             document.getElementById('reconnect-overlay').style.display='none';
-            document.getElementById('btn-join').disabled = false;
-            document.getElementById('btn-join').innerText = "Connect";
+            const btn = document.getElementById('btn-join');
+            btn.disabled = false;
+            btn.innerText = "Connect";
             showHomeScreen();
         }
 
-        function establishConnection(hostCode, userName, userId, isRetry = false) {
-             // Ensure peer is alive
-             if(!peer || peer.disconnected) {
-                 if(peer) peer.destroy();
-                 peer = new Peer();
-                 peer.on('error', e => {
-                    console.log("Peer error", e);
-                    // Critical failure, auto-recover if possible
-                    if(e.type === 'network' || e.type === 'disconnected') {
-                        setTimeout(() => peer.reconnect(), 2000);
-                    }
-                 });
-                 peer.on('open', () => {
-                     doConnect(hostCode, userName, userId, isRetry);
-                 });
-             } else {
-                 doConnect(hostCode, userName, userId, isRetry);
-             }
+        function joinGame(codeOverride=null, nameOverride=null, idOverride=null) {
+            resumeAudio();
+            document.getElementById('reconnect-overlay').style.display='none';
+            document.getElementById('host-offline-overlay').style.display='none';
+            
+            if(playerMonitorInterval) clearInterval(playerMonitorInterval);
+            
+            const n = nameOverride || document.getElementById('join-name').value.trim();
+            const c = (codeOverride || document.getElementById('join-code').value.trim()).toUpperCase();
+            if(!n || c.length!==4) return;
+            
+            const btn = document.getElementById('btn-join');
+            if(btn) { btn.disabled = true; btn.innerText = "Connecting..."; }
+            
+            const userId = idOverride || generateUUID();
+            currentSessionCode = c;
+
+            // 1. Force Clean Start
+            if(peer) peer.destroy();
+            
+            // 2. Initialize new peer
+            peer = new Peer();
+            
+            // 3. Handle ID Errors immediately
+            peer.on('error', (err) => {
+                 if(connectTimeout) clearTimeout(connectTimeout);
+                 btn.disabled = false; btn.innerText = "Connect";
+                 if(err.type === 'peer-unavailable') {
+                     showModal("Room Not Found", "Check the code and try again.");
+                 } else {
+                     console.log(err);
+                     // If disconnected, retry
+                     if(err.type === 'network' || err.type === 'disconnected') setTimeout(() => peer.reconnect(), 1000);
+                 }
+            });
+
+            // 4. Initial Connect with Timeout
+            connectTimeout = setTimeout(() => {
+                if(!conn || !conn.open) {
+                    cancelJoin();
+                    showModal("Timeout", "Could not reach host. Try again.");
+                }
+            }, 10000); // 10 second timeout for initial connection
+
+            peer.on('open', () => {
+                // Connect to Host
+                conn = peer.connect(c);
+                
+                conn.on('open', () => {
+                    // Success!
+                    clearTimeout(connectTimeout);
+                    conn.send({type: 'join', name:n, userId: userId});
+                    
+                    // Init Pulse to avoid immediate offline trigger
+                    lastHostPulse = Date.now() + 10000; 
+                    isHostOffline = false;
+                    
+                    // Start Background Monitor
+                    startPlayerMonitor(c, n, userId);
+                });
+
+                conn.on('data', d => handlePeerData(d, n, userId));
+                conn.on('close', () => { document.getElementById('reconnect-overlay').style.display = 'flex'; });
+            });
         }
 
-        function doConnect(hostCode, userName, userId, isRetry) {
-             if(conn) { conn.close(); }
-             conn = peer.connect(hostCode);
-             
-             conn.on('open', () => {
-                 // Connection succeeded!
-                 if(isRetry) {
-                     document.getElementById('reconnect-overlay').style.display = 'none';
-                     toast("Reconnected!");
-                 }
-                 conn.send({type: isRetry ? 'handshake' : 'join', name: userName, userId: userId});
-                 lastHostPulse = Date.now();
-                 isHostOffline = false;
-                 document.getElementById('host-offline-overlay').style.display = 'none';
-                 updateTurnUI(myTurn, "..."); // Refresh buttons
-             });
+        function startPlayerMonitor(code, name, uid) {
+            playerMonitorInterval = setInterval(() => {
+                const now = Date.now();
+                
+                // If silence > 4s, try silent reconnect
+                if (now - lastHostPulse > 4000) {
+                     if(!isHostOffline && (!conn || !conn.open)) {
+                         conn = peer.connect(code); // Silent retry
+                         setupConnListeners(conn, name, uid);
+                     }
+                }
+                
+                // If silence > 8s, Show Overlay
+                if (now - lastHostPulse > 8000) {
+                    if(!isHostOffline) {
+                        isHostOffline = true;
+                        document.getElementById('host-offline-overlay').style.display = 'flex';
+                        updateTurnUI(myTurn, "...");
+                    }
+                    // Aggressive reconnect attempts
+                    if(!conn || !conn.open) {
+                        conn = peer.connect(code);
+                        setupConnListeners(conn, name, uid);
+                    } else {
+                        // If open, maybe we just aren't getting data, send a ping
+                        conn.send({type: 'handshake', name: name, userId: uid});
+                    }
+                } else {
+                    if(isHostOffline) {
+                        isHostOffline = false;
+                        document.getElementById('host-offline-overlay').style.display = 'none';
+                        toast("Host Online!");
+                    }
+                }
+            }, 2000);
+        }
 
-             conn.on('data', d => {
-                 handlePeerData(d, userName, userId);
-             });
-             
-             conn.on('close', () => {
-                 // Trigger immediate retry logic via monitor
-             });
+        function setupConnListeners(c, name, uid) {
+            c.on('open', () => {
+                c.send({type: 'handshake', name: name, userId: uid});
+                lastHostPulse = Date.now();
+            });
+            c.on('data', d => handlePeerData(d, name, uid));
         }
         
         function handlePeerData(d, userName, userId) {
-            lastHostPulse = Date.now(); // Alive signal
+            lastHostPulse = Date.now(); 
             
             if(d.type === 'ack_join') {
                 if(d.success === false) { alert(d.msg); return; }
@@ -856,52 +888,6 @@
             if(d.type==='return') { addRack([d.tile]); toast("Tile returned"); }
             if(d.type==='toast') toast(d.msg);
             if(d.type==='turn_update') updateTurnUI(d.myTurn, d.activePlayer);
-        }
-
-        function joinGame(codeOverride=null, nameOverride=null, idOverride=null) {
-            resumeAudio();
-            document.getElementById('reconnect-overlay').style.display='none';
-            document.getElementById('host-offline-overlay').style.display='none';
-            
-            if(playerMonitorInterval) clearInterval(playerMonitorInterval);
-            
-            const n = nameOverride || document.getElementById('join-name').value.trim();
-            const c = (codeOverride || document.getElementById('join-code').value.trim()).toUpperCase();
-            if(!n || c.length!==4) return;
-            
-            const btn = document.getElementById('btn-join');
-            if(btn) { btn.disabled = true; btn.innerText = "Connecting..."; }
-            
-            const userId = idOverride || generateUUID();
-            currentSessionCode = c;
-
-            // Start Monitor Loop
-            playerMonitorInterval = setInterval(() => {
-                const now = Date.now();
-                // If we haven't heard from host in 4 seconds, mark suspect
-                if (now - lastHostPulse > 4000) {
-                     // Try to silently reconnect in background
-                     if(!isHostOffline) {
-                         console.log("Silence detected, attempting background reconnect...");
-                         establishConnection(c, n, userId, true);
-                     }
-                }
-                
-                // If really long silence (8s), show overlay
-                if (now - lastHostPulse > 8000) {
-                    if(!isHostOffline) {
-                        isHostOffline = true;
-                        document.getElementById('host-offline-overlay').style.display = 'flex';
-                        updateTurnUI(myTurn, "..."); // Updates disabled state
-                    }
-                    // Keep trying
-                    establishConnection(c, n, userId, true);
-                }
-            }, 2000);
-
-            // Initial Connect
-            lastHostPulse = Date.now() + 10000; // Grace period
-            establishConnection(c, n, userId, false);
         }
 
         function updateTurnUI(isMyTurn, activeName) {
