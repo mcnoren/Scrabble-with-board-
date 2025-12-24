@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Final Logic</title>
+    <title>Scrabble Pro - Host Recovery</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -126,7 +126,7 @@
         .mobile-controls button { margin: 0; flex: 1; padding: 20px; font-size: 1.1rem; border-radius: 12px; text-transform: uppercase; letter-spacing: 1px; }
 
         /* OVERLAYS & TOAST */
-        #notification-overlay, #blank-overlay, #confirm-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        #notification-overlay, #blank-overlay, #confirm-overlay, #reconnect-overlay, #host-offline-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal { background: #2c3e50; border: 1px solid #444; padding: 25px; border-radius: 12px; text-align: center; max-width: 320px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); color: white; }
         #blank-selector { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; }
         .letter-btn { width: 45px; height: 45px; background: var(--tile-face); border: none; border-radius: 3px; color: #2d3436; font-weight: 700; font-size: 1.3rem; cursor: pointer; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; aspect-ratio: 1 / 1; padding: 0; flex-shrink: 0; }
@@ -144,6 +144,25 @@
 
     <div id="blank-overlay"><div class="modal"><h3 style="margin-top:0;">Assign Blank Tile</h3><div id="blank-selector"></div></div></div>
     
+    <div id="reconnect-overlay">
+        <div class="modal">
+            <h3 style="margin-top:0; color:#e74c3c;">Connection Lost</h3>
+            <p style="color:#bdc3c7; margin-bottom:20px; font-size:0.9rem;">The link to the host was interrupted.</p>
+            <button onclick="joinGame(currentSessionCode, null, null)" style="width:100%;">Reconnect</button>
+            <button onclick="location.reload()" class="btn-secondary" style="width:100%; margin-top:10px;">Return Home</button>
+        </div>
+    </div>
+
+    <div id="host-offline-overlay">
+        <div class="modal">
+            <h3 style="margin-top:0; color:#f39c12;">Waiting for Host</h3>
+            <p style="color:#bdc3c7; margin-bottom:20px; font-size:0.9rem;">The host has gone offline.<br>Do not close this window.<br>Retrying connection...</p>
+            <div class="spinner" style="margin:20px auto; border: 4px solid #f3f3f3; border-top: 4px solid #f39c12; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite;"></div>
+            <button onclick="location.reload()" class="btn-secondary" style="width:100%;">Leave Game</button>
+        </div>
+    </div>
+    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+
     <div id="confirm-overlay">
         <div class="modal">
             <h3 id="confirm-title" style="margin-top:0; color:#e74c3c;">Confirm</h3>
@@ -191,7 +210,7 @@
         <input type="text" id="join-code" placeholder="ROOM CODE" maxlength="4">
         <br>
         <button id="btn-join" onclick="joinGame()" style="width:280px;">Connect</button>
-        <button onclick="showHomeScreen()" class="btn-secondary" style="margin-top:10px;">Back</button>
+        <button onclick="cancelJoin()" class="btn-secondary" style="margin-top:10px;">Back</button>
         <div id="connect-status" style="color:#e74c3c; font-size:0.8rem; margin-top:15px; height:20px;"></div>
     </div>
 
@@ -288,6 +307,11 @@
         let soundsEnabled = true;
         let hostInbox = []; // Stores {id, letter, owner}
         
+        // --- PEER MONITORING ---
+        let lastHostPulse = 0;
+        let playerMonitorInterval = null;
+        let isHostOffline = false;
+
         // --- STORAGE KEYS ---
         const STORAGE_HOST_SAVES = 'scrabble_host_saves_v2'; 
         const STORAGE_SESSIONS = 'scrabble_player_sessions'; 
@@ -491,6 +515,13 @@
             currentHostRoomCode = id;
             peer = new Peer(id);
             
+            // HOST ZOMBIE RECOVERY
+            peer.on('disconnected', () => {
+                toast("Connection lost. Reconnecting...");
+                // Keep trying to reconnect to the same ID
+                peer.reconnect();
+            });
+
             peer.on('open', id => {
                 showScreen('screen-lobby');
                 document.getElementById('lobby-code-display').innerText = id;
@@ -523,7 +554,10 @@
             });
 
             peer.on('connection', c => { c.on('data', d => handleHostData(c, d)); });
-            peer.on('error', e => { if(e.type === 'unavailable-id' && existingId) setTimeout(() => initHost(existingId, isResume), 1000); });
+            peer.on('error', e => { 
+                // Retry if ID is unavailable (maybe zombie connection on server)
+                if(e.type === 'unavailable-id' && existingId) setTimeout(() => initHost(existingId, isResume), 2000); 
+            });
         }
 
         function startHeartbeat() {
@@ -628,6 +662,7 @@
                     toast(`${p.name} reconnected`);
                 }
 
+                // IMPORTANT: Send full state immediately upon join/rejoin
                 c.send({
                     type: 'ack_join', success: true, name: p.name,
                     activePlayer: players[turnIndex] ? players[turnIndex].name : null,
@@ -670,9 +705,14 @@
             if(data.type === 'pass') {
                 const p = players.find(x=>x.conn===c);
                 if(!p || players[turnIndex].userId !== p.userId) return;
-                players[turnIndex].lastScore = 0; turnIndex = (turnIndex + 1) % players.length;
-                updateHostUI(); notifyTurn(); saveHostState(currentHostRoomCode);
+                advanceTurn();
             }
+        }
+        
+        function advanceTurn() {
+            players[turnIndex].lastScore = 0; 
+            turnIndex = (turnIndex + 1) % players.length;
+            updateHostUI(); notifyTurn(); saveHostState(currentHostRoomCode);
         }
 
         function deal(conn, n, targetPlayerIndex) {
@@ -699,6 +739,12 @@
             p.conn.send({ type: 'gamestart' });
             p.conn.send({ type: 'hand', tiles: p.tiles });
             p.conn.send({ type: 'turn_update', myTurn: (index === turnIndex), activePlayer: players[turnIndex].name });
+        }
+        
+        function forceSkip(index) {
+             if(index !== turnIndex) return;
+             toast(`Skipped ${players[index].name}`);
+             advanceTurn();
         }
 
         function hostStartGame() {
@@ -734,19 +780,81 @@
             }
         }
 
+        // --- JOIN & CANCEL LOGIC ---
+
+        function cancelJoin() {
+            if(peer) { peer.destroy(); peer = null; }
+            conn = null;
+            document.getElementById('btn-join').disabled = false;
+            document.getElementById('btn-join').innerText = "Connect";
+            showHomeScreen();
+        }
+
         function joinGame(codeOverride=null, nameOverride=null, idOverride=null) {
             resumeAudio();
+            document.getElementById('reconnect-overlay').style.display='none';
+            document.getElementById('host-offline-overlay').style.display='none';
+            
+            if(playerMonitorInterval) clearInterval(playerMonitorInterval);
+            
             const n = nameOverride || document.getElementById('join-name').value.trim();
             const c = (codeOverride || document.getElementById('join-code').value.trim()).toUpperCase();
             if(!n || c.length!==4) return;
+            
             const btn = document.getElementById('btn-join');
             if(btn) { btn.disabled = true; btn.innerText = "Connecting..."; }
+            
             const userId = idOverride || generateUUID();
+            currentSessionCode = c;
+
+            if(peer) peer.destroy();
             peer = new Peer();
+            
+            peer.on('error', (err) => {
+                 btn.disabled = false; btn.innerText = "Connect";
+                 showModal("Connection Error", "Could not reach server. Try again.");
+            });
+
             peer.on('open', () => {
                 conn = peer.connect(c);
-                conn.on('open', () => { conn.send({type:'join', name:n, userId: userId}); });
+                
+                // CLIENT SIDE HOST MONITORING
+                lastHostPulse = Date.now();
+                isHostOffline = false;
+                
+                playerMonitorInterval = setInterval(() => {
+                    const now = Date.now();
+                    // If no ping for 8 seconds, mark host offline
+                    if (now - lastHostPulse > 8000) {
+                        isHostOffline = true;
+                        document.getElementById('host-offline-overlay').style.display = 'flex';
+                        document.getElementById('btn-play').disabled = true;
+                        // Silently try to reconnect connection if it's dead
+                        if(!conn || !conn.open) {
+                             conn = peer.connect(c);
+                        }
+                    } else {
+                        if(isHostOffline) {
+                            // Recovered!
+                            isHostOffline = false;
+                            document.getElementById('host-offline-overlay').style.display = 'none';
+                            toast("Host Online!");
+                        }
+                    }
+                }, 1000);
+
+                conn.on('close', () => {
+                    document.getElementById('reconnect-overlay').style.display = 'flex';
+                });
+                
+                conn.on('open', () => { 
+                    conn.send({type:'join', name:n, userId: userId}); 
+                    lastHostPulse = Date.now(); // Connection open counts as a pulse
+                });
+                
                 conn.on('data', d => {
+                    lastHostPulse = Date.now(); // Any data resets the timeout
+                    
                     if(d.type === 'ack_join') {
                         if(d.success === false) { alert(d.msg); return; }
                         saveSession(c, n, userId); 
@@ -786,7 +894,9 @@
             const btn = document.getElementById('btn-play');
             const hudStatus = document.getElementById('status-msg');
             if(myTurn) {
-                btn.disabled = false; hudStatus.innerText = "YOUR TURN"; hudStatus.classList.add('active'); 
+                // If Host is offline, we force disable, otherwise enable
+                btn.disabled = isHostOffline; 
+                hudStatus.innerText = "YOUR TURN"; hudStatus.classList.add('active'); 
                 if(!document.hidden) { toast("It's your turn!"); playSound('notify'); }
             } else {
                 btn.disabled = true; hudStatus.innerText = `Turn: ${activeName}`; hudStatus.classList.remove('active');
@@ -883,22 +993,15 @@
         }
 
         function isConnectedToExisting(newTiles) {
-            // If the board is empty (except for these new tiles), rules of first turn apply (which are handled elsewhere).
             const lockedTiles = document.querySelectorAll('.cell .tile[data-locked="true"]');
             if(lockedTiles.length === 0) return true;
-
-            // Check if ANY of the new tiles touches a locked tile
             return newTiles.some(tile => {
                 const r = parseInt(tile.parentElement.dataset.r);
                 const c = parseInt(tile.parentElement.dataset.c);
-                
-                // Get Neighbors
                 const neighbors = [
                     getCell(r-1, c), getCell(r+1, c),
                     getCell(r, c-1), getCell(r, c+1)
                 ];
-
-                // Is any neighbor occupied by a locked tile?
                 return neighbors.some(cell => cell && cell.querySelector('.tile[data-locked="true"]'));
             });
         }
@@ -909,7 +1012,6 @@
             const pill = document.getElementById('score-pill');
             const hasUnassignedBlank = newTiles.some(t => t.dataset.letter === '_');
             
-            // Validation: Must exist, must be in line, must connect to board (if board not empty)
             if (newTiles.length === 0 || !isPlacementShapeValid(newTiles) || hasUnassignedBlank || !isConnectedToExisting(newTiles)) { 
                 pill.classList.remove('visible'); currentTurnPoints = 0; return; 
             }
@@ -935,7 +1037,6 @@
                 const hasCenter = Array.from(newTiles).some(t => parseInt(t.parentElement.dataset.r)===7 && parseInt(t.parentElement.dataset.c)===7);
                 if(!hasCenter) { showModal("Rule", "Must start at center."); return; }
             } else {
-                // Double check connection rule on confirm just in case
                 if(!isConnectedToExisting(Array.from(newTiles))) { showModal("Invalid", "Must connect to existing tiles."); return; }
             }
 
@@ -943,7 +1044,6 @@
             const invalid = words.filter(w => !dictionary.has(w) && dictionary.size > 0);
             if(invalid.length > 0) { showModal("Invalid Word", invalid.join(', ')); return; }
             
-            // Valid Turn!
             playSound('chim');
 
             const pill = document.getElementById('score-pill');
@@ -962,9 +1062,6 @@
             players[turnIndex].lastScore = currentTurnPoints;
             updateHostUI();
 
-            
-            
-            // 1. Lock Tiles on Board & Remove from hostInbox memory
             newTiles.forEach(t => { 
                 t.removeAttribute('data-new'); 
                 t.dataset.locked="true"; 
@@ -972,22 +1069,18 @@
                 hostInbox = hostInbox.filter(x => x.id !== t.dataset.id);
             });
 
-            // 2. Deal new tiles
             deal(players[turnIndex].conn, newTiles.length, turnIndex); 
             
-            // 3. FORCE RETURN leftovers
             if(hostInbox.length > 0) {
                 const count = hostInbox.length;
-                hostInbox.forEach(t => returnTile(t.letter, t.owner, false)); // false = skip individual save
+                hostInbox.forEach(t => returnTile(t.letter, t.owner, false)); 
                 toast(`Returned ${count} unused tiles`);
                 hostInbox = []; 
                 renderInbox();
             }
 
             isFirstTurn = false;
-            turnIndex = (turnIndex + 1) % players.length;
-            notifyTurn();
-            saveHostState(currentHostRoomCode); // Save state once at the end
+            advanceTurn();
         }
 
         function promptLeaveGame() { showConfirm("Leave Room?", "You will exit this session.", () => { if(currentSessionCode) deleteSession(currentSessionCode); location.reload(); }); }
@@ -999,6 +1092,7 @@
         }); }
 
         function playSelected() {
+            if(isHostOffline) { showModal("Offline", "Host is offline. Cannot play."); return; }
             if(!myTurn) { toast("Not your turn!"); return; }
             if(!selectedTilesOrder.length) return;
             const t=[]; selectedTilesOrder.forEach(x=>{ t.push(x.dataset.letter); x.remove(); });
@@ -1044,6 +1138,7 @@
                         <span class="status-dot ${p.isOffline?'status-offline':'status-online'}"></span>
                         ${p.name}
                         ${(p.isOffline || (!p.conn || !p.conn.open)) ? `<button class="btn-resync" onclick="resyncPlayer(${i})">Sync</button>` : ''}
+                        ${(i === turnIndex && p.isOffline) ? `<button class="btn-resync" style="background:var(--warning);color:#000;" onclick="forceSkip(${i})">Skip</button>` : ''}
                     </div>
                     <div class="score-box">
                         <div class="total-score">${p.score}</div>
