@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Multi-Save & Sync</title>
+    <title>Scrabble Pro - Final Logic</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -140,7 +140,7 @@
         .save-badge { background: #2ecc71; color: #111; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; margin-left: auto; }
     </style>
 </head>
-<body>
+<body onclick="resumeAudio()">
 
     <div id="blank-overlay"><div class="modal"><h3 style="margin-top:0;">Assign Blank Tile</h3><div id="blank-selector"></div></div></div>
     
@@ -289,8 +289,69 @@
         let hostInbox = []; // Stores {id, letter, owner}
         
         // --- STORAGE KEYS ---
-        const STORAGE_HOST_SAVES = 'scrabble_host_saves_v2'; // Stores object { 'CODE': stateObj }
+        const STORAGE_HOST_SAVES = 'scrabble_host_saves_v2'; 
         const STORAGE_SESSIONS = 'scrabble_player_sessions'; 
+        
+        // --- AUDIO SYSTEM ---
+        let audioCtx = null;
+        function resumeAudio() { if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); }
+        
+        function playSound(type) {
+            if(!soundsEnabled) return;
+            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            if(type === 'place' || type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(300, now + 0.1);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if(type === 'chim') { // Success/Chime
+                // C Major Chord
+                const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+                notes.forEach((freq, i) => {
+                    const o = audioCtx.createOscillator();
+                    const g = audioCtx.createGain();
+                    o.connect(g); g.connect(audioCtx.destination);
+                    o.type = 'sine';
+                    o.frequency.value = freq;
+                    g.gain.setValueAtTime(0.05, now + i*0.05);
+                    g.gain.exponentialRampToValueAtTime(0.001, now + 0.6 + i*0.05);
+                    o.start(now + i*0.05); o.stop(now + 0.6 + i*0.05);
+                });
+            } else if(type === 'error') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0.001, now + 0.3);
+                osc.start(now); osc.stop(now + 0.3);
+            } else if(type === 'notify') {
+                // Ding Dong
+                const o1 = audioCtx.createOscillator(); const g1 = audioCtx.createGain();
+                o1.connect(g1); g1.connect(audioCtx.destination);
+                o1.frequency.setValueAtTime(880, now); // A5
+                g1.gain.setValueAtTime(0.1, now);
+                g1.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                o1.start(now); o1.stop(now + 0.5);
+
+                const o2 = audioCtx.createOscillator(); const g2 = audioCtx.createGain();
+                o2.connect(g2); g2.connect(audioCtx.destination);
+                o2.frequency.setValueAtTime(659.25, now + 0.4); // E5
+                g2.gain.setValueAtTime(0.1, now + 0.4);
+                g2.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+                o2.start(now + 0.4); o2.stop(now + 1.2);
+            }
+        }
 
         window.onload = () => {
             renderHomeScreen();
@@ -402,7 +463,7 @@
         function showHomeScreen() { showScreen('screen-home'); renderHomeScreen(); }
         function showJoinScreen() { showScreen('screen-join-login'); }
         function toast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
-        function showModal(title, msg) { document.getElementById('modal-title').innerText=title; document.getElementById('modal-msg').innerText=msg; document.getElementById('notification-overlay').style.display="flex"; }
+        function showModal(title, msg) { playSound('error'); document.getElementById('modal-title').innerText=title; document.getElementById('modal-msg').innerText=msg; document.getElementById('notification-overlay').style.display="flex"; }
         function closeModal() { document.getElementById('notification-overlay').style.display="none"; }
         function showConfirm(title, msg, onYes) {
             document.getElementById('confirm-title').innerText = title; document.getElementById('confirm-msg').innerText = msg;
@@ -414,6 +475,7 @@
         // --- HOST LOGIC ---
 
         function initHost(existingId = null, isResume = false) {
+            resumeAudio();
             if(peer) peer.destroy();
             if(heartbeatInterval) clearInterval(heartbeatInterval);
             if(startTimeout) clearTimeout(startTimeout);
@@ -452,7 +514,6 @@
                     showScreen('screen-host'); 
                     updateHostUI(); 
                     toast("Game Resumed");
-                    // Force sync immediately upon resume to catch any reconnected peers
                     startHeartbeat();
                 } else {
                     initBag(); renderBoard(); players=[]; hostInbox=[];
@@ -495,7 +556,6 @@
             const grid = getGrid();
             const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
             
-            // Clean circular references (connections) before saving
             const cleanPlayers = players.map(p => ({
                 userId: p.userId,
                 name: p.name,
@@ -560,22 +620,19 @@
                 
                 if(!p) {
                     if(data.type === 'handshake') { c.send({type: 'ack_join', success: false, msg: "Session invalid."}); return; }
-                    // New Player
                     p = { userId: incomingId, name: data.name, score: 0, lastScore: 0, tiles: [], conn: c, lastSeen: Date.now(), isOffline: false };
                     players.push(p);
                     toast(`${data.name} joined`);
                 } else {
-                    // Reconnecting Player
                     p.conn = c; p.lastSeen = Date.now(); p.isOffline = false;
                     toast(`${p.name} reconnected`);
                 }
 
-                // Send immediate sync packet
                 c.send({
                     type: 'ack_join', success: true, name: p.name,
                     activePlayer: players[turnIndex] ? players[turnIndex].name : null,
                     myTurn: (players.indexOf(p) === turnIndex),
-                    tiles: p.tiles, // AUTO-RECOVERY: Sends the rack stored in DB
+                    tiles: p.tiles,
                     isGameRunning: document.getElementById('screen-host').classList.contains('active'),
                     grid: getGrid()
                 });
@@ -601,12 +658,11 @@
                 const p = players[turnIndex];
                 if(!p || (p.userId !== players.find(x=>x.conn===c)?.userId)) { c.send({type:'toast', msg:"Not your turn!"}); return; }
                 
-                // HOST AUTHORITY VALIDATION
                 data.tiles.forEach(l => {
                     const idx = p.tiles.indexOf(l);
                     if(idx > -1) {
-                        p.tiles.splice(idx, 1); // remove from player hand memory
-                        createHostTile(l, p.userId); // add to inbox
+                        p.tiles.splice(idx, 1);
+                        createHostTile(l, p.userId);
                     }
                 });
                 saveHostState(currentHostRoomCode);
@@ -626,11 +682,9 @@
             for(let i=0; i<n; i++) if(bag.length) newTiles.push(bag.pop());
             p.tiles.push(...newTiles);
             
-            // Check connection before sending
             if(p.conn && p.conn.open) {
                 p.conn.send({type:'hand', tiles: newTiles});
             } else {
-                // Offline Logic
                 showModal("Delivery Failure", `${p.name} is offline. Tiles saved to storage. They will sync upon reconnect.`);
                 p.isOffline = true;
                 updateHostUI();
@@ -642,18 +696,9 @@
             if(!p) return;
             if(!p.conn || !p.conn.open) { toast("Player is offline"); return; }
             toast("Syncing data to " + p.name);
-            p.conn.send({
-                type: 'gamestart', // Triggers a full state refresh on client
-            });
-            p.conn.send({
-                type: 'hand',
-                tiles: p.tiles
-            });
-            p.conn.send({
-                type: 'turn_update',
-                myTurn: (index === turnIndex),
-                activePlayer: players[turnIndex].name
-            });
+            p.conn.send({ type: 'gamestart' });
+            p.conn.send({ type: 'hand', tiles: p.tiles });
+            p.conn.send({ type: 'turn_update', myTurn: (index === turnIndex), activePlayer: players[turnIndex].name });
         }
 
         function hostStartGame() {
@@ -690,6 +735,7 @@
         }
 
         function joinGame(codeOverride=null, nameOverride=null, idOverride=null) {
+            resumeAudio();
             const n = nameOverride || document.getElementById('join-name').value.trim();
             const c = (codeOverride || document.getElementById('join-code').value.trim()).toUpperCase();
             if(!n || c.length!==4) return;
@@ -724,7 +770,6 @@
                         toast("Game Started!");
                     }
                     if(d.type==='hand') {
-                        // Clear existing rack if this is a fresh sync (heuristic: if receiving 7 tiles and rack is empty)
                         const r = document.getElementById('my-rack');
                         if(d.tiles.length === 7 && r.children.length === 0) r.innerHTML = '';
                         addRack(d.tiles);
@@ -741,7 +786,8 @@
             const btn = document.getElementById('btn-play');
             const hudStatus = document.getElementById('status-msg');
             if(myTurn) {
-                btn.disabled = false; hudStatus.innerText = "YOUR TURN"; hudStatus.classList.add('active'); if(!document.hidden) toast("It's your turn!");
+                btn.disabled = false; hudStatus.innerText = "YOUR TURN"; hudStatus.classList.add('active'); 
+                if(!document.hidden) { toast("It's your turn!"); playSound('notify'); }
             } else {
                 btn.disabled = true; hudStatus.innerText = `Turn: ${activeName}`; hudStatus.classList.remove('active');
             }
@@ -752,6 +798,7 @@
         function onDragStart(e) {
             if(e.currentTarget.dataset.locked==="true") return;
             e.preventDefault();
+            playSound('click');
             dragEl = e.currentTarget;
             if(dragEl.dataset.isBlank==="true" || (dragEl.dataset.letter==='_' && dragEl.innerText!=='')) {
                 dragEl.dataset.letter='_'; dragEl.innerText=''; dragEl.classList.remove('is-blank-assigned'); delete dragEl.dataset.isBlank;
@@ -777,7 +824,7 @@
                 const ret = el.closest('.return-zone');
                 
                 if(ret && dragEl) handleReturn(dragEl);
-                else if(cell && dragEl) handleBoardPlacement(dragEl, cell);
+                else if(cell && dragEl) { handleBoardPlacement(dragEl, cell); playSound('place'); }
                 else if(dragEl) handleInboxDrop(dragEl);
             } else if(dragEl) {
                 handleInboxDrop(dragEl);
@@ -789,15 +836,9 @@
 
         // HANDLERS
         function handleReturn(tile) {
-            // Remove from inbox memory array explicitly using ID
             const idx = hostInbox.findIndex(t => t.id === tile.dataset.id);
-            if(idx > -1) {
-                hostInbox.splice(idx, 1);
-            }
-            
-            // Only return if it's not already on the board (prevents double counting)
+            if(idx > -1) { hostInbox.splice(idx, 1); }
             returnTile(tile.dataset.letter, tile.dataset.owner);
-            
             tile.remove(); 
             renderInbox(); 
         }
@@ -840,13 +881,39 @@
                 pendingBlankTile=null; document.getElementById('blank-overlay').style.display="none"; updateScorePill();
             }
         }
+
+        function isConnectedToExisting(newTiles) {
+            // If the board is empty (except for these new tiles), rules of first turn apply (which are handled elsewhere).
+            const lockedTiles = document.querySelectorAll('.cell .tile[data-locked="true"]');
+            if(lockedTiles.length === 0) return true;
+
+            // Check if ANY of the new tiles touches a locked tile
+            return newTiles.some(tile => {
+                const r = parseInt(tile.parentElement.dataset.r);
+                const c = parseInt(tile.parentElement.dataset.c);
+                
+                // Get Neighbors
+                const neighbors = [
+                    getCell(r-1, c), getCell(r+1, c),
+                    getCell(r, c-1), getCell(r, c+1)
+                ];
+
+                // Is any neighbor occupied by a locked tile?
+                return neighbors.some(cell => cell && cell.querySelector('.tile[data-locked="true"]'));
+            });
+        }
+
         function updateScorePill() {
             let newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
             if(dragEl) newTiles = newTiles.filter(t => t !== dragEl);
             const pill = document.getElementById('score-pill');
             const hasUnassignedBlank = newTiles.some(t => t.dataset.letter === '_');
             
-            if (newTiles.length === 0 || !isPlacementShapeValid(newTiles) || hasUnassignedBlank) { pill.classList.remove('visible'); currentTurnPoints = 0; return; }
+            // Validation: Must exist, must be in line, must connect to board (if board not empty)
+            if (newTiles.length === 0 || !isPlacementShapeValid(newTiles) || hasUnassignedBlank || !isConnectedToExisting(newTiles)) { 
+                pill.classList.remove('visible'); currentTurnPoints = 0; return; 
+            }
+
             currentTurnPoints = calculateComplexScore(newTiles);
             pill.innerText = `${currentTurnPoints} pts`; pill.classList.add('visible');
             newTiles.sort((a,b) => (parseInt(a.parentElement.dataset.r)-parseInt(b.parentElement.dataset.r)) || (parseInt(a.parentElement.dataset.c)-parseInt(b.parentElement.dataset.c)));
@@ -862,14 +929,23 @@
 
         function confirmTurn() {
             if(!document.getElementById('score-pill').classList.contains('visible')) { showModal("Invalid", "Invalid placement."); return; }
+            const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
+            
             if(isFirstTurn) {
-                const hasCenter = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]')).some(t => parseInt(t.parentElement.dataset.r)===7 && parseInt(t.parentElement.dataset.c)===7);
+                const hasCenter = Array.from(newTiles).some(t => parseInt(t.parentElement.dataset.r)===7 && parseInt(t.parentElement.dataset.c)===7);
                 if(!hasCenter) { showModal("Rule", "Must start at center."); return; }
+            } else {
+                // Double check connection rule on confirm just in case
+                if(!isConnectedToExisting(Array.from(newTiles))) { showModal("Invalid", "Must connect to existing tiles."); return; }
             }
+
             const grid=getGrid(); const words=getWords(grid);
             const invalid = words.filter(w => !dictionary.has(w) && dictionary.size > 0);
             if(invalid.length > 0) { showModal("Invalid Word", invalid.join(', ')); return; }
             
+            // Valid Turn!
+            playSound('chim');
+
             const pill = document.getElementById('score-pill');
             const pillRect = pill.getBoundingClientRect();
             pill.classList.remove('visible');
@@ -886,7 +962,7 @@
             players[turnIndex].lastScore = currentTurnPoints;
             updateHostUI();
 
-            const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
+            
             
             // 1. Lock Tiles on Board & Remove from hostInbox memory
             newTiles.forEach(t => { 
@@ -935,6 +1011,7 @@
                 const d=document.createElement('div'); d.className='tile'; d.dataset.letter=l;
                 if(l === '_') d.innerHTML = ''; else d.innerHTML=`${l}<span class="score">${SCORES[l]}</span>`;
                 d.onclick=()=>{
+                    playSound('click');
                     if(d.classList.contains('selected')) { d.classList.remove('selected'); selectedTilesOrder = selectedTilesOrder.filter(tile => tile !== d); } 
                     else { d.classList.add('selected'); selectedTilesOrder.push(d); }
                 };
