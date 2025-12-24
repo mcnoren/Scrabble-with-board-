@@ -588,7 +588,17 @@
                             // Reset visuals before appending tile
                             resetCellVisuals(cell);
                             const t = document.createElement('div'); t.className = 'tile'; 
-                            t.dataset.letter = data.letter; t.dataset.id = data.id; t.dataset.owner = data.owner; t.dataset.locked = "true"; 
+                            t.dataset.letter = data.letter; t.dataset.id = data.id; t.dataset.owner = data.owner;
+                            
+                            // Restore Locked State or New State
+                            // If data.locked is undefined (legacy save), assume true
+                            if (data.locked === false) {
+                                t.dataset.new = "true";
+                                t.addEventListener('pointerdown', onDragStart);
+                            } else {
+                                t.dataset.locked = "true";
+                            }
+
                             if(data.letter === '_') { t.innerHTML=''; t.dataset.letter='_'; } 
                             else t.innerHTML = `${data.letter}<span class="score">${SCORES[data.letter]}</span>`;
                             cell.appendChild(t);
@@ -1333,7 +1343,8 @@
                     g[r][col] = {
                         letter: tile.dataset.letter,
                         id: tile.dataset.id,
-                        owner: tile.dataset.owner
+                        owner: tile.dataset.owner,
+                        locked: tile.dataset.locked === "true" // Capture lock state
                     };
                 }
             });
