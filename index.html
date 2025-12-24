@@ -268,6 +268,7 @@
             <div id="my-rack" class="player-rack"></div>
             <div class="mobile-controls">
                 <button onclick="shuffleRack()" style="background:#e67e22;">Shuffle</button>
+                <button onclick="swapTiles()" style="background:#9b59b6;">Swap</button>
                 <button onclick="skipTurn()" style="background:#7f8c8d;">Skip</button>
                 <button id="btn-play" onclick="playSelected()" disabled>Send Tiles</button>
             </div>
@@ -611,6 +612,32 @@
                 });
                 saveHostState(currentHostRoomCode);
             }
+            if(data.type === 'swap') {
+                const p = players[turnIndex];
+                if(!p || (p.userId !== players.find(x=>x.conn===c)?.userId)) { c.send({type:'toast', msg:"Not your turn!"}); return; }
+                
+                if (bag.length < 7) { c.send({type: 'toast', msg: "Bag must have 7+ tiles to swap."}); return; }
+                
+                const tilesToSwap = data.tiles; 
+                tilesToSwap.forEach(l => {
+                    const idx = p.tiles.indexOf(l);
+                    if (idx > -1) p.tiles.splice(idx, 1);
+                    bag.push(l); 
+                });
+                
+                // Shuffle bag slightly
+                for (let i = bag.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [bag[i], bag[j]] = [bag[j], bag[i]];
+                }
+                
+                deal(p.conn, tilesToSwap.length, turnIndex);
+                
+                players[turnIndex].lastScore = 0; 
+                turnIndex = (turnIndex + 1) % players.length;
+                updateHostUI(); notifyTurn(); saveHostState(currentHostRoomCode);
+                toast(`${p.name} swapped ${tilesToSwap.length} tiles`);
+            }
             if(data.type === 'pass') {
                 const p = players.find(x=>x.conn===c);
                 if(!p || players[turnIndex].userId !== p.userId) return;
@@ -929,6 +956,16 @@
             selectedTilesOrder = [];
             conn.send({type:'play', tiles:t});
         }
+        
+        function swapTiles() {
+            if (!myTurn) { toast("Not your turn!"); return; }
+            if (selectedTilesOrder.length === 0) { toast("Select tiles to swap"); return; }
+            if (!confirm(`Swap ${selectedTilesOrder.length} tiles? This uses your turn.`)) return;
+            const t = [];
+            selectedTilesOrder.forEach(x => { t.push(x.dataset.letter); x.remove(); });
+            selectedTilesOrder = [];
+            conn.send({type: 'swap', tiles: t});
+        }
 
         function addRack(t) {
             t.forEach(l=>{
@@ -1016,7 +1053,49 @@
             return w;
         }
 
-        function isPlacementShapeValid(tiles){const coords=tiles.map(t=>({r:parseInt(t.parentElement.dataset.r),c:parseInt(t.parentElement.dataset.c)}));const rows=new Set(coords.map(k=>k.r)),cols=new Set(coords.map(k=>k.c));if(rows.size>1&&cols.size>1)return false;const isH=rows.size===1;if(isH){coords.sort((a,b)=>a.c-b.c);const r=coords[0].r;for(let c=coords[0].c;c<=coords[coords.length-1].c;c++)if(!document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`).querySelector('.tile'))return false;}else{coords.sort((a,b)=>a.r-b.r);const c=coords[0].c;for(let r=coords[0].r;r<=coords[coords.length-1].r;r++)if(!document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`).querySelector('.tile'))return false;}return true;}
+        function isPlacementShapeValid(tiles){
+            if (tiles.length === 0) return false;
+            // 1. Line/Shape Check
+            const coords=tiles.map(t=>({r:parseInt(t.parentElement.dataset.r),c:parseInt(t.parentElement.dataset.c)}));
+            const rows=new Set(coords.map(k=>k.r)),cols=new Set(coords.map(k=>k.c));
+            if(rows.size>1&&cols.size>1)return false;
+            
+            const isH=rows.size===1;
+            if(isH){
+                coords.sort((a,b)=>a.c-b.c);
+                const r=coords[0].r;
+                for(let c=coords[0].c;c<=coords[coords.length-1].c;c++){
+                    if(!document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`).querySelector('.tile'))return false;
+                }
+            }else{
+                coords.sort((a,b)=>a.r-b.r);
+                const c=coords[0].c;
+                for(let r=coords[0].r;r<=coords[coords.length-1].r;r++){
+                    if(!document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`).querySelector('.tile'))return false;
+                }
+            }
+            // 2. Connectivity Check (Must touch at least one EXISTING/LOCKED tile unless first turn)
+            if(!isFirstTurn) {
+                let isConnected = false;
+                const neighbors = [{r:0,c:1},{r:0,c:-1},{r:1,c:0},{r:-1,c:0}];
+                for(let t of tiles) {
+                    const r = parseInt(t.parentElement.dataset.r);
+                    const c = parseInt(t.parentElement.dataset.c);
+                    for(let n of neighbors) {
+                        const cell = document.querySelector(`.cell[data-r="${r+n.r}"][data-c="${c+n.c}"]`);
+                        if(cell) {
+                            const nt = cell.querySelector('.tile');
+                            // If neighbor exists and is NOT new (is locked), we are connected
+                            if(nt && nt.dataset.new !== "true") { isConnected = true; break; }
+                        }
+                    }
+                    if(isConnected) break;
+                }
+                if(!isConnected) return false;
+            }
+            return true;
+        }
+
         function calculateComplexScore(newTiles){let total=0;const coords=newTiles.map(t=>({r:parseInt(t.parentElement.dataset.r),c:parseInt(t.parentElement.dataset.c)}));const isH=new Set(coords.map(x=>x.r)).size===1;total+=getWordScoreAt(coords[0].r,coords[0].c,isH);coords.forEach(pos=>{const cS=getWordScoreAt(pos.r,pos.c,!isH);if(cS>0)total+=cS;});if(newTiles.length===7)total+=50;return total;}
         function getWordScoreAt(r,c,isHoriz){let curr=isHoriz?c:r;while(curr>0){const cell=isHoriz?getCell(r,curr-1):getCell(curr-1,c);if(!cell.querySelector('.tile'))break;curr--;}const start=curr;curr=isHoriz?c:r;while(curr<14){const cell=isHoriz?getCell(r,curr+1):getCell(curr+1,c);if(!cell.querySelector('.tile'))break;curr++;}const end=curr;if(start===end)return 0;let pts=0,mult=1;for(let i=start;i<=end;i++){const row=isHoriz?r:i,col=isHoriz?i:c,cell=getCell(row,col),tile=cell.querySelector('.tile');let val=(tile.dataset.isBlank==="true")?0:(SCORES[tile.dataset.letter]||0);if(tile.dataset.new==="true"){const type=LAYOUT[row][col];if(type===3)val*=3;else if(type===4)val*=2;if(type===1)mult*=3;else if(type===2||type===5)mult*=2;}pts+=val;}return pts*mult;}
         function getCell(r,c){return document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);}
