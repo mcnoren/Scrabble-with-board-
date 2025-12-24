@@ -280,6 +280,17 @@
         const BAG_INIT = {'A':9,'B':2,'C':2,'D':4,'E':12,'F':2,'G':3,'H':2,'I':9,'J':1,'K':1,'L':4,'M':2,'N':6,'O':8,'P':2,'Q':1,'R':6,'S':4,'T':6,'U':4,'V':2,'W':2,'X':1,'Y':2,'Z':1,'_':2};
         const LAYOUT = [[1,0,0,4,0,0,0,1,0,0,0,4,0,0,1],[0,2,0,0,0,3,0,0,0,3,0,0,0,2,0],[0,0,2,0,0,0,4,0,4,0,0,0,2,0,0],[4,0,0,2,0,0,0,4,0,0,0,2,0,0,4],[0,0,0,0,2,0,0,0,0,0,2,0,0,0,0],[0,3,0,0,0,3,0,0,0,3,0,0,0,3,0],[0,0,4,0,0,0,4,0,4,0,0,0,4,0,0],[1,0,0,4,0,0,0,5,0,0,0,4,0,0,1],[0,0,4,0,0,0,4,0,4,0,0,0,4,0,0],[0,3,0,0,0,3,0,0,0,3,0,0,0,3,0],[0,0,0,0,2,0,0,0,0,0,2,0,0,0,0],[4,0,0,2,0,0,0,4,0,0,0,2,0,0,4],[0,0,2,0,0,0,4,0,4,0,0,0,2,0,0],[0,2,0,0,0,3,0,0,0,3,0,0,0,2,0],[1,0,0,4,0,0,0,1,0,0,0,4,0,0,1]];
 
+        // STUN servers configuration for better connectivity
+        const PEER_CONFIG = {
+            debug: 2,
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                ]
+            }
+        };
+
         let peer, conn, dictionary = new Set(), bag=[], players=[], turnIndex=0, myTurn=false, isFirstTurn=true;
         let currentTurnPoints = 0, pendingBlankTile = null, selectedTilesOrder = [];
         let currentSessionCode = null; // Client side
@@ -428,7 +439,9 @@
             // Generate ID if not resuming, or use existing
             const id = existingId || genId();
             currentHostRoomCode = id;
-            peer = new Peer(id);
+            
+            // Add explicit STUN config to Host
+            peer = new Peer(id, PEER_CONFIG);
             
             peer.on('open', id => {
                 showScreen('screen-lobby');
@@ -717,16 +730,49 @@
         }
 
         function joinGame(codeOverride=null, nameOverride=null, idOverride=null) {
+            // cleanup old peer if user is retrying
+            if(peer) peer.destroy();
+
             const n = nameOverride || document.getElementById('join-name').value.trim();
             const c = (codeOverride || document.getElementById('join-code').value.trim()).toUpperCase();
             if(!n || c.length!==4) return;
+            
             const btn = document.getElementById('btn-join');
+            const statusEl = document.getElementById('connect-status');
             if(btn) { btn.disabled = true; btn.innerText = "Connecting..."; }
+            if(statusEl) statusEl.innerText = "";
+            
             const userId = idOverride || generateUUID();
-            peer = new Peer();
+            
+            // Add explicit STUN config to Player
+            peer = new Peer(null, PEER_CONFIG);
+            
+            peer.on('error', (err) => {
+                console.error("Peer Error:", err);
+                if(btn) { btn.disabled = false; btn.innerText = "Connect"; }
+                if(statusEl) {
+                    if (err.type === 'peer-unavailable') statusEl.innerText = "Room code not found.";
+                    else statusEl.innerText = "Connection error: " + err.type;
+                }
+            });
+
             peer.on('open', () => {
                 conn = peer.connect(c);
+                
+                // Handle connection errors specifically
+                conn.on('error', (err) => {
+                     console.error("Conn Error:", err);
+                     if(btn) { btn.disabled = false; btn.innerText = "Connect"; }
+                     if(statusEl) statusEl.innerText = "Connection failed.";
+                });
+
+                conn.on('close', () => {
+                     if(btn) { btn.disabled = false; btn.innerText = "Connect"; }
+                     if(statusEl) statusEl.innerText = "Connection closed.";
+                });
+
                 conn.on('open', () => { conn.send({type:'join', name:n, userId: userId}); });
+                
                 conn.on('data', d => {
                     if(d.type === 'ack_join') {
                         if(d.success === false) { alert(d.msg); return; }
