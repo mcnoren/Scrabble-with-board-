@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Smart Connect</title>
+    <title>Scrabble Pro - Stable Connect</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -785,6 +785,10 @@
                  peer = new Peer();
                  peer.on('error', e => {
                     console.log("Peer error", e);
+                    // Critical failure, auto-recover if possible
+                    if(e.type === 'network' || e.type === 'disconnected') {
+                        setTimeout(() => peer.reconnect(), 2000);
+                    }
                  });
                  peer.on('open', () => {
                      doConnect(hostCode, userName, userId, isRetry);
@@ -808,6 +812,7 @@
                  lastHostPulse = Date.now();
                  isHostOffline = false;
                  document.getElementById('host-offline-overlay').style.display = 'none';
+                 updateTurnUI(myTurn, "..."); // Refresh buttons
              });
 
              conn.on('data', d => {
@@ -877,7 +882,6 @@
                 if (now - lastHostPulse > 4000) {
                      // Try to silently reconnect in background
                      if(!isHostOffline) {
-                         // First time noticing silence
                          console.log("Silence detected, attempting background reconnect...");
                          establishConnection(c, n, userId, true);
                      }
@@ -896,6 +900,7 @@
             }, 2000);
 
             // Initial Connect
+            lastHostPulse = Date.now() + 10000; // Grace period
             establishConnection(c, n, userId, false);
         }
 
@@ -1028,6 +1033,29 @@
             const pill = document.getElementById('score-pill');
             const hasUnassignedBlank = newTiles.some(t => t.dataset.letter === '_');
             
+            // STRICTER GAPS CHECK: Ensure tiles between min/max indices are occupied
+            if(newTiles.length > 1) {
+                const coords = newTiles.map(t=>({r:parseInt(t.parentElement.dataset.r),c:parseInt(t.parentElement.dataset.c)}));
+                const isH = new Set(coords.map(k=>k.r)).size===1;
+                const isV = new Set(coords.map(k=>k.c)).size===1;
+                
+                if(isH) {
+                    coords.sort((a,b)=>a.c-b.c);
+                    const r = coords[0].r;
+                    for(let c=coords[0].c; c<=coords[coords.length-1].c; c++) {
+                        const cell = getCell(r,c);
+                        if(!cell.querySelector('.tile')) { pill.classList.remove('visible'); return; }
+                    }
+                } else if(isV) {
+                    coords.sort((a,b)=>a.r-b.r);
+                    const c = coords[0].c;
+                    for(let r=coords[0].r; r<=coords[coords.length-1].r; r++) {
+                        const cell = getCell(r,c);
+                        if(!cell.querySelector('.tile')) { pill.classList.remove('visible'); return; }
+                    }
+                }
+            }
+
             if (newTiles.length === 0 || !isPlacementShapeValid(newTiles) || hasUnassignedBlank || !isConnectedToExisting(newTiles)) { 
                 pill.classList.remove('visible'); currentTurnPoints = 0; return; 
             }
