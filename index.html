@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Fixed Connection</title>
+    <title>Scrabble Pro - Instant Connect</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -136,7 +136,6 @@
         .status-dot { height: 10px; width: 10px; background-color: #7f8c8d; border-radius: 50%; display: inline-block; margin-right: 6px; margin-left:6px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
         .status-online { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
         .status-offline { background-color: #c0392b; }
-        .save-badge { background: #2ecc71; color: #111; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; margin-left: auto; }
     </style>
 </head>
 <body onclick="resumeAudio()">
@@ -146,7 +145,7 @@
     <div id="reconnect-overlay">
         <div class="modal">
             <h3 style="margin-top:0; color:#e74c3c;">Connecting...</h3>
-            <p style="color:#bdc3c7; margin-bottom:20px; font-size:0.9rem;">Restoring connection to host.</p>
+            <p style="color:#bdc3c7; margin-bottom:20px; font-size:0.9rem;">Connecting to host.</p>
             <div class="spinner" style="margin:20px auto; border: 4px solid #f3f3f3; border-top: 4px solid #e74c3c; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite;"></div>
             <button onclick="cancelJoin()" class="btn-secondary" style="width:100%; margin-top:10px;">Cancel</button>
         </div>
@@ -477,7 +476,15 @@
             }
         }
 
-        function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+        function showScreen(id) { 
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
+            document.getElementById(id).classList.add('active'); 
+            
+            // Auto-init peer if entering join screen to save time
+            if(id === 'screen-join-login' && (!peer || peer.disconnected)) {
+                initClientPeer();
+            }
+        }
         function showHomeScreen() { showScreen('screen-home'); renderHomeScreen(); }
         function showJoinScreen() { showScreen('screen-join-login'); }
         function toast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
@@ -666,14 +673,23 @@
         // --- JOIN & CANCEL LOGIC ---
 
         function cancelJoin() {
-            if(peer) { peer.destroy(); peer = null; }
-            conn = null;
+            // DO NOT destroy peer here, just close connection to keep ID ready for retry
+            if(conn) { conn.close(); conn = null; }
             if(playerMonitorInterval) clearInterval(playerMonitorInterval);
             if(connectTimeout) clearTimeout(connectTimeout);
             document.getElementById('reconnect-overlay').style.display='none';
             document.getElementById('btn-join').disabled = false;
             document.getElementById('btn-join').innerText = "Connect";
             showHomeScreen();
+        }
+
+        // Initialize Peer ONCE for client to avoid lag/race conditions
+        function initClientPeer() {
+            if(!peer || peer.disconnected) {
+                if(peer) peer.destroy();
+                peer = new Peer(null, PEER_CONFIG);
+                peer.on('error', e => console.log('Peer Error', e));
+            }
         }
 
         function joinGame(codeOverride=null, nameOverride=null, idOverride=null) {
@@ -689,41 +705,55 @@
             if(!n || c.length!==4) return;
             
             const btn = document.getElementById('btn-join');
-            btn.disabled = true; btn.innerText = "Initializing Peer...";
+            btn.disabled = true; btn.innerText = "Finding Room...";
             
             const userId = idOverride || generateUUID();
             currentSessionCode = c;
 
-            if(peer) peer.destroy();
-            peer = new Peer(null, PEER_CONFIG);
-            
-            peer.on('error', (err) => {
-                 if(connectTimeout) clearTimeout(connectTimeout);
-                 btn.disabled = false; btn.innerText = "Connect";
-                 if(err.type === 'peer-unavailable') { showModal("Room Not Found", "Check the code and try again."); } 
-                 else { console.log(err); if(err.type === 'network' || err.type === 'disconnected') setTimeout(() => peer.reconnect(), 1000); }
-            });
+            // Ensure we have a peer
+            if(!peer || peer.disconnected || peer.destroyed) {
+                peer = new Peer(null, PEER_CONFIG);
+                peer.on('open', () => doConnect(c, n, userId, btn));
+                peer.on('error', (err) => handleConnectError(err, btn));
+            } else if(peer.open) {
+                doConnect(c, n, userId, btn);
+            } else {
+                // Peer exists but not open, wait for it
+                peer.on('open', () => doConnect(c, n, userId, btn));
+            }
+        }
 
+        function handleConnectError(err, btn) {
+            if(connectTimeout) clearTimeout(connectTimeout);
+            btn.disabled = false; btn.innerText = "Connect";
+            if(err.type === 'peer-unavailable') { showModal("Room Not Found", "Check the code and try again."); } 
+            else { console.log(err); }
+        }
+
+        function doConnect(c, n, userId, btn) {
+            btn.innerText = "Handshaking...";
+            conn = peer.connect(c, { reliable: true }); // Removed serialization option to use default
+            
             connectTimeout = setTimeout(() => {
-                if(!conn || !conn.open) { cancelJoin(); showModal("Timeout", "Could not reach host. Try again."); }
+                if(!conn || !conn.open) { 
+                    conn.close(); 
+                    handleConnectError({type:'timeout'}, btn);
+                    showModal("Timeout", "Host not responding. Try again.");
+                }
             }, 8000);
 
-            peer.on('open', () => {
-                btn.innerText = "Finding Room...";
-                conn = peer.connect(c, { reliable: true, serialization: 'json' });
-                
-                conn.on('open', () => {
-                    clearTimeout(connectTimeout);
-                    btn.innerText = "Handshaking...";
-                    conn.send({type: 'join', name:n, userId: userId});
-                    lastHostPulse = Date.now() + 10000; 
-                    isHostOffline = false;
-                    startPlayerMonitor(c, n, userId);
-                });
-
-                conn.on('data', d => handlePeerData(d, n, userId));
-                conn.on('close', () => { document.getElementById('reconnect-overlay').style.display = 'flex'; });
+            conn.on('open', () => {
+                clearTimeout(connectTimeout);
+                btn.innerText = "Connected!";
+                conn.send({type: 'join', name:n, userId: userId});
+                lastHostPulse = Date.now() + 10000; 
+                isHostOffline = false;
+                startPlayerMonitor(c, n, userId);
             });
+
+            conn.on('data', d => handlePeerData(d, n, userId));
+            conn.on('close', () => { document.getElementById('reconnect-overlay').style.display = 'flex'; });
+            conn.on('error', e => console.log("Conn Error", e));
         }
 
         function startPlayerMonitor(code, name, uid) {
@@ -731,7 +761,7 @@
                 const now = Date.now();
                 if (now - lastHostPulse > 4000) {
                      if(!isHostOffline && (!conn || !conn.open)) {
-                         conn = peer.connect(code, { reliable: true, serialization: 'json' }); setupConnListeners(conn, name, uid);
+                         conn = peer.connect(code); setupConnListeners(conn, name, uid);
                      }
                 }
                 if (now - lastHostPulse > 8000) {
@@ -741,7 +771,7 @@
                         updateTurnUI(myTurn, "...");
                     }
                     if(!conn || !conn.open) {
-                        conn = peer.connect(code, { reliable: true, serialization: 'json' }); setupConnListeners(conn, name, uid);
+                        conn = peer.connect(code); setupConnListeners(conn, name, uid);
                     } else { conn.send({type: 'handshake', name: name, userId: uid}); }
                 } else {
                     if(isHostOffline) {
