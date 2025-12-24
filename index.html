@@ -548,7 +548,8 @@
                     if(data) {
                         const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
                         if(cell) {
-                            cell.innerHTML = '';
+                            // Reset visuals before appending tile
+                            resetCellVisuals(cell);
                             const t = document.createElement('div'); t.className = 'tile'; 
                             t.dataset.letter = data.letter; t.dataset.id = data.id; t.dataset.owner = data.owner; t.dataset.locked = "true"; 
                             if(data.letter === '_') { t.innerHTML=''; t.dataset.letter='_'; } 
@@ -558,6 +559,20 @@
                     }
                 }
             }
+        }
+        
+        function resetCellVisuals(cell) {
+            const r = parseInt(cell.dataset.r);
+            const c = parseInt(cell.dataset.c);
+            cell.className = 'cell'; // Reset classes
+            cell.innerHTML = ''; // Clear content
+            
+            const t = LAYOUT[r][c];
+            if(t===1){cell.classList.add('tw');cell.innerText='TW'}
+            if(t===2){cell.classList.add('dw');cell.innerText='DW'}
+            if(t===3){cell.classList.add('tl');cell.innerText='TL'}
+            if(t===4){cell.classList.add('dl');cell.innerText='DL'}
+            if(t===5){cell.classList.add('star');cell.innerHTML='★'}
         }
 
         function renderInbox() {
@@ -876,6 +891,10 @@
             // Only return if it's not already on the board (prevents double counting)
             returnTile(tile.dataset.letter, tile.dataset.owner);
             
+            // Restore visual state of the cell before removing tile
+            if(tile.parentElement && tile.parentElement.classList.contains('cell')) {
+                resetCellVisuals(tile.parentElement);
+            }
             tile.remove(); 
             renderInbox(); 
             checkSmartFill();
@@ -904,6 +923,10 @@
         }
 
         function handleInboxDrop(tile) {
+            if(tile.parentElement && tile.parentElement.classList.contains('cell')) {
+                resetCellVisuals(tile.parentElement);
+            }
+            
             if(!hostInbox.some(t => t.id === tile.dataset.id)) {
                 hostInbox.push({id: tile.dataset.id, letter: tile.dataset.letter, owner: tile.dataset.owner});
             }
@@ -944,18 +967,18 @@
             const btn = document.getElementById('btn-smart-fill');
             const newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
             
-            // Only show if exactly 2 tiles, they are adjacent, and there are tiles left in inbox to fill
-            if (newTiles.length === 2 && hostInbox.length > 0) {
-                const t1 = newTiles[0].parentElement;
-                const t2 = newTiles[1].parentElement;
-                const r1 = parseInt(t1.dataset.r), c1 = parseInt(t1.dataset.c);
-                const r2 = parseInt(t2.dataset.r), c2 = parseInt(t2.dataset.c);
+            // Check if at least 2 new tiles are aligned (Row or Column)
+            if (newTiles.length >= 2 && hostInbox.length > 0) {
+                const coords = newTiles.map(t => {
+                   const p = t.parentElement;
+                   return { r: parseInt(p.dataset.r), c: parseInt(p.dataset.c) };
+                });
                 
-                // Check if adjacent horizontally or vertically
-                const isHoriz = (r1 === r2 && Math.abs(c1 - c2) === 1);
-                const isVert = (c1 === c2 && Math.abs(r1 - r2) === 1);
+                const rows = new Set(coords.map(k=>k.r));
+                const cols = new Set(coords.map(k=>k.c));
                 
-                if (isHoriz || isVert) {
+                // If all in same row OR all in same column
+                if (rows.size === 1 || cols.size === 1) {
                     btn.classList.remove('hidden');
                     return;
                 }
@@ -965,24 +988,27 @@
         
         function executeSmartFill() {
              const newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
-             if (newTiles.length !== 2) return;
+             if (newTiles.length < 2) return;
              
-             // Sort tiles to find the "end" of the current sequence
+             // Sort tiles to find start and end
              newTiles.sort((a,b) => {
                  const pa = a.parentElement, pb = b.parentElement;
                  return (parseInt(pa.dataset.r) - parseInt(pb.dataset.r)) || (parseInt(pa.dataset.c) - parseInt(pb.dataset.c));
              });
              
-             const lastTile = newTiles[1].parentElement;
-             let r = parseInt(lastTile.dataset.r);
-             let c = parseInt(lastTile.dataset.c);
+             // Determine Direction based on first two tiles
+             const t1 = newTiles[0].parentElement;
+             const t2 = newTiles[newTiles.length-1].parentElement; // Use last to get full range direction if needed
              
-             // Determine Direction
-             const firstTile = newTiles[0].parentElement;
-             const dr = r - parseInt(firstTile.dataset.r);
-             const dc = c - parseInt(firstTile.dataset.c);
+             // Simple direction check: if row is same, horizontal. else vertical.
+             const isHoriz = (t1.dataset.r === t2.dataset.r);
+             const dr = isHoriz ? 0 : 1;
+             const dc = isHoriz ? 1 : 0;
              
-             // Get visual order of inbox tiles to match user expectation
+             let r = parseInt(t1.dataset.r);
+             let c = parseInt(t1.dataset.c);
+             
+             // Get visual order of inbox tiles
              const inboxContainer = document.getElementById('host-inbox');
              const tilesToPlace = Array.from(inboxContainer.children).map(div => {
                  return {
@@ -994,32 +1020,40 @@
              
              if(tilesToPlace.length === 0) return;
              
-             // Place tiles
-             tilesToPlace.forEach(item => {
-                 let placed = false;
-                 // Find next available empty slot
-                 while (!placed) {
-                     r += dr; c += dc;
-                     if(r < 0 || r > 14 || c < 0 || c > 14) break; // Board boundary
+             let placedCount = 0;
+             
+             // Start loop from first tile position, moving forward
+             // We start AFTER the first tile, filling gaps until we run out of inbox tiles
+             // But we also need to skip tiles that are already placed (new or locked)
+             
+             // Move to next cell immediately so we don't overwrite the start tile
+             r += dr; c += dc;
+             
+             while (placedCount < tilesToPlace.length) {
+                 if(r < 0 || r > 14 || c < 0 || c > 14) break; // Boundary check
+                 
+                 const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+                 const existingTile = cell.querySelector('.tile');
+                 
+                 if (!existingTile) {
+                     // Empty spot! Place next available inbox tile
+                     const item = tilesToPlace[placedCount];
                      
-                     const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-                     if(!cell.querySelector('.tile')) {
-                         // Create tile on board
-                         const t = document.createElement('div'); t.className = 'tile'; 
-                         t.dataset.letter = item.letter; t.dataset.owner = item.owner; t.dataset.id = item.id; t.dataset.new = "true";
-                         if(item.letter === '_') t.innerHTML = ''; else t.innerHTML=`${item.letter}<span class="score">${SCORES[item.letter]}</span>`;
-                         t.addEventListener('pointerdown', onDragStart);
-                         cell.appendChild(t);
-                         
-                         // Remove from visual inbox (and memory array via handleBoardPlacement logic logic simulation)
-                         // Since we are bypassing drag drop, we manually update memory
-                         hostInbox = hostInbox.filter(x => x.id !== item.id);
-                         
-                         placed = true;
-                     }
-                     // If cell has a tile, loop continues and skips it (crossword style)
-                 }
-             });
+                     const t = document.createElement('div'); t.className = 'tile'; 
+                     t.dataset.letter = item.letter; t.dataset.owner = item.owner; t.dataset.id = item.id; t.dataset.new = "true";
+                     if(item.letter === '_') t.innerHTML = ''; else t.innerHTML=`${item.letter}<span class="score">${SCORES[item.letter]}</span>`;
+                     t.addEventListener('pointerdown', onDragStart);
+                     cell.appendChild(t);
+                     
+                     // Update memory
+                     hostInbox = hostInbox.filter(x => x.id !== item.id);
+                     placedCount++;
+                 } 
+                 // If there IS a tile (New or Locked), we just skip over it (smart fill!)
+                 
+                 // Move cursor
+                 r += dr; c += dc;
+             }
              
              renderInbox();
              checkSmartFill();
@@ -1135,7 +1169,27 @@
             updateScorePill();
         }
 
-        function recallTiles(){const inbox=document.getElementById('host-inbox');document.querySelectorAll('.cell .tile[data-new="true"]').forEach(t=>{ if(!hostInbox.some(x=>x.id===t.dataset.id)) hostInbox.push({id:t.dataset.id, letter:t.dataset.letter, owner:t.dataset.owner}); }); renderInbox(); document.querySelectorAll('.cell').forEach(c=>{ if(c.querySelector('.tile[data-new="true"]')) c.innerHTML = ''; }); updateScorePill(); checkSmartFill();}
+        function recallTiles(){
+            const inbox=document.getElementById('host-inbox');
+            document.querySelectorAll('.cell .tile[data-new="true"]').forEach(t=>{ 
+                // Reset board cell visual
+                if(t.parentElement) resetCellVisuals(t.parentElement);
+                
+                if(!hostInbox.some(x=>x.id===t.dataset.id)) hostInbox.push({id:t.dataset.id, letter:t.dataset.letter, owner:t.dataset.owner}); 
+            }); 
+            renderInbox(); 
+            // The tile elements are gone from DOM because resetCellVisuals cleared innerHTML, 
+            // but we double check to ensure no ghosts
+            document.querySelectorAll('.cell').forEach(c=>{ if(c.querySelector('.tile[data-new="true"]')) c.innerHTML = ''; }); 
+            
+            // Re-apply visuals to all empty cells just in case
+            document.querySelectorAll('.cell').forEach(c => {
+               if(!c.querySelector('.tile')) resetCellVisuals(c); 
+            });
+
+            updateScorePill(); 
+            checkSmartFill();
+        }
         function notifyTurn(){players.forEach((p,i)=>p.conn && p.conn.open && p.conn.send({type:'turn_update',myTurn:(i===turnIndex),activePlayer:players[turnIndex].name}));updateHostUI();}
         function broadcastLobby(){const names=players.map(p=>p.name);players.forEach(p=>{if(p.conn&&p.conn.open)p.conn.send({type:'lobby_update',names:names});});}
         function updateLobbyUI(){document.getElementById('lobby-player-list').innerHTML=players.map((p, i)=>`<div class="lobby-row"><div><span class="status-dot ${p.isOffline?'status-offline':'status-online'}"></span><span>${p.name}</span></div><button class="btn-kick" onclick="kickPlayer(${i})">X</button></div>`).join('');}
