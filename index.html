@@ -98,7 +98,7 @@
         .board-wrapper { flex-grow: 1; height: 100%; display: flex; align-items: center; justify-content: center; background: #111; position: relative; }
 
         /* BOARD GRID */
-        .scrabble-board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); gap: 2px; background: #000; border: 12px solid var(--wood-frame); border-radius: 6px; width: 95vmin; height: 95vmin; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+        .scrabble-board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); gap: 2px; background: #000; border: 12px solid var(--wood-frame); border-radius: 6px; width: 95vmin; height: 95vmin; box-shadow: 0 0 50px rgba(0,0,0,0.5); cursor: pointer; }
         .cell { background: var(--board-bg); display: flex; justify-content: center; align-items: center; font-size: 0.65rem; font-weight: 800; color: #666; position: relative; text-transform: uppercase; user-select: none; }
         .tw { background: #ff7675; color: white; } .dw { background: #fab1a0; color: #444; }
         .tl { background: #74b9ff; color: white; } .dl { background: #81ecec; color: #444; }
@@ -1163,8 +1163,12 @@
             const btn = document.getElementById('btn-smart-fill');
             const newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
             
-            // Check if at least 2 new tiles are aligned (Row or Column)
-            if (newTiles.length >= 2 && hostInbox.length > 0) {
+            if (hostInbox.length === 0) { btn.classList.add('hidden'); return; }
+
+            let show = false;
+
+            // Case 1: 2+ New Tiles aligned
+            if (newTiles.length >= 2) {
                 const coords = newTiles.map(t => {
                    const p = t.parentElement;
                    return { r: parseInt(p.dataset.r), c: parseInt(p.dataset.c) };
@@ -1173,18 +1177,31 @@
                 const rows = new Set(coords.map(k=>k.r));
                 const cols = new Set(coords.map(k=>k.c));
                 
-                // If all in same row OR all in same column
-                if (rows.size === 1 || cols.size === 1) {
-                    btn.classList.remove('hidden');
-                    return;
-                }
+                if (rows.size === 1 || cols.size === 1) show = true;
             }
-            btn.classList.add('hidden');
+            // Case 2: 1 New Tile + Neighbor
+            else if (newTiles.length === 1) {
+                const p = newTiles[0].parentElement;
+                const r = parseInt(p.dataset.r);
+                const c = parseInt(p.dataset.c);
+                
+                // Helper to check for locked tile
+                const hasNeighbor = (dr, dc) => {
+                    const cell = document.querySelector(`.cell[data-r="${r+dr}"][data-c="${c+dc}"]`);
+                    return cell && cell.querySelector('.tile');
+                };
+
+                if (hasNeighbor(0, 1) || hasNeighbor(0, -1)) show = true; // Horiz
+                else if (hasNeighbor(1, 0) || hasNeighbor(-1, 0)) show = true; // Vert
+            }
+
+            if (show) btn.classList.remove('hidden');
+            else btn.classList.add('hidden');
         }
         
         function executeSmartFill() {
              const newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
-             if (newTiles.length < 2) return;
+             if (newTiles.length < 1) return;
              
              // Sort tiles to find start and end
              newTiles.sort((a,b) => {
@@ -1192,14 +1209,29 @@
                  return (parseInt(pa.dataset.r) - parseInt(pb.dataset.r)) || (parseInt(pa.dataset.c) - parseInt(pb.dataset.c));
              });
              
-             // Determine Direction based on first two tiles
-             const t1 = newTiles[0].parentElement;
-             const t2 = newTiles[newTiles.length-1].parentElement; 
+             let dr = 0, dc = 0;
+             let t1 = newTiles[0].parentElement;
              
-             // Simple direction check: if row is same, horizontal. else vertical.
-             const isHoriz = (t1.dataset.r === t2.dataset.r);
-             const dr = isHoriz ? 0 : 1;
-             const dc = isHoriz ? 1 : 0;
+             if (newTiles.length >= 2) {
+                 // Determine Direction based on first two tiles
+                 const t2 = newTiles[newTiles.length-1].parentElement; 
+                 const isHoriz = (t1.dataset.r === t2.dataset.r);
+                 dr = isHoriz ? 0 : 1;
+                 dc = isHoriz ? 1 : 0;
+             } else {
+                 // Single tile logic
+                 const r = parseInt(t1.dataset.r);
+                 const c = parseInt(t1.dataset.c);
+                 
+                 const hasNeighbor = (dr, dc) => {
+                    const cell = document.querySelector(`.cell[data-r="${r+dr}"][data-c="${c+dc}"]`);
+                    return cell && cell.querySelector('.tile');
+                 };
+                 
+                 // Prioritize Horizontal
+                 if (hasNeighbor(0, 1) || hasNeighbor(0, -1)) { dr = 0; dc = 1; }
+                 else { dr = 1; dc = 0; }
+             }
              
              let r = parseInt(t1.dataset.r);
              let c = parseInt(t1.dataset.c);
@@ -1218,7 +1250,7 @@
              
              let placedCount = 0;
              
-             // Move to next cell immediately so we don't overwrite the start tile
+             // Move to next cell immediately
              r += dr; c += dc;
              
              while (placedCount < tilesToPlace.length) {
@@ -1622,10 +1654,21 @@
             lastHighlight = { id: null, axis: 'h' };
         }
 
-        // Global click to close definition if clicking outside board
+        // Global click to close definition if clicking EMPTY board/background
         document.body.addEventListener('click', (e) => {
-            if(!e.target.closest('.scrabble-board') && !e.target.closest('#definition-panel')) {
+            const isBoardBg = e.target.classList.contains('scrabble-board') || (e.target.classList.contains('cell') && !e.target.querySelector('.tile'));
+            const isPanel = e.target.closest('#definition-panel') || e.target.closest('#host-side-menu');
+            
+            if(isBoardBg && !isPanel) {
                 closeDefinition();
+                // Also close menu
+                const menu = document.getElementById('host-side-menu');
+                const overlay = document.getElementById('host-menu-overlay');
+                if(menu.classList.contains('open')) {
+                    menu.classList.remove('open');
+                    overlay.classList.remove('open');
+                    setTimeout(() => overlay.style.display = 'none', 300);
+                }
             }
         });
 
