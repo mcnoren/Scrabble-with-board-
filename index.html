@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Multi-Save & Sync</title>
+    <title>Scrabble Pro - Universal</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -73,7 +73,7 @@
         .two-letter-list { display: flex; flex-wrap: wrap; gap: 5px; font-family: monospace; color: #ccc; font-size: 0.85rem; line-height: 1.4; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; }
         .two-letter-word { padding: 2px 4px; background: rgba(255,255,255,0.05); border-radius: 3px; }
 
-        /* DEFINITION & HISTORY PANELS */
+        /* PANELS */
         #definition-panel, #history-panel { position: fixed; top: 0; left: -350px; width: 320px; height: 100%; background: #2c3e50; border-right: 1px solid #444; z-index: 2500; transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); padding: 25px; box-shadow: 10px 0 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; }
         #definition-panel.open, #history-panel.open { left: 0; }
         .def-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 15px; }
@@ -106,10 +106,10 @@
         #host-menu-btn { background: rgba(255,255,255,0.1); border: 1px solid #444; color: #ecf0f1; font-size: 1.8rem; cursor: pointer; border-radius: 8px; padding: 0 15px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
         #host-menu-btn:hover { background: rgba(255,255,255,0.2); }
         .info-panel { background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid #444; flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .board-wrapper { flex-grow: 1; height: 100%; display: flex; align-items: center; justify-content: center; background: #111; position: relative; }
+        .board-wrapper { flex-grow: 1; height: 100%; display: flex; align-items: center; justify-content: center; background: #111; position: relative; flex-direction: column; }
 
         /* BOARD GRID */
-        .scrabble-board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); gap: 2px; background: #000; border: 12px solid var(--wood-frame); border-radius: 6px; width: 95vmin; height: 95vmin; box-shadow: 0 0 50px rgba(0,0,0,0.5); cursor: pointer; }
+        .scrabble-board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); gap: 2px; background: #000; border: 12px solid var(--wood-frame); border-radius: 6px; width: 95vmin; height: 95vmin; box-shadow: 0 0 50px rgba(0,0,0,0.5); cursor: pointer; touch-action: none; }
         .cell { background: var(--board-bg); display: flex; justify-content: center; align-items: center; font-size: 0.65rem; font-weight: 800; color: #666; position: relative; text-transform: uppercase; user-select: none; }
         .tw { background: #ff7675; color: white; } .dw { background: #fab1a0; color: #444; }
         .tl { background: #74b9ff; color: white; } .dl { background: #81ecec; color: #444; }
@@ -122,8 +122,6 @@
         .tile.is-blank-assigned { color: var(--tile-blank-text); }
         .tile span.score { font-size: 0.55rem; position: absolute; bottom: 2px; right: 2px; font-weight: 600; }
         .tile.dragging { position: fixed; z-index: 99999; width: 55px !important; height: 55px !important; opacity: 0.95; pointer-events: none; box-shadow: 0 15px 30px rgba(0,0,0,0.4); border: 2px solid var(--accent); border-radius: 4px; margin: 0; transform: none; }
-        
-        /* Highlight Effect */
         .tile.highlight-word { filter: brightness(1.1); box-shadow: inset 0 0 0 3px var(--info) !important; z-index: 40; }
         .tile.highlight-history { box-shadow: inset 0 0 0 3px #3498db, 0 0 10px #3498db !important; z-index: 35; }
 
@@ -150,18 +148,27 @@
         .lobby-row { padding: 12px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center; }
 
         /* PLAYER MOBILE UI */
-        #player-ui { background: #1a1a1a; justify-content: flex-start; flex-direction: column; height: 100vh; overflow: hidden; }
-        .player-hud { position: absolute; top: 0; left: 0; width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%); z-index: 100; }
-        .hud-name { font-weight: bold; color: #fff; font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
-        .hud-status { background: rgba(255,255,255,0.1); backdrop-filter: blur(5px); padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; color: #ccc; font-weight: 600; border: 1px solid rgba(255,255,255,0.1); }
+        #screen-player { background: #1a1a1a; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .player-hud { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: #222; border-bottom: 1px solid #444; z-index: 100; flex-shrink: 0; }
+        .hud-name { font-weight: bold; color: #fff; font-size: 1rem; }
+        .hud-status { background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; color: #ccc; font-weight: 600; border: 1px solid rgba(255,255,255,0.1); }
         .hud-status.active { background: var(--accent); color: white; border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
-        .rack-wrapper { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle at center, #2a2a2a 0%, #111 100%); padding: 20px; gap: 40px; }
-        .player-rack { position: relative; background: var(--rack-color); padding: 20px 10px 15px 10px; border-radius: 6px; width: 95%; max-width: 500px; min-height: 80px; display: inline-flex; justify-content: center; gap: 4px; box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 2px 10px rgba(255,255,255,0.2); border-bottom: 8px solid var(--rack-shadow); }
-        .player-rack .tile { width: 13vw; height: 13vw; max-width: 60px; max-height: 60px; min-width: 40px; min-height: 40px; font-size: 1.6rem; box-shadow: 0 5px 0 var(--tile-shadow); border-radius: 3px; z-index: 2; }
-        .tile.selected { border: 3px solid var(--accent); transform: translateY(-15px) scale(1.1); box-shadow: 0 20px 25px rgba(0,0,0,0.5); z-index: 100; }
-        .mobile-controls { display: flex; gap: 10px; width: 95%; max-width: 500px; }
-        .mobile-controls button { margin: 0; flex: 1; padding: 20px; font-size: 1.1rem; border-radius: 12px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .player-board-container { flex-grow: 1; display: flex; align-items: center; justify-content: center; background: #111; position: relative; overflow: hidden; padding: 10px; }
+        .player-board-container .scrabble-board { width: 90vmin; height: 90vmin; max-width: 600px; max-height: 600px; border-width: 4px; }
+        
+        .rack-wrapper { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #2a2a2a; padding: 15px 10px; gap: 10px; border-top: 2px solid #444; z-index: 200; }
+        .player-rack { position: relative; background: var(--rack-color); padding: 10px; border-radius: 6px; width: 100%; max-width: 500px; min-height: 70px; display: flex; justify-content: center; gap: 6px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.3); border-bottom: 4px solid var(--rack-shadow); }
+        .player-rack .tile { width: 12vw; height: 12vw; max-width: 50px; max-height: 50px; min-width: 35px; min-height: 35px; font-size: 1.4rem; z-index: 2; }
+        
+        .mobile-controls { display: flex; gap: 8px; width: 100%; max-width: 500px; margin-top: 5px; }
+        .mobile-controls button { margin: 0; flex: 1; padding: 12px; font-size: 0.9rem; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
 
+        /* LOCAL MODE SPECIFIC */
+        #local-pass-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #2c3e50; z-index: 8000; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; }
+        .pass-card { text-align: center; padding: 40px; background: rgba(0,0,0,0.2); border-radius: 20px; }
+        .local-controls-area { width: 100%; background: #222; padding: 15px; border-top: 1px solid #444; display: none; flex-direction: column; align-items: center; }
+        
         /* OVERLAYS & TOAST */
         #notification-overlay, #blank-overlay, #confirm-overlay, #reconnect-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal { background: #2c3e50; border: 1px solid #444; padding: 25px; border-radius: 12px; text-align: center; max-width: 320px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); color: white; }
@@ -174,21 +181,26 @@
         .status-dot { height: 10px; width: 10px; background-color: #7f8c8d; border-radius: 50%; display: inline-block; margin-right: 6px; margin-left:6px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
         .status-online { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
         .status-offline { background-color: #c0392b; }
-        .save-badge { background: #2ecc71; color: #111; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; margin-left: auto; }
         
-        .sortable-ghost { opacity: 0; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
+    <div id="local-pass-overlay">
+        <div class="pass-card">
+            <h1 style="color:var(--accent); font-size:2rem; margin-bottom:10px;">Next Player</h1>
+            <h2 id="local-next-player-name" style="font-size:3rem; margin:0 0 30px 0;">Name</h2>
+            <button onclick="dismissLocalPass()" style="font-size:1.5rem; padding:20px 40px;">Ready</button>
+        </div>
+    </div>
+
     <div id="reconnect-overlay">
         <div class="modal">
             <h3 style="margin-top:0;">Disconnected</h3>
             <div class="loader"></div>
             <p style="color:#bdc3c7; margin-bottom:10px; font-size:0.9rem;">Waiting for host...</p>
-            <p id="reconnect-msg" style="color:#7f8c8d; font-size:0.8rem;">Do not refresh your page.</p>
         </div>
     </div>
 
@@ -236,19 +248,27 @@
         <h1 style="font-size:3.5rem; margin-bottom:30px; color:#ecf0f1;">Scrabble<span style="color:var(--accent)">Pro</span></h1>
         
         <div style="display:flex; flex-direction:column; gap:15px; align-items: center;">
-            <button onclick="initHost()" style="width:280px; padding:20px; font-size:1.3rem;">Host New Game</button>
-            <button onclick="showJoinScreen()" class="btn-secondary" style="width:280px; padding:20px; font-size:1.3rem;">Join New Game</button>
+            <button onclick="initHost()" style="width:280px; padding:20px; font-size:1.3rem;">Host Online Game</button>
+            <button onclick="showLocalSetup()" class="btn-info" style="width:280px; padding:20px; font-size:1.3rem;">Local Pass & Play</button>
+            <button onclick="showJoinScreen()" class="btn-secondary" style="width:280px; padding:20px; font-size:1.3rem;">Join Game</button>
             
             <div id="host-saved-list" style="display:none; width:320px; margin-top:20px;">
-                <div style="font-size:0.8rem; text-transform:uppercase; color:#7f8c8d; letter-spacing:1px; margin-bottom:5px; text-align:left;">Saved Host Games</div>
+                <div style="font-size:0.8rem; text-transform:uppercase; color:#7f8c8d; letter-spacing:1px; margin-bottom:5px; text-align:left;">Saved Games</div>
                 <div id="host-sessions-container" class="session-list" style="width:100%;"></div>
             </div>
-
-            <div id="sessions-area" style="display:none; margin-top:10px;">
-                <div style="font-size:0.8rem; text-transform:uppercase; color:#7f8c8d; letter-spacing:1px; margin-bottom:5px;">Saved Player Sessions</div>
-                <div id="session-list" class="session-list"></div>
-            </div>
         </div>
+    </div>
+
+    <div id="screen-local-setup" class="screen center-screen">
+        <h2 style="margin-bottom:20px; color:#ecf0f1;">Local Game Setup</h2>
+        <div id="local-player-inputs">
+            <input type="text" class="local-name-input" placeholder="Player 1" value="Player 1">
+            <input type="text" class="local-name-input" placeholder="Player 2" value="Player 2">
+        </div>
+        <button class="btn-sm btn-secondary" onclick="addLocalInput()" style="margin-bottom:20px;">+ Add Player</button>
+        <br>
+        <button onclick="startLocalGame()" style="width:280px;">Start Game</button>
+        <button onclick="showHomeScreen()" class="btn-secondary" style="margin-top:10px;">Back</button>
     </div>
 
     <div id="screen-join-login" class="screen center-screen">
@@ -317,7 +337,7 @@
 
             <div id="sidebar-list" style="flex-grow:1; overflow-y:auto; margin-bottom:15px;"></div>
             
-            <div class="inbox-area">
+            <div class="inbox-area" id="host-inbox-area">
                 <div class="inbox-header">
                     <div style="font-size:0.7rem; color:#7f8c8d; text-transform:uppercase;">Tile Inbox</div>
                     <div>
@@ -329,23 +349,44 @@
                 <div class="return-zone" id="return-zone">Drag Here to Return</div>
                 <button onclick="confirmTurn()" style="width:100%; margin:0; padding:15px; margin-top:10px;">Confirm Turn</button>
             </div>
+
+            <div class="local-controls-area" id="local-controls-area">
+                <div style="font-size:0.7rem; color:#7f8c8d; text-transform:uppercase; width:100%; text-align:left; margin-bottom:5px;">Your Rack</div>
+                <div class="player-rack" id="local-rack" style="margin-bottom:10px;"></div>
+                <div style="display:flex; width:100%; gap:5px;">
+                    <button class="btn-warning btn-sm" onclick="shuffleLocalRack()">Mix</button>
+                    <button class="btn-secondary btn-sm" onclick="swapLocalTiles()">Swap</button>
+                    <button class="btn-secondary btn-sm" onclick="skipTurn()">Pass</button>
+                </div>
+                <button onclick="confirmTurn()" style="width:100%; margin:0; padding:15px; margin-top:10px;">Play Word</button>
+            </div>
         </div>
-        <div class="board-wrapper"><div class="scrabble-board" id="board-grid"></div></div>
+
+        <div class="board-wrapper">
+            <div class="scrabble-board" id="board-grid"></div>
+        </div>
     </div>
 
-    <div id="screen-player" class="screen" id="player-ui">
+    <div id="screen-player" class="screen">
         <div class="player-hud">
             <button onclick="promptLeaveGame()" class="btn-danger btn-sm" style="margin:0;">Leave</button>
-            <div class="hud-name" id="my-display-name">Player</div>
-            <div class="hud-status" id="status-msg">Waiting...</div>
+            <div style="display:flex; flex-direction:column; align-items:center;">
+                 <div class="hud-name" id="my-display-name">Player</div>
+                 <div class="hud-status" id="status-msg">Waiting...</div>
+            </div>
+            <button onclick="shuffleRack()" class="btn-warning btn-sm" style="margin:0;">Mix</button>
         </div>
+        
+        <div class="player-board-container">
+            <div class="scrabble-board" id="player-board-grid"></div>
+        </div>
+
         <div class="rack-wrapper">
             <div id="my-rack" class="player-rack"></div>
             <div class="mobile-controls">
-                <button onclick="shuffleRack()" style="background:#e67e22;">Shuffle</button>
                 <button onclick="swapTiles()" style="background:#9b59b6;">Swap</button>
                 <button onclick="skipTurn()" style="background:#7f8c8d;">Skip</button>
-                <button id="btn-play" onclick="playSelected()" disabled>Send Tiles</button>
+                <button id="btn-play" onclick="playBoardTiles()" disabled>Play</button>
             </div>
         </div>
     </div>
@@ -355,33 +396,19 @@
         const BAG_INIT = {'A':9,'B':2,'C':2,'D':4,'E':12,'F':2,'G':3,'H':2,'I':9,'J':1,'K':1,'L':4,'M':2,'N':6,'O':8,'P':2,'Q':1,'R':6,'S':4,'T':6,'U':4,'V':2,'W':2,'X':1,'Y':2,'Z':1,'_':2};
         const LAYOUT = [[1,0,0,4,0,0,0,1,0,0,0,4,0,0,1],[0,2,0,0,0,3,0,0,0,3,0,0,0,2,0],[0,0,2,0,0,0,4,0,4,0,0,0,2,0,0],[4,0,0,2,0,0,0,4,0,0,0,2,0,0,4],[0,0,0,0,2,0,0,0,0,0,2,0,0,0,0],[0,3,0,0,0,3,0,0,0,3,0,0,0,3,0],[0,0,4,0,0,0,4,0,4,0,0,0,4,0,0],[1,0,0,4,0,0,0,5,0,0,0,4,0,0,1],[0,0,4,0,0,0,4,0,4,0,0,0,4,0,0],[0,3,0,0,0,3,0,0,0,3,0,0,0,3,0],[0,0,0,0,2,0,0,0,0,0,2,0,0,0,0],[4,0,0,2,0,0,0,4,0,0,0,2,0,0,4],[0,0,2,0,0,0,4,0,4,0,0,0,2,0,0],[0,2,0,0,0,3,0,0,0,3,0,0,0,2,0],[1,0,0,4,0,0,0,1,0,0,0,4,0,0,1]];
         const TWO_LETTER_WORDS = "AA,AB,AD,AE,AG,AH,AI,AL,AM,AN,AR,AS,AT,AW,AX,AY,BA,BE,BI,BO,BY,DE,DO,ED,EF,EH,EL,EM,EN,ER,ES,ET,EX,FA,FE,GO,HA,HE,HI,HM,HO,ID,IF,IN,IS,IT,JO,KA,KI,LA,LI,LO,MA,ME,MI,MM,MO,MU,MY,NA,NE,NO,NU,OD,OE,OF,OH,OI,OK,OM,ON,OP,OR,OS,OW,OX,OY,PA,PE,PI,PO,QI,RE,SH,SI,SO,TA,TE,TI,TO,UH,UM,UN,UP,US,UT,WE,WO,XI,XU,YA,YE,YO,ZA".split(',');
-
-        // STUN servers configuration for better connectivity
-        const PEER_CONFIG = {
-            debug: 2,
-            config: {
-                iceServers: [
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' },
-                ]
-            }
-        };
+        const PEER_CONFIG = { debug: 1, config: { iceServers: [{ urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:stun2.l.google.com:19302' }]}};
 
         let peer, conn, dictionary = new Set(), bag=[], players=[], turnIndex=0, myTurn=false, isFirstTurn=true;
         let currentTurnPoints = 0, pendingBlankTile = null, selectedTilesOrder = [];
-        let currentSessionCode = null; // Client side
-        let currentHostRoomCode = null; // Host side
-        let currentHostPeerId = null; // Peer ID of the host
-        let heartbeatInterval = null;
-        let startTimeout = null;
+        let currentSessionCode = null, currentHostRoomCode = null, currentHostPeerId = null;
+        let heartbeatInterval = null, startTimeout = null;
         let soundsEnabled = true;
-        let hostInbox = []; // Stores {id, letter, owner}
-        let isReconnecting = false;
-        let reconnectInterval = null;
-        let lastHighlight = { id: null, axis: 'h' }; // Tracks clicked tile for definitions
-        
-        // --- STORAGE KEYS ---
-        const STORAGE_HOST_SAVES = 'scrabble_host_saves_v2'; // Stores object { 'CODE': stateObj }
+        let hostInbox = []; 
+        let isReconnecting = false, reconnectInterval = null;
+        let lastHighlight = { id: null, axis: 'h' };
+        let isLocalGame = false;
+
+        const STORAGE_HOST_SAVES = 'scrabble_host_saves_v3'; 
         const STORAGE_SESSIONS = 'scrabble_player_sessions'; 
 
         window.onload = () => {
@@ -393,1168 +420,602 @@
             });
             fetch('https://raw.githubusercontent.com/redbo/scrabble/master/dictionary.txt').then(r=>r.text()).then(t => t.toUpperCase().split(/\s+/).forEach(w => dictionary.add(w)));
             renderTwoLetterWords();
+            
+            // Render Host Board
+            renderBoard(document.getElementById('board-grid'));
         };
 
-        function generateUUID() {
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
+        function generateUUID() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { var r=Math.random()*16|0,v=c=='x'?r:(r&0x3|0x8); return v.toString(16); }); }
+        
+        // --- LOCAL PASS & PLAY START ---
+        function showLocalSetup() { showScreen('screen-local-setup'); }
+        function addLocalInput() {
+            const wrap = document.getElementById('local-player-inputs');
+            if(wrap.children.length < 4) {
+                const i = document.createElement('input'); i.type="text"; i.className="local-name-input"; i.placeholder=`Player ${wrap.children.length+1}`; i.value=`Player ${wrap.children.length+1}`;
+                wrap.appendChild(i);
+            }
+        }
+        function startLocalGame() {
+            const inputs = document.querySelectorAll('.local-name-input');
+            const names = Array.from(inputs).map(i => i.value.trim()).filter(n => n);
+            if(names.length < 2) { alert("Need at least 2 players"); return; }
+            
+            isLocalGame = true;
+            initBag();
+            players = names.map(n => ({ userId: generateUUID(), name: n, score: 0, lastScore: 0, tiles: [], history: [], isOffline: false }));
+            turnIndex = 0;
+            isFirstTurn = true;
+            hostInbox = [];
+            
+            // Clean board
+            renderBoard(document.getElementById('board-grid'));
+            
+            // Deal initial hands
+            players.forEach(p => {
+                for(let i=0; i<7; i++) if(bag.length) p.tiles.push(bag.pop());
             });
+
+            // UI Setup
+            showScreen('screen-host');
+            document.getElementById('host-inbox-area').style.display = 'none'; // Hide online inbox
+            document.getElementById('local-controls-area').style.display = 'flex'; // Show local rack
+            
+            currentHostRoomCode = 'LOCAL';
+            updateHostUI();
+            localTurnCycle();
         }
 
-        function toggleHostMenu() {
-            document.getElementById('host-side-menu').classList.toggle('open');
-            const overlay = document.getElementById('host-menu-overlay');
-            if(overlay.classList.contains('open')) {
-                overlay.classList.remove('open');
-                setTimeout(() => overlay.style.display = 'none', 300);
-            } else {
-                renderTileStats(); // Refresh stats when opening
-                overlay.style.display = 'block';
-                setTimeout(() => overlay.classList.add('open'), 10);
-            }
+        function localTurnCycle() {
+            const overlay = document.getElementById('local-pass-overlay');
+            const p = players[turnIndex];
+            document.getElementById('local-next-player-name').innerText = p.name;
+            overlay.style.display = 'flex';
         }
         
-        function renderTwoLetterWords() {
-            const container = document.getElementById('two-letter-list');
-            if(container) {
-                container.innerHTML = TWO_LETTER_WORDS.map(w => `<span class="two-letter-word">${w}</span>`).join('');
-            }
+        function dismissLocalPass() {
+            document.getElementById('local-pass-overlay').style.display = 'none';
+            renderLocalRack();
+            updateHostUI();
+        }
+
+        function renderLocalRack() {
+            const r = document.getElementById('local-rack');
+            r.innerHTML = '';
+            const p = players[turnIndex];
+            p.tiles.forEach(l => {
+                const t = document.createElement('div'); t.className = 'tile'; t.dataset.letter = l;
+                if(l === '_') t.innerHTML = ''; else t.innerHTML = `${l}<span class="score">${SCORES[l]}</span>`;
+                t.onpointerdown = onDragStart; // Drag from rack
+                r.appendChild(t);
+            });
+            Sortable.create(r, { animation: 150, ghostClass: 'sortable-ghost' });
         }
         
-        function renderTileStats() {
-            const container = document.getElementById('game-stats-container');
-            if(!container) return;
+        function shuffleLocalRack() {
+            const r = document.getElementById('local-rack');
+            Array.from(r.children).sort(()=>Math.random()-0.5).forEach(x=>r.appendChild(x));
+        }
+
+        function swapLocalTiles() {
+             const p = players[turnIndex];
+             // In local mode, we don't select. We swap all or allow simpler logic. 
+             // Implementing "Swap All" for simplicity or require dragging back to bag? 
+             // Let's implement "Select to Swap" visual for local.
+             if(bag.length < 7) { toast("Bag < 7 tiles"); return; }
+             if(confirm("Swap your rack? Ends turn.")) {
+                 const count = p.tiles.length;
+                 p.tiles.forEach(t => bag.push(t));
+                 p.tiles = [];
+                 // Shuffle bag
+                 for (let i = bag.length - 1; i > 0; i--) {
+                     const j = Math.floor(Math.random() * (i + 1));
+                     [bag[i], bag[j]] = [bag[j], bag[i]];
+                 }
+                 // Redraw
+                 for(let i=0; i<count; i++) p.tiles.push(bag.pop());
+                 
+                 // Reset board placements
+                 recallTiles();
+                 
+                 p.lastScore = 0;
+                 turnIndex = (turnIndex + 1) % players.length;
+                 localTurnCycle();
+             }
+        }
+        // --- LOCAL PASS & PLAY END ---
+
+
+        // --- ONLINE HOST LOGIC ---
+        function initHost(existingId=null, isResume=false) {
+            if(peer) peer.destroy();
+            isLocalGame = false;
+            const id = existingId || genId();
+            currentHostRoomCode = id;
+            peer = new Peer(id, PEER_CONFIG);
             
-            // Calculate distribution
-            const boardCounts = {};
-            const totalCounts = BAG_INIT;
+            peer.on('open', id => {
+                showScreen('screen-lobby');
+                document.getElementById('lobby-code-display').innerText = id;
+                document.getElementById('host-status-dot').classList.replace('status-offline', 'status-online');
+                document.getElementById('host-status-text').innerText = "Status: Ready";
+                
+                if(isResume && existingId) {
+                    const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
+                    const s = allSaves[existingId];
+                    if(s) {
+                        players = s.players || []; bag = s.bag; turnIndex = s.turnIndex; isFirstTurn = s.isFirstTurn; 
+                        hostInbox = s.hostInbox || [];
+                        renderBoard(document.getElementById('board-grid')); restoreBoardTiles(s.grid); renderInbox();
+                        showScreen('screen-host'); updateHostUI();
+                        players.forEach(p => { if(p.lastPeerID) setupHostConnection(peer.connect(p.lastPeerID)); });
+                        startHeartbeat();
+                    }
+                } else {
+                    initBag(); renderBoard(document.getElementById('board-grid')); players=[]; hostInbox=[];
+                }
+                saveHostState(id); startHeartbeat();
+            });
+            peer.on('connection', c => setupHostConnection(c));
+        }
+
+        function setupHostConnection(c) {
+            c.on('open', () => c.send({type:'handshake_request'}));
+            c.on('data', d => handleHostData(c, d));
+        }
+
+        function hostStartGame() {
+            if(players.length < 1) { showModal("Wait", "Need players."); return; }
+            showScreen('screen-host');
+            document.getElementById('host-inbox-area').style.display = 'flex'; // Show online inbox
+            document.getElementById('local-controls-area').style.display = 'none'; // Hide local rack
             
-            // Init board counts
-            for(let l in BAG_INIT) boardCounts[l] = 0;
+            players.forEach((p, i) => { deal(p.conn, 7, i); if(p.conn && p.conn.open) p.conn.send({type:'gamestart'}); });
+            notifyTurn(); saveHostState(currentHostRoomCode);
+        }
+
+        function handleHostData(c, data) {
+            if(data.type === 'join') {
+                let p = players.find(x => x.userId === data.userId);
+                if(!p) {
+                    p = { userId: data.userId, name: data.name, score: 0, lastScore: 0, tiles: [], conn: c, lastSeen: Date.now(), isOffline: false, lastPeerID: c.peer, history: [] };
+                    players.push(p);
+                } else { p.conn = c; p.isOffline = false; p.lastPeerID = c.peer; }
+                c.send({ type: 'ack_join', success: true, name: p.name, tiles: p.tiles, isGameRunning: document.getElementById('screen-host').classList.contains('active'), grid: getGrid(), myTurn: (players.indexOf(p) === turnIndex), activePlayer: players[turnIndex]?players[turnIndex].name:'' });
+                if(!document.getElementById('screen-host').classList.contains('active')) { broadcastLobby(); updateLobbyUI(); } else updateHostUI();
+                saveHostState(currentHostRoomCode);
+            }
+            if(data.type === 'play_board') {
+                 const p = players[turnIndex];
+                 if(!p || (p.userId !== players.find(x=>x.conn===c)?.userId)) return;
+                 
+                 // 1. Return any existing new tiles to inbox/owner first (clear board of partial moves)
+                 recallTiles(); 
+
+                 // 2. Validate and Place
+                 const moves = data.moves; // [{letter:'A', r:0, c:0, id:'uuid'}, ...]
+                 let invalid = false;
+                 
+                 moves.forEach(m => {
+                     // Verify player has tile
+                     const idx = p.tiles.indexOf(m.letter);
+                     if(idx > -1) {
+                         p.tiles.splice(idx, 1); // Remove from hand
+                         
+                         const cell = document.querySelector(`#board-grid .cell[data-r="${m.r}"][data-c="${m.c}"]`);
+                         if(cell && !cell.querySelector('.tile')) {
+                             const t = document.createElement('div'); t.className='tile';
+                             t.dataset.letter = m.letter; t.dataset.new = "true"; t.dataset.owner = p.userId; t.dataset.id = m.id || generateUUID();
+                             if(m.letter === '_') { t.innerHTML=''; t.dataset.letter='_'; pendingBlankTile=t; }
+                             else t.innerHTML=`${m.letter}<span class="score">${SCORES[m.letter]}</span>`;
+                             t.onpointerdown = onDragStart;
+                             cell.appendChild(t);
+                         } else {
+                             // Cell occupied or invalid, return to hand
+                             p.tiles.push(m.letter); 
+                         }
+                     }
+                 });
+                 
+                 updateScorePill();
+                 saveHostState(currentHostRoomCode);
+                 updateHostUI(); // Update scores/hands
+                 
+                 if(pendingBlankTile) document.getElementById('blank-overlay').style.display='flex';
+            }
+            if(data.type === 'swap') {
+                // ... (Existing swap logic) ...
+                const p = players[turnIndex];
+                if(bag.length < 7) { c.send({type:'toast', msg:"Bag < 7"}); return; }
+                data.tiles.forEach(l => {
+                    const idx = p.tiles.indexOf(l);
+                    if(idx>-1) { p.tiles.splice(idx,1); bag.push(l); }
+                });
+                for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}
+                deal(p.conn, data.tiles.length, turnIndex);
+                p.lastScore=0; turnIndex=(turnIndex+1)%players.length; updateHostUI(); notifyTurn();
+            }
+            if(data.type === 'pass') {
+                 players[turnIndex].lastScore=0; turnIndex=(turnIndex+1)%players.length; updateHostUI(); notifyTurn();
+            }
+            if(data.type === 'pong') { const p = players.find(x => x.userId === data.userId); if(p) { p.lastSeen = Date.now(); p.isOffline = false; } }
+        }
+
+        function deal(conn, n, idx) {
+            let p = players[idx];
+            let newTiles = [];
+            for(let i=0; i<n; i++) if(bag.length) newTiles.push(bag.pop());
+            p.tiles.push(...newTiles);
+            if(p.conn && p.conn.open) p.conn.send({type:'hand', tiles: p.tiles}); 
+            else p.isOffline = true;
+        }
+
+        // --- PLAYER CLIENT LOGIC ---
+        function joinGame(codeOverride=null, nameOverride=null, idOverride=null) {
+            if(peer) peer.destroy();
+            const n = nameOverride || document.getElementById('join-name').value.trim();
+            const c = (codeOverride || document.getElementById('join-code').value.trim()).toUpperCase();
+            const userId = idOverride || generateUUID();
+            currentHostRoomCode = c;
             
-            // Scan board
-            const grid = getGrid();
-            for(let r=0;r<15;r++){
-                for(let c=0;c<15;c++){
-                    if(grid[r][c] && grid[r][c].letter !== '_') {
-                        const l = grid[r][c].letter;
-                        if(boardCounts[l] !== undefined) boardCounts[l]++;
+            peer = new Peer(null, PEER_CONFIG);
+            peer.on('open', () => {
+                conn = peer.connect(c);
+                setupPlayerConnection(conn, n, userId);
+            });
+            peer.on('error', e => { document.getElementById('connect-status').innerText = "Error: " + e.type; });
+        }
+
+        function setupPlayerConnection(c, n, userId) {
+            c.on('open', () => c.send({type:'join', name:n, userId: userId}));
+            c.on('data', d => {
+                if(d.type === 'ack_join') {
+                     if(d.success) {
+                        saveSession(currentHostRoomCode, n, userId);
+                        if(d.isGameRunning) {
+                            showScreen('screen-player');
+                            document.getElementById('my-display-name').innerText = n;
+                            if(d.grid) renderPlayerBoardGrid(d.grid);
+                            if(d.tiles) renderPlayerRack(d.tiles);
+                            updateTurnUI(d.myTurn, d.activePlayer);
+                        } else showScreen('screen-player-lobby');
+                     } else alert(d.msg);
+                }
+                if(d.type === 'gamestart') { showScreen('screen-player'); document.getElementById('my-display-name').innerText = n; renderPlayerBoardGrid(getEmptyGrid()); } // Start empty
+                if(d.type === 'hand') renderPlayerRack(d.tiles);
+                if(d.type === 'turn_update') { updateTurnUI(d.myTurn, d.activePlayer); if(d.grid) renderPlayerBoardGrid(d.grid); } // Sync board on turn update
+                if(d.type === 'ping') c.send({type: 'pong', userId: userId});
+                if(d.type === 'lobby_update') document.getElementById('player-lobby-list').innerHTML = d.names.map(name => `<div class="lobby-row"><span>${name}</span><span style="color:#2ecc71;">Joined</span></div>`).join('');
+            });
+            c.on('close', () => handleDisconnect());
+        }
+
+        function renderPlayerRack(tiles) {
+            const r = document.getElementById('my-rack'); r.innerHTML = '';
+            tiles.forEach(l => {
+                const d=document.createElement('div'); d.className='tile'; d.dataset.letter=l;
+                if(l === '_') d.innerHTML = ''; else d.innerHTML=`${l}<span class="score">${SCORES[l]}</span>`;
+                // Allow selecting for Swap
+                d.onclick=()=>{
+                    if(d.parentElement.id === 'my-rack') { // Only select if in rack
+                         d.classList.toggle('selected');
+                         updatePlayerButtons();
+                    }
+                };
+                d.onpointerdown = onDragStart; // Enable Drag
+                r.appendChild(d);
+            });
+            Sortable.create(r, { group: 'shared', animation: 150 });
+        }
+        
+        function renderPlayerBoardGrid(gridData) {
+            const b = document.getElementById('player-board-grid');
+            renderBoard(b); // Create structure
+            
+            // Fill structure
+            for(let r=0; r<15; r++) {
+                for(let c=0; c<15; c++) {
+                    const cell = b.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+                    if(gridData[r][c]) {
+                        // Remote/Locked tile
+                         const t = document.createElement('div'); t.className='tile';
+                         t.dataset.letter = gridData[r][c].letter; t.dataset.locked = "true";
+                         t.style.cursor = "default";
+                         if(t.dataset.letter==='_') t.innerHTML='';
+                         else t.innerHTML=`${t.dataset.letter}<span class="score">${SCORES[t.dataset.letter]}</span>`;
+                         cell.appendChild(t);
                     }
                 }
             }
-            
-            let html = `
-                <div style="font-size:0.8rem; text-transform:uppercase; color:#7f8c8d; letter-spacing:1px; margin-bottom:10px;">Game Statistics</div>
-                <div class="stat-box">
-                    <div style="font-size:1.1rem; margin-bottom:5px;">Tiles in Bag: <span style="color:var(--accent); font-weight:bold;">${bag.length}</span></div>
-                </div>
-                <div style="font-size:0.8rem; color:#95a5a6; margin-bottom:5px;">Tile Distribution (On Board / Total)</div>
-                <div class="stat-grid">
-            `;
-            
-            for(let l in BAG_INIT) {
-                html += `
-                    <div class="stat-item">
-                        <div class="stat-l">${l}</div>
-                        <div class="stat-v">${boardCounts[l]} / ${totalCounts[l]}</div>
-                    </div>`;
+        }
+
+        function playBoardTiles() {
+            // Gather tiles on player board
+            const placed = [];
+            document.querySelectorAll('#player-board-grid .tile').forEach(t => {
+                if(t.dataset.locked !== "true") {
+                    placed.push({
+                        letter: t.dataset.letter,
+                        r: parseInt(t.parentElement.dataset.r),
+                        c: parseInt(t.parentElement.dataset.c),
+                        id: generateUUID()
+                    });
+                    t.remove(); // Clear from player board visually, Host will sync back result
+                }
+            });
+            if(placed.length > 0 && conn) {
+                conn.send({type: 'play_board', moves: placed});
             }
-            html += `</div>`;
-            container.innerHTML = html;
+        }
+        
+        function updatePlayerButtons() {
+             // Logic to enable Swap if tiles selected, etc.
+             const selected = document.querySelectorAll('#my-rack .tile.selected').length;
+             // Play button logic handled by board presence
         }
 
-        function toggleFullscreen() {
-            if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-            else if (document.exitFullscreen) document.exitFullscreen();
+        // --- SHARED DRAG & DROP ---
+        let dragEl=null, clone=null;
+        function onDragStart(e) {
+            if(e.currentTarget.dataset.locked==="true") return;
+            // Prevent drag if not my turn (Online) or not correct player (Local)
+            // Actually, allow drag, just prevent commit? No, better UX to allow organizing rack.
+            // Only restrict board placement.
+
+            e.preventDefault();
+            dragEl = e.currentTarget;
+            clone = dragEl.cloneNode(true); clone.classList.add('dragging'); document.body.appendChild(clone);
+            updateClonePos(e.clientX, e.clientY);
+            dragEl.style.opacity = '0';
+            
+            // Touch specific
+            if(e.pointerType === 'touch') {
+               // Offset so finger doesn't cover tile
+            }
+
+            document.addEventListener('pointermove', onDragMove); document.addEventListener('pointerup', onDragEnd);
         }
-        function toggleSound() { soundsEnabled = document.getElementById('toggle-sound').checked; saveHostState(currentHostRoomCode); }
+        function onDragMove(e) { e.preventDefault(); updateClonePos(e.clientX, e.clientY); }
+        function onDragEnd(e) {
+            document.removeEventListener('pointermove', onDragMove); document.removeEventListener('pointerup', onDragEnd);
+            if(clone) { clone.remove(); clone=null; }
+            if(dragEl) dragEl.style.display = 'flex';
+            if(dragEl) dragEl.style.opacity = '1';
+            
+            const el = document.elementFromPoint(e.clientX, e.clientY);
+            if(el) {
+                const cell = el.closest('.cell');
+                const rack = el.closest('.player-rack');
+                const returnZone = el.closest('.return-zone');
 
-        // --- HOME & STORAGE UI ---
-        function renderHomeScreen() {
-            // RENDER SAVED HOST GAMES
-            const hostArea = document.getElementById('host-saved-list');
-            const hostListContainer = document.getElementById('host-sessions-container');
-            const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
-            const saveKeys = Object.keys(allSaves);
-
-            hostListContainer.innerHTML = '';
-            if(saveKeys.length > 0) {
-                hostArea.style.display = 'block';
-                // Sort by date descending
-                saveKeys.sort((a,b) => (allSaves[b].lastSavedAt || 0) - (allSaves[a].lastSavedAt || 0));
+                // Determine context
+                const isHostScreen = document.getElementById('screen-host').classList.contains('active');
                 
-                saveKeys.forEach(code => {
-                    const data = allSaves[code];
-                    const dateStr = new Date(data.lastSavedAt || Date.now()).toLocaleDateString() + ' ' + new Date(data.lastSavedAt || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    const pCount = data.players ? data.players.length : 0;
-                    
-                    const el = document.createElement('div'); el.className = 'session-item';
-                    el.innerHTML = `
-                        <div class="session-info">
-                            <span class="session-code">Room ${code}</span>
-                            <span class="session-meta">${pCount} players • ${dateStr}</span>
-                        </div>
-                        <div style="display:flex; gap:10px;">
-                            <button class="btn-warning btn-sm" onclick="initHost('${code}', true)">Resume</button>
-                            <button class="btn-danger btn-sm" onclick="deleteHostGame('${code}')">✕</button>
-                        </div>`;
-                    hostListContainer.appendChild(el);
-                });
+                if (isHostScreen) {
+                    if (returnZone) handleReturn(dragEl);
+                    else if (cell) handleBoardPlacement(dragEl, cell); // Host/Local Board
+                    else if (rack && rack.id === 'local-rack') rack.appendChild(dragEl); // Back to local rack
+                } else {
+                    // Player Screen
+                    if (cell) handlePlayerBoardPlacement(dragEl, cell);
+                    else if (rack && rack.id === 'my-rack') rack.appendChild(dragEl); // Back to player rack
+                }
+            }
+            dragEl = null; 
+            if(isLocalGame || document.getElementById('screen-host').classList.contains('active')) {
+                updateScorePill(); checkSmartFill();
             } else {
-                hostArea.style.display = 'none';
-            }
-
-            // RENDER SAVED PLAYER SESSIONS
-            const sessionList = document.getElementById('session-list');
-            const sessionArea = document.getElementById('sessions-area');
-            const sessions = JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]');
-            sessionList.innerHTML = '';
-            if(sessions.length > 0) {
-                sessionArea.style.display = 'block';
-                sessions.forEach(s => {
-                    const el = document.createElement('div'); el.className = 'session-item';
-                    el.innerHTML = `<div class="session-info"><span class="session-code">${s.roomCode}</span><span class="session-name">as ${s.name}</span></div><div style="display:flex; gap:10px;"><button class="btn-warning btn-sm" onclick="joinGame('${s.roomCode}', '${s.name}', '${s.userId}')">Resume</button><button class="btn-danger btn-sm" onclick="deleteSession('${s.roomCode}')">✕</button></div>`;
-                    sessionList.appendChild(el);
-                });
-            } else { sessionArea.style.display = 'none'; }
-        }
-
-        function saveSession(roomCode, name, userId) {
-            let sessions = JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]');
-            const idx = sessions.findIndex(s => s.roomCode === roomCode);
-            if(idx >= 0) sessions[idx] = { roomCode, name, userId }; else sessions.push({ roomCode, name, userId });
-            localStorage.setItem(STORAGE_SESSIONS, JSON.stringify(sessions));
-            currentSessionCode = roomCode; renderHomeScreen();
-        }
-        function deleteSession(roomCode) {
-            let sessions = JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]');
-            sessions = sessions.filter(s => s.roomCode !== roomCode);
-            localStorage.setItem(STORAGE_SESSIONS, JSON.stringify(sessions));
-            renderHomeScreen();
-        }
-        function deleteHostGame(code) {
-            if(confirm("Delete this saved game? Cannot be undone.")) { 
-                const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
-                delete allSaves[code];
-                localStorage.setItem(STORAGE_HOST_SAVES, JSON.stringify(allSaves));
-                renderHomeScreen(); 
+                checkPlayerPlayBtn();
             }
         }
+        
+        function handlePlayerBoardPlacement(tile, cell) {
+            if(!cell.closest('#player-board-grid')) return; // Wrong board?
+            const existing = cell.querySelector('.tile');
+            if(!existing) {
+                cell.appendChild(tile);
+                tile.classList.remove('selected');
+            } else if (existing.dataset.locked !== "true") {
+                // Swap if not locked
+                const parent = tile.parentElement;
+                parent.appendChild(existing);
+                cell.appendChild(tile);
+            }
+        }
+        
+        function checkPlayerPlayBtn() {
+            const tilesOnBoard = document.querySelectorAll('#player-board-grid .tile:not([data-locked="true"])').length;
+            document.getElementById('btn-play').disabled = (tilesOnBoard === 0 || !myTurn);
+        }
 
+        function handleBoardPlacement(tile, cell) {
+            // Host logic (Local or Online Host)
+            const existing = cell.querySelector('.tile');
+            if(!existing) {
+                cell.appendChild(tile); 
+                tile.dataset.new = "true";
+                // If it came from inbox, remove from inbox memory
+                if(hostInbox.some(t => t.id === tile.dataset.id)) hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id);
+                
+                if(tile.dataset.letter==='_') { pendingBlankTile=tile; document.getElementById('blank-overlay').style.display="flex"; }
+            } else if(existing.dataset.locked!=="true") {
+                 // Swap tiles on board
+                 const p = tile.parentElement;
+                 if(p.id === 'local-rack' || p.id === 'host-inbox') {
+                     // From rack/inbox to board occupied
+                     p.appendChild(existing);
+                     cell.appendChild(tile);
+                     tile.dataset.new="true";
+                 }
+            }
+        }
+        
+        function handleReturn(tile) {
+            if(isLocalGame) {
+                document.getElementById('local-rack').appendChild(tile);
+                tile.removeAttribute('data-new');
+                if(tile.dataset.letter === '_') { tile.innerHTML=''; tile.classList.remove('is-blank-assigned'); }
+            } else {
+                // Online Host Return logic
+                if(!hostInbox.some(t=>t.id===tile.dataset.id)) hostInbox.push({id:tile.dataset.id, letter:tile.dataset.letter, owner:tile.dataset.owner});
+                tile.remove(); renderInbox();
+                returnTile(tile.dataset.letter, tile.dataset.owner);
+            }
+        }
+
+        function updateClonePos(x,y){ if(clone){ clone.style.left=(x-25)+'px'; clone.style.top=(y-25)+'px'; } }
+
+        // --- SHARED UTILS ---
+        function renderBoard(container) {
+            container.innerHTML='';
+            for(let r=0;r<15;r++)for(let c=0;c<15;c++){
+                const d=document.createElement('div');d.className='cell';d.dataset.r=r;d.dataset.c=c;
+                const t=LAYOUT[r][c];
+                if(t===1){d.classList.add('tw');d.innerText='TW'}if(t===2){d.classList.add('dw');d.innerText='DW'}if(t===3){d.classList.add('tl');d.innerText='TL'}if(t===4){d.classList.add('dl');d.innerText='DL'}if(t===5){d.classList.add('star');d.innerHTML='★'}
+                container.appendChild(d);
+            }
+        }
+        function getGrid(){
+            let g = Array(15).fill(null).map(() => Array(15).fill(null));
+            document.querySelectorAll('#board-grid .cell').forEach(c => {
+                const tile = c.querySelector('.tile');
+                if(tile) g[c.dataset.r][c.dataset.c] = { letter: tile.dataset.letter, locked: tile.dataset.locked==="true", isBlank: tile.dataset.isBlank==="true" };
+            });
+            return g;
+        }
+        function getEmptyGrid() { return Array(15).fill(null).map(() => Array(15).fill(null)); }
+
+        // --- UI HELPERS ---
         function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
         function showHomeScreen() { showScreen('screen-home'); renderHomeScreen(); }
         function showJoinScreen() { showScreen('screen-join-login'); }
         function toast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
         function showModal(title, msg) { document.getElementById('modal-title').innerText=title; document.getElementById('modal-msg').innerText=msg; document.getElementById('notification-overlay').style.display="flex"; }
         function closeModal() { document.getElementById('notification-overlay').style.display="none"; }
-        function showConfirm(title, msg, onYes) {
-            document.getElementById('confirm-title').innerText = title; document.getElementById('confirm-msg').innerText = msg;
-            const btn = document.getElementById('btn-confirm-yes');
-            btn.onclick = () => { onYes(); document.getElementById('confirm-overlay').style.display='none'; };
-            document.getElementById('confirm-overlay').style.display="flex";
-        }
-
-        // --- HOST LOGIC ---
-
-        function initHost(existingId = null, isResume = false) {
-            if(peer) peer.destroy();
-            if(heartbeatInterval) clearInterval(heartbeatInterval);
-            if(startTimeout) clearTimeout(startTimeout);
-            
-            let savedState = null;
-            if(isResume && existingId) {
-                const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
-                savedState = allSaves[existingId];
-            }
-
-            // Generate ID if not resuming, or use existing
-            const id = existingId || genId();
-            currentHostRoomCode = id;
-            
-            // Add explicit STUN config to Host
-            peer = new Peer(id, PEER_CONFIG);
-            
-            peer.on('open', id => {
-                showScreen('screen-lobby');
-                document.getElementById('lobby-code-display').innerText = id;
-                document.getElementById('host-status-dot').classList.remove('status-offline');
-                document.getElementById('host-status-dot').classList.add('status-online');
-                document.getElementById('host-status-text').innerText = "Status: Ready";
-                
-                if(savedState) {
-                    players = savedState.players || []; 
-                    bag = savedState.bag; 
-                    turnIndex = savedState.turnIndex;
-                    isFirstTurn = savedState.isFirstTurn; 
-                    hostInbox = savedState.hostInbox || [];
-                    soundsEnabled = savedState.settings ? savedState.settings.soundsEnabled : true;
-                    document.getElementById('toggle-sound').checked = soundsEnabled;
-                    
-                    renderBoard(); 
-                    restoreBoardTiles(savedState.grid); 
-                    renderInbox();
-                    
-                    showScreen('screen-host'); 
-                    updateHostUI(); 
-                    
-                    // AUTO-DIAL ALL KNOWN PLAYERS
-                    players.forEach(p => {
-                       if(p.lastPeerID) {
-                           console.log("Dialing player:", p.name, p.lastPeerID);
-                           const newConn = peer.connect(p.lastPeerID);
-                           setupHostConnection(newConn);
-                       } 
-                    });
-
-                    toast("Game Resumed");
-                    startHeartbeat();
-                } else {
-                    initBag(); renderBoard(); players=[]; hostInbox=[];
-                }
-                saveHostState(id); 
-                startHeartbeat();
-            });
-
-            peer.on('connection', c => { 
-                setupHostConnection(c);
-            });
-            peer.on('error', e => { if(e.type === 'unavailable-id' && existingId) setTimeout(() => initHost(existingId, isResume), 1000); });
-        }
-
-        function setupHostConnection(c) {
-            c.on('open', () => {
-               // If this is a dial-out, we should send a handshake
-               c.send({type:'handshake_request'});
-            });
-            c.on('data', d => handleHostData(c, d));
-            // We don't handle close here aggressively as heartbeat does that
-        }
-
-        function startHeartbeat() {
-            heartbeatInterval = setInterval(() => {
-                const now = Date.now();
-                players.forEach(p => { if(p.conn && p.conn.open) p.conn.send({type: 'ping'}); });
-                let needsUpdate = false;
-                players.forEach(p => {
-                    const wasOffline = p.isOffline;
-                    p.isOffline = (now - (p.lastSeen || now)) > 15000;
-                    if(wasOffline !== p.isOffline) needsUpdate = true;
-                });
-                if(needsUpdate) {
-                    if(document.getElementById('screen-lobby').classList.contains('active')) updateLobbyUI();
-                    if(document.getElementById('screen-host').classList.contains('active')) updateHostUI();
-                }
-                const btnStart = document.getElementById('btn-start-game');
-                if(btnStart && document.getElementById('screen-lobby').classList.contains('active')) {
-                    if(btnStart.innerText !== "VERIFYING...") {
-                        const anyOffline = players.some(p => p.isOffline);
-                        btnStart.disabled = players.length === 0 || anyOffline;
-                        btnStart.innerText = anyOffline ? "WAITING FOR PLAYERS..." : "START GAME";
-                    }
-                }
-            }, 5000);
-        }
-
-        function saveHostState(id) {
-            if(!id) return;
-            const grid = getGrid();
-            const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
-            
-            // Clean circular references (connections) before saving
-            const cleanPlayers = players.map(p => ({
-                userId: p.userId,
-                name: p.name,
-                score: p.score,
-                lastScore: p.lastScore,
-                tiles: p.tiles,
-                isOffline: p.isOffline,
-                lastSeen: p.lastSeen,
-                lastPeerID: p.lastPeerID,
-                history: p.history || []
-            }));
-
-            allSaves[id] = { 
-                roomCode: id, 
-                players: cleanPlayers, 
-                bag, 
-                turnIndex, 
-                isFirstTurn, 
-                grid, 
-                hostInbox, 
-                settings: { soundsEnabled },
-                createdAt: allSaves[id] ? allSaves[id].createdAt : Date.now(), 
-                lastSavedAt: Date.now()
-            };
-            localStorage.setItem(STORAGE_HOST_SAVES, JSON.stringify(allSaves));
-        }
-
-        function restoreBoardTiles(savedGrid) {
-            if(!savedGrid) return;
-            for(let r=0; r<15; r++) {
-                for(let c=0; c<15; c++) {
-                    const data = savedGrid[r][c];
-                    if(data) {
-                        const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-                        if(cell) {
-                            // Reset visuals before appending tile
-                            resetCellVisuals(cell);
-                            const t = document.createElement('div'); t.className = 'tile'; 
-                            t.dataset.letter = data.letter; t.dataset.id = data.id; t.dataset.owner = data.owner;
-                            
-                            // Restore Blank State
-                            if (data.isBlank) {
-                                t.dataset.isBlank = "true";
-                                t.classList.add('is-blank-assigned');
-                            }
-
-                            // Restore Locked State or New State
-                            // If data.locked is undefined (legacy save), assume true
-                            if (data.locked === false) {
-                                t.dataset.new = "true";
-                                // FORCE BIND EVENT TO DOM
-                                t.onpointerdown = onDragStart;
-                            } else {
-                                t.dataset.locked = "true";
-                                t.addEventListener('click', (e) => handleBoardTileClick(e, t));
-                            }
-
-                            if(data.letter === '_') { t.innerHTML=''; t.dataset.letter='_'; } 
-                            else t.innerHTML = `${data.letter}<span class="score">${data.isBlank ? 0 : SCORES[data.letter]}</span>`;
-                            cell.appendChild(t);
-                        }
-                    }
-                }
-            }
-        }
+        function genId(){const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let r="";for(let i=0;i<4;i++)r+=c.charAt(Math.floor(Math.random()*c.length));return r;}
+        function initBag(){bag=[];for(let l in BAG_INIT)for(let i=0;i<BAG_INIT[l];i++)bag.push(l);for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}}
         
-        function resetCellVisuals(cell) {
-            const r = parseInt(cell.dataset.r);
-            const c = parseInt(cell.dataset.c);
-            cell.className = 'cell'; // Reset classes
-            cell.innerHTML = ''; // Clear content
-            
-            const t = LAYOUT[r][c];
-            if(t===1){cell.classList.add('tw');cell.innerText='TW'}
-            if(t===2){cell.classList.add('dw');cell.innerText='DW'}
-            if(t===3){cell.classList.add('tl');cell.innerText='TL'}
-            if(t===4){cell.classList.add('dl');cell.innerText='DL'}
-            if(t===5){cell.classList.add('star');cell.innerHTML='★'}
-        }
-
-        function renderInbox() {
-            const inbox = document.getElementById('host-inbox');
-            inbox.innerHTML = '';
-            hostInbox.forEach(item => {
-                const t = document.createElement('div'); t.className = 'tile'; 
-                t.dataset.letter = item.letter; t.dataset.owner = item.owner; t.dataset.id = item.id; t.dataset.new = "true";
-                if(item.letter === '_') t.innerHTML = ''; else t.innerHTML=`${item.letter}<span class="score">${SCORES[item.letter]}</span>`;
-                // FORCE BIND EVENT TO DOM
-                t.onpointerdown = onDragStart;
-                inbox.appendChild(t);
-            });
-        }
-
-        function handleHostData(c, data) {
-            if(data.type === 'join' || data.type === 'handshake') {
-                const incomingId = data.userId;
-                let p = players.find(x => x.userId === incomingId);
-                
-                if(!p) {
-                    if(data.type === 'handshake') { c.send({type: 'ack_join', success: false, msg: "Session invalid."}); return; }
-                    // New Player
-                    p = { userId: incomingId, name: data.name, score: 0, lastScore: 0, tiles: [], conn: c, lastSeen: Date.now(), isOffline: false, lastPeerID: c.peer, history: [] };
-                    players.push(p);
-                    toast(`${data.name} joined`);
-                } else {
-                    // Reconnecting Player
-                    p.conn = c; 
-                    p.lastSeen = Date.now(); 
-                    p.isOffline = false; 
-                    p.lastPeerID = c.peer; // Update peer ID
-                    if(!p.history) p.history = [];
-                    toast(`${p.name} reconnected`);
-                }
-
-                // Send immediate sync packet
-                c.send({
-                    type: 'ack_join', success: true, name: p.name,
-                    activePlayer: players[turnIndex] ? players[turnIndex].name : null,
-                    myTurn: (players.indexOf(p) === turnIndex),
-                    tiles: p.tiles, // AUTO-RECOVERY: Sends the rack stored in DB
-                    isGameRunning: document.getElementById('screen-host').classList.contains('active'),
-                    grid: getGrid()
-                });
-
-                if(document.getElementById('screen-host').classList.contains('active') === false) { broadcastLobby(); updateLobbyUI(); } else { updateHostUI(); }
-                saveHostState(currentHostRoomCode);
-                return;
-            }
-            if(data.type === 'pong') {
-                const p = players.find(x => x.userId === data.userId);
-                if(p) { p.lastSeen = Date.now(); p.isOffline = false; }
-                return;
-            }
-            if(data.type === 'ready_start') {
-                const p = players.find(x => x.userId === data.userId);
-                if(p) {
-                    p.isReady = true;
-                    if(players.every(pl => pl.isReady)) { clearTimeout(startTimeout); finalizeGameStart(); }
-                }
-                return;
-            }
-            if(data.type === 'play') {
-                const p = players[turnIndex];
-                if(!p || (p.userId !== players.find(x=>x.conn===c)?.userId)) { c.send({type:'toast', msg:"Not your turn!"}); return; }
-                
-                // HOST AUTHORITY VALIDATION
-                data.tiles.forEach(l => {
-                    const idx = p.tiles.indexOf(l);
-                    if(idx > -1) {
-                        p.tiles.splice(idx, 1); // remove from player hand memory
-                        createHostTile(l, p.userId); // add to inbox
-                    }
-                });
-                saveHostState(currentHostRoomCode);
-            }
-            if(data.type === 'swap') {
-                const p = players[turnIndex];
-                if(!p || (p.userId !== players.find(x=>x.conn===c)?.userId)) { c.send({type:'toast', msg:"Not your turn!"}); return; }
-                
-                if (bag.length < 7) { c.send({type: 'toast', msg: "Bag must have 7+ tiles to swap."}); return; }
-                
-                const tilesToSwap = data.tiles; 
-                tilesToSwap.forEach(l => {
-                    const idx = p.tiles.indexOf(l);
-                    if (idx > -1) p.tiles.splice(idx, 1);
-                    bag.push(l); 
-                });
-                
-                // Shuffle bag slightly
-                for (let i = bag.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [bag[i], bag[j]] = [bag[j], bag[i]];
-                }
-                
-                deal(p.conn, tilesToSwap.length, turnIndex);
-                
-                players[turnIndex].lastScore = 0; 
-                turnIndex = (turnIndex + 1) % players.length;
-                updateHostUI(); notifyTurn(); saveHostState(currentHostRoomCode);
-                toast(`${p.name} swapped ${tilesToSwap.length} tiles`);
-            }
-            if(data.type === 'pass') {
-                const p = players.find(x=>x.conn===c);
-                if(!p || players[turnIndex].userId !== p.userId) return;
-                players[turnIndex].lastScore = 0; turnIndex = (turnIndex + 1) % players.length;
-                updateHostUI(); notifyTurn(); saveHostState(currentHostRoomCode);
-            }
-        }
-
-        function deal(conn, n, targetPlayerIndex) {
-            let p = players[targetPlayerIndex];
-            if(!p) return;
-            let newTiles = [];
-            for(let i=0; i<n; i++) if(bag.length) newTiles.push(bag.pop());
-            p.tiles.push(...newTiles);
-            
-            // Check connection before sending
-            if(p.conn && p.conn.open) {
-                p.conn.send({type:'hand', tiles: newTiles});
-            } else {
-                // Offline Logic
-                // We just save to storage (done by default via p.tiles reference)
-                // When player reconnects, p.tiles is sent.
-                p.isOffline = true;
-                updateHostUI();
-            }
-        }
-        
-        function resyncPlayer(index) {
-            const p = players[index];
-            if(!p) return;
-            if(!p.conn || !p.conn.open) { 
-                // Attempt manual dial
-                if(p.lastPeerID) {
-                    toast("Dialing " + p.name + "...");
-                    p.conn = peer.connect(p.lastPeerID);
-                    setupHostConnection(p.conn);
-                } else {
-                    toast("Player is offline"); 
-                }
-                return; 
-            }
-            toast("Syncing data to " + p.name);
-            p.conn.send({
-                type: 'gamestart', // Triggers a full state refresh on client
-            });
-            p.conn.send({
-                type: 'hand',
-                tiles: p.tiles
-            });
-            p.conn.send({
-                type: 'turn_update',
-                myTurn: (index === turnIndex),
-                activePlayer: players[turnIndex].name
-            });
-        }
-
-        function hostStartGame() {
-            if(players.length === 0) { showModal("Wait", "Need players to start."); return; }
-            if(players.some(p => p.isOffline)) { showModal("Wait", "All players must be connected."); return; }
-            const btn = document.getElementById('btn-start-game');
-            btn.disabled = true; btn.innerText = "VERIFYING...";
-            players.forEach(p => p.isReady = false);
-            players.forEach(p => { if(p.conn && p.conn.open) p.conn.send({type: 'prepare_start'}); });
-            startTimeout = setTimeout(() => {
-                const missing = players.filter(p => !p.isReady).map(p => p.name).join(', ');
-                showModal("Error", `No response from: ${missing}`);
-                btn.disabled = false; btn.innerText = "START GAME";
-            }, 5000); 
-        }
-
-        function finalizeGameStart() {
-            showScreen('screen-host');
-            players.forEach((p, i) => { 
-                deal(p.conn, 7, i); 
-                if(p.conn && p.conn.open) p.conn.send({type:'gamestart'}); 
-            });
-            notifyTurn(); saveHostState(currentHostRoomCode);
-        }
-
-        function kickPlayer(index) {
-            const p = players[index];
-            if(!p) return;
-            if(confirm(`Kick ${p.name}?`)) {
-                if(p.conn && p.conn.open) p.conn.close();
-                players.splice(index, 1);
-                updateLobbyUI(); broadcastLobby(); saveHostState(currentHostRoomCode);
-            }
-        }
-
-        function joinGame(codeOverride=null, nameOverride=null, idOverride=null) {
-            // cleanup old peer if user is retrying
-            if(peer) peer.destroy();
-
-            const n = nameOverride || document.getElementById('join-name').value.trim();
-            const c = (codeOverride || document.getElementById('join-code').value.trim()).toUpperCase();
-            if(!n || c.length!==4) return;
-            
-            const btn = document.getElementById('btn-join');
-            const statusEl = document.getElementById('connect-status');
-            if(btn) { btn.disabled = true; btn.innerText = "Connecting..."; }
-            if(statusEl) statusEl.innerText = "";
-            
-            const userId = idOverride || generateUUID();
-            currentHostRoomCode = c; // Save for reconnection
-            
-            // Add explicit STUN config to Player
-            peer = new Peer(null, PEER_CONFIG);
-            
-            peer.on('error', (err) => {
-                console.error("Peer Error:", err);
-                if(btn) { btn.disabled = false; btn.innerText = "Connect"; }
-                if(statusEl) {
-                    if (err.type === 'peer-unavailable') statusEl.innerText = "Room code not found.";
-                    else statusEl.innerText = "Connection error: " + err.type;
-                }
-                
-                // If we get an error during reconnect loop, ignore and keep trying
-                if(isReconnecting) return;
-            });
-
-            // Listen for Host dialing us back (Dual Direction)
-            peer.on('connection', (c) => {
-                console.log("Incoming connection from Host");
-                setupPlayerConnection(c, n, userId, c.peer);
-            });
-
-            peer.on('open', () => {
-                // Initial Connection
-                const cConn = peer.connect(c);
-                setupPlayerConnection(cConn, n, userId, c);
-            });
-        }
-        
-        function setupPlayerConnection(c, n, userId, hostPeerId) {
-            conn = c;
-            const btn = document.getElementById('btn-join');
-            const statusEl = document.getElementById('connect-status');
-
-            conn.on('error', (err) => {
-                 console.error("Conn Error:", err);
-                 if(btn) { btn.disabled = false; btn.innerText = "Connect"; }
-                 if(statusEl) statusEl.innerText = "Connection failed.";
-            });
-
-            conn.on('close', () => {
-                 // Trigger Reconnection Loop
-                 handleDisconnect();
-            });
-
-            conn.on('open', () => { 
-                // Reset Reconnect State
-                document.getElementById('reconnect-overlay').style.display = 'none';
-                isReconnecting = false;
-                if(reconnectInterval) clearInterval(reconnectInterval);
-
-                conn.send({type:'join', name:n, userId: userId}); 
-            });
-            
-            conn.on('data', d => {
-                // If host dials us, they send handshake request. We reply with Join.
-                if(d.type === 'handshake_request') {
-                    conn.send({type:'join', name:n, userId: userId});
-                    return;
-                }
-
-                if(d.type === 'ack_join') {
-                    if(d.success === false) { alert(d.msg); return; }
-                    saveSession(currentHostRoomCode, n, userId); 
-                    if(d.isGameRunning) {
-                        showScreen('screen-player');
-                        document.getElementById('my-display-name').innerText = n;
-                        document.getElementById('my-rack').innerHTML = '';
-                        if(d.tiles) addRack(d.tiles);
-                        Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
-                        updateTurnUI(d.myTurn, d.activePlayer);
-                        toast("Sync Complete");
-                    } else { showScreen('screen-player-lobby'); }
-                }
-                if(d.type === 'ping') conn.send({type: 'pong', userId: userId});
-                if(d.type === 'prepare_start') conn.send({type: 'ready_start', userId: userId});
-                if(d.type === 'lobby_update') document.getElementById('player-lobby-list').innerHTML = d.names.map(name => `<div class="lobby-row"><span>${name}</span><span style="color:#2ecc71;">Joined</span></div>`).join('');
-                if(d.type==='gamestart') { 
-                    showScreen('screen-player'); 
-                    document.getElementById('my-display-name').innerText = n;
-                    Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
-                    toast("Game Started!");
-                }
-                if(d.type==='hand') {
-                    // Clear existing rack if this is a fresh sync (heuristic: if receiving 7 tiles and rack is empty)
-                    const r = document.getElementById('my-rack');
-                    if(d.tiles.length === 7 && r.children.length === 0) r.innerHTML = '';
-                    addRack(d.tiles);
-                }
-                if(d.type==='return') { addRack([d.tile]); toast("Tile returned"); }
-                if(d.type==='toast') toast(d.msg);
-                if(d.type==='turn_update') updateTurnUI(d.myTurn, d.activePlayer);
-            });
-        }
-        
-        function handleDisconnect() {
-            if(isReconnecting) return;
-            isReconnecting = true;
-            document.getElementById('reconnect-overlay').style.display = 'flex';
-            
-            // Try to reconnect every 2 seconds
-            if(reconnectInterval) clearInterval(reconnectInterval);
-            reconnectInterval = setInterval(() => {
-                if(peer && !peer.destroyed && currentHostRoomCode) {
-                    console.log("Attempting reconnect to " + currentHostRoomCode);
-                    // We try to connect to the Host ID again.
-                    const newConn = peer.connect(currentHostRoomCode);
-                    // We attach the same setup logic. If it opens, the loop clears.
-                    // We need to pass the existing user info which we have in closure or storage
-                    const sessions = JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]');
-                    const sess = sessions.find(s => s.roomCode === currentHostRoomCode);
-                    if(sess) {
-                         setupPlayerConnection(newConn, sess.name, sess.userId, currentHostRoomCode);
-                    }
-                }
-            }, 2000);
-        }
-
         function updateTurnUI(isMyTurn, activeName) {
             myTurn = isMyTurn;
-            const btn = document.getElementById('btn-play');
-            const hudStatus = document.getElementById('status-msg');
-            if(myTurn) {
-                btn.disabled = false; hudStatus.innerText = "YOUR TURN"; hudStatus.classList.add('active'); if(!document.hidden) toast("It's your turn!");
-            } else {
-                btn.disabled = true; hudStatus.innerText = `Turn: ${activeName}`; hudStatus.classList.remove('active');
-            }
-        }
-
-        // --- DRAG LOGIC ---
-        let dragEl=null, clone=null;
-        function onDragStart(e) {
-            if(e.currentTarget.dataset.locked==="true") return;
-            e.preventDefault();
-            dragEl = e.currentTarget;
-            if(dragEl.dataset.isBlank==="true" || (dragEl.dataset.letter==='_' && dragEl.innerText!=='')) {
-                dragEl.dataset.letter='_'; dragEl.innerText=''; dragEl.classList.remove('is-blank-assigned'); delete dragEl.dataset.isBlank;
-            }
-            clone = dragEl.cloneNode(true); clone.classList.add('dragging'); document.body.appendChild(clone);
-            updateClonePos(e.clientX, e.clientY);
-            dragEl.style.opacity = '0';
-            updateScorePill();
-            document.addEventListener('pointermove', onDragMove); document.addEventListener('pointerup', onDragEnd);
-        }
-        function onDragMove(e) { e.preventDefault(); updateClonePos(e.clientX, e.clientY); }
-        
-        function onDragEnd(e) {
-            document.removeEventListener('pointermove', onDragMove); document.removeEventListener('pointerup', onDragEnd);
-            
-            if(clone) { clone.remove(); clone=null; }
-            if(dragEl) dragEl.style.display = 'none'; 
-            const el = document.elementFromPoint(e.clientX, e.clientY);
-            if(dragEl) dragEl.style.display = 'flex';
-            
-            if(el) {
-                const cell = el.closest('.cell');
-                const ret = el.closest('.return-zone');
-                
-                if(ret && dragEl) handleReturn(dragEl);
-                else if(cell && dragEl) handleBoardPlacement(dragEl, cell);
-                else if(dragEl) handleInboxDrop(dragEl);
-            } else if(dragEl) {
-                handleInboxDrop(dragEl);
-            }
-            
-            if(dragEl && dragEl.parentNode) dragEl.removeAttribute('style');
-            dragEl=null; updateScorePill(); checkSmartFill(); saveHostState(currentHostRoomCode);
-        }
-
-        // HANDLERS
-        function handleReturn(tile) {
-            // Remove from inbox memory array explicitly using ID
-            const idx = hostInbox.findIndex(t => t.id === tile.dataset.id);
-            if(idx > -1) {
-                hostInbox.splice(idx, 1);
-            }
-            
-            // Only return if it's not already on the board (prevents double counting)
-            returnTile(tile.dataset.letter, tile.dataset.owner);
-            
-            // Restore visual state of the cell before removing tile
-            if(tile.parentElement && tile.parentElement.classList.contains('cell')) {
-                resetCellVisuals(tile.parentElement);
-            }
-            tile.remove(); 
-            renderInbox(); 
-            checkSmartFill();
-        }
-
-        function handleBoardPlacement(tile, cell) {
-            const existing = cell.querySelector('.tile');
-            if(!existing) {
-                cell.appendChild(tile); 
-                hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id); 
-                if(tile.dataset.letter==='_') { pendingBlankTile=tile; document.getElementById('blank-overlay').style.display="flex"; }
-            } else {
-                if(existing.dataset.locked!=="true") {
-                    existing.remove(); 
-                    if(existing.dataset.isBlank==="true") { existing.dataset.letter='_'; existing.innerHTML=''; existing.classList.remove('is-blank-assigned'); delete existing.dataset.isBlank; }
-                    
-                    hostInbox.push({id: existing.dataset.id, letter: existing.dataset.letter, owner: existing.dataset.owner});
-                    
-                    cell.appendChild(tile);
-                    hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id);
-                    
-                    renderInbox(); 
-                    if(tile.dataset.letter==='_') { pendingBlankTile=tile; document.getElementById('blank-overlay').style.display="flex"; }
-                }
-            }
-        }
-
-        function handleInboxDrop(tile) {
-            if(tile.parentElement && tile.parentElement.classList.contains('cell')) {
-                resetCellVisuals(tile.parentElement);
-            }
-            
-            if(!hostInbox.some(t => t.id === tile.dataset.id)) {
-                hostInbox.push({id: tile.dataset.id, letter: tile.dataset.letter, owner: tile.dataset.owner});
-            }
-            if(tile.parentElement && tile.parentElement.id !== 'host-inbox') tile.remove();
-            renderInbox();
-            checkSmartFill();
-        }
-
-        function updateClonePos(x,y){ if(clone){ clone.style.left=(x-27.5)+'px'; clone.style.top=(y-27.5)+'px'; } }
-
-        function assignBlank(l) {
-            if(pendingBlankTile) {
-                pendingBlankTile.innerText=l; pendingBlankTile.dataset.letter=l; pendingBlankTile.dataset.isBlank="true"; pendingBlankTile.classList.add('is-blank-assigned');
-                pendingBlankTile=null; document.getElementById('blank-overlay').style.display="none"; 
-                updateScorePill();
-                
-                // Check if there are MORE blanks that need assignment (e.g. from smart fill loop)
-                setTimeout(() => {
-                    const nextBlank = document.querySelector('.tile[data-letter="_"][data-new="true"]');
-                    if(nextBlank) {
-                        pendingBlankTile = nextBlank;
-                        document.getElementById('blank-overlay').style.display="flex";
-                    }
-                }, 200);
-            }
-        }
-        function updateScorePill() {
-            let newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
-            if(dragEl) newTiles = newTiles.filter(t => t !== dragEl);
-            const pill = document.getElementById('score-pill');
-            const hasUnassignedBlank = newTiles.some(t => t.dataset.letter === '_');
-            
-            if (newTiles.length === 0 || !isPlacementShapeValid(newTiles) || hasUnassignedBlank) { pill.classList.remove('visible'); currentTurnPoints = 0; return; }
-            currentTurnPoints = calculateComplexScore(newTiles);
-            pill.innerText = `${currentTurnPoints} pts`; pill.classList.add('visible');
-            newTiles.sort((a,b) => (parseInt(a.parentElement.dataset.r)-parseInt(b.parentElement.dataset.r)) || (parseInt(a.parentElement.dataset.c)-parseInt(b.parentElement.dataset.c)));
-            const lastTile = newTiles[newTiles.length-1];
-            const rect = lastTile.getBoundingClientRect();
-            let top = rect.bottom + 10; let left = rect.right + 10;
-            const pW = pill.offsetWidth || 100; const pH = pill.offsetHeight || 40; const pad = 10;
-            if (left + pW + pad > window.innerWidth) left = window.innerWidth - pW - pad;
-            if (top + pH + pad > window.innerHeight) top = rect.top - pH - pad;
-            if (left < pad) left = pad;
-            pill.style.top = top + 'px'; pill.style.left = left + 'px';
-        }
-        
-        function checkSmartFill() {
-            const btn = document.getElementById('btn-smart-fill');
-            const newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
-            
-            if (hostInbox.length === 0) { btn.classList.add('hidden'); return; }
-
-            let show = false;
-
-            // Case 1: 2+ New Tiles aligned
-            if (newTiles.length >= 2) {
-                const coords = newTiles.map(t => {
-                   const p = t.parentElement;
-                   return { r: parseInt(p.dataset.r), c: parseInt(p.dataset.c) };
-                });
-                
-                const rows = new Set(coords.map(k=>k.r));
-                const cols = new Set(coords.map(k=>k.c));
-                
-                if (rows.size === 1 || cols.size === 1) show = true;
-            }
-            // Case 2: 1 New Tile + Neighbor
-            else if (newTiles.length === 1) {
-                const p = newTiles[0].parentElement;
-                const r = parseInt(p.dataset.r);
-                const c = parseInt(p.dataset.c);
-                
-                // Helper to check for locked tile
-                const hasNeighbor = (dr, dc) => {
-                    const cell = document.querySelector(`.cell[data-r="${r+dr}"][data-c="${c+dc}"]`);
-                    return cell && cell.querySelector('.tile');
-                };
-
-                if (hasNeighbor(0, 1) || hasNeighbor(0, -1)) show = true; // Horiz
-                else if (hasNeighbor(1, 0) || hasNeighbor(-1, 0)) show = true; // Vert
-            }
-
-            if (show) btn.classList.remove('hidden');
-            else btn.classList.add('hidden');
-        }
-        
-        function executeSmartFill() {
-             const newTiles = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]'));
-             if (newTiles.length < 1) return;
-             
-             // Sort tiles to find start and end
-             newTiles.sort((a,b) => {
-                 const pa = a.parentElement, pb = b.parentElement;
-                 return (parseInt(pa.dataset.r) - parseInt(pb.dataset.r)) || (parseInt(pa.dataset.c) - parseInt(pb.dataset.c));
-             });
-             
-             let dr = 0, dc = 0;
-             let t1 = newTiles[0].parentElement;
-             
-             if (newTiles.length >= 2) {
-                 // Determine Direction based on first two tiles
-                 const t2 = newTiles[newTiles.length-1].parentElement; 
-                 const isHoriz = (t1.dataset.r === t2.dataset.r);
-                 dr = isHoriz ? 0 : 1;
-                 dc = isHoriz ? 1 : 0;
-             } else {
-                 // Single tile logic
-                 const r = parseInt(t1.dataset.r);
-                 const c = parseInt(t1.dataset.c);
-                 
-                 const hasNeighbor = (dr, dc) => {
-                    const cell = document.querySelector(`.cell[data-r="${r+dr}"][data-c="${c+dc}"]`);
-                    return cell && cell.querySelector('.tile');
-                 };
-                 
-                 // Prioritize Horizontal
-                 if (hasNeighbor(0, 1) || hasNeighbor(0, -1)) { dr = 0; dc = 1; }
-                 else { dr = 1; dc = 0; }
-             }
-             
-             let r = parseInt(t1.dataset.r);
-             let c = parseInt(t1.dataset.c);
-             
-             // Get visual order of inbox tiles
-             const inboxContainer = document.getElementById('host-inbox');
-             const tilesToPlace = Array.from(inboxContainer.children).map(div => {
-                 return {
-                     id: div.dataset.id,
-                     letter: div.dataset.letter,
-                     owner: div.dataset.owner
-                 };
-             });
-             
-             if(tilesToPlace.length === 0) return;
-             
-             let placedCount = 0;
-             
-             // Move to next cell immediately
-             r += dr; c += dc;
-             
-             let foundBlank = false;
-
-             while (placedCount < tilesToPlace.length) {
-                 if(r < 0 || r > 14 || c < 0 || c > 14) break; // Boundary check
-                 
-                 const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-                 const existingTile = cell.querySelector('.tile');
-                 
-                 if (!existingTile) {
-                     // Empty spot! Place next available inbox tile
-                     const item = tilesToPlace[placedCount];
-                     
-                     const t = document.createElement('div'); t.className = 'tile'; 
-                     t.dataset.letter = item.letter; t.dataset.owner = item.owner; t.dataset.id = item.id; t.dataset.new = "true";
-                     
-                     if(item.letter === '_') {
-                         t.innerHTML = ''; t.dataset.letter='_'; foundBlank = true;
-                     } else {
-                         t.innerHTML=`${item.letter}<span class="score">${SCORES[item.letter]}</span>`;
-                     }
-                     // FORCE BIND EVENT TO DOM
-                     t.onpointerdown = onDragStart;
-                     cell.appendChild(t);
-                     
-                     // Update memory
-                     hostInbox = hostInbox.filter(x => x.id !== item.id);
-                     placedCount++;
-                 } 
-                 // If there IS a tile (New or Locked), we just skip over it (smart fill!)
-                 
-                 // Move cursor
-                 r += dr; c += dc;
-             }
-             
-             renderInbox();
-             checkSmartFill();
-             updateScorePill();
-             saveHostState(currentHostRoomCode);
-             
-             if(foundBlank) {
-                 const firstBlank = document.querySelector('.tile[data-letter="_"][data-new="true"]');
-                 if(firstBlank) {
-                     pendingBlankTile = firstBlank;
-                     document.getElementById('blank-overlay').style.display = "flex";
-                 }
-             }
+            document.getElementById('status-msg').innerText = myTurn ? "YOUR TURN" : `${activeName}`;
+            if(myTurn) document.getElementById('status-msg').classList.add('active'); else document.getElementById('status-msg').classList.remove('active');
+            checkPlayerPlayBtn();
         }
 
         function confirmTurn() {
+            // Shared Logic for Host confirming a move (Local or Online)
             if(!document.getElementById('score-pill').classList.contains('visible')) { showModal("Invalid", "Invalid placement."); return; }
             if(isFirstTurn) {
-                const hasCenter = Array.from(document.querySelectorAll('.cell .tile[data-new="true"]')).some(t => parseInt(t.parentElement.dataset.r)===7 && parseInt(t.parentElement.dataset.c)===7);
-                if(!hasCenter) { showModal("Rule", "Must start at center."); return; }
+                const hasCenter = Array.from(document.querySelectorAll('#board-grid .cell .tile[data-new="true"]')).some(t => parseInt(t.parentElement.dataset.r)===7 && parseInt(t.parentElement.dataset.c)===7);
+                if(!hasCenter) { showModal("Rule", "Start at center."); return; }
             }
             const grid=getGrid(); const words=getWords(grid);
             const invalid = words.filter(w => !dictionary.has(w) && dictionary.size > 0);
             if(invalid.length > 0) { showModal("Invalid Word", invalid.join(', ')); return; }
-            
-            const pill = document.getElementById('score-pill');
-            const pillRect = pill.getBoundingClientRect();
-            pill.classList.remove('visible');
-            const fly = document.createElement('div'); fly.className = 'flying-score'; fly.innerText = `+${currentTurnPoints}`;
-            document.body.appendChild(fly); fly.style.top = pillRect.top+'px'; fly.style.left = pillRect.left+'px';
-            const target = document.querySelector(`.player-row[data-index="${turnIndex}"] .total-score`);
-            if(target) {
-                const end = target.getBoundingClientRect();
-                fly.offsetHeight; fly.style.top = end.top+'px'; fly.style.left = end.left+'px'; fly.style.transform='scale(0.5)'; fly.style.opacity='0';
-            }
-            setTimeout(()=>fly.remove(),1000);
 
-            // SAVE HISTORY (Coordinates of the FULL word)
-            const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
-            
-            // Get coordinates of the PRIMARY WORD formed by this move
-            const historyCoords = getPrimaryWordCoords(newTiles);
-            
-            const historyEntry = {
-                turn: players[turnIndex].history.length + 1,
-                score: currentTurnPoints,
-                mainWord: getPrimaryWord(newTiles) || "Turn " + (players[turnIndex].history.length + 1),
-                tiles: historyCoords 
-            };
-            if(!players[turnIndex].history) players[turnIndex].history = [];
-            players[turnIndex].history.push(historyEntry);
-
+            // Score
             players[turnIndex].score += currentTurnPoints;
             players[turnIndex].lastScore = currentTurnPoints;
-            updateHostUI();
-
             
-            // 1. Lock Tiles on Board & Remove from hostInbox memory
+            // Lock Tiles
+            const newTiles = document.querySelectorAll('#board-grid .cell .tile[data-new="true"]');
+            
+            // History
+            const historyEntry = { turn: players[turnIndex].history.length+1, score: currentTurnPoints, mainWord: getPrimaryWord(newTiles), tiles: Array.from(newTiles).map(t=>({r:t.parentElement.dataset.r, c:t.parentElement.dataset.c})) };
+            players[turnIndex].history.push(historyEntry);
+
             newTiles.forEach(t => { 
-                t.removeAttribute('data-new'); 
-                t.dataset.locked="true"; 
-                t.style.cursor="default"; 
+                t.removeAttribute('data-new'); t.dataset.locked="true"; t.style.cursor="default"; t.onpointerdown=null; 
+                // Remove from online inbox logic if needed
                 hostInbox = hostInbox.filter(x => x.id !== t.dataset.id);
-                // Bind click listener for definition now that it's locked
-                t.addEventListener('click', (e) => handleBoardTileClick(e, t));
-                t.onpointerdown = null; // Remove drag
             });
 
-            // 2. Deal new tiles
-            deal(players[turnIndex].conn, newTiles.length, turnIndex); 
-            
-            // 3. FORCE RETURN leftovers
-            if(hostInbox.length > 0) {
-                const count = hostInbox.length;
-                hostInbox.forEach(t => returnTile(t.letter, t.owner, false)); // false = skip individual save
-                toast(`Returned ${count} unused tiles`);
-                hostInbox = []; 
-                renderInbox();
-            }
-
-            isFirstTurn = false;
-            turnIndex = (turnIndex + 1) % players.length;
-            notifyTurn();
-            // Hide smart fill button if it was visible
-            document.getElementById('btn-smart-fill').classList.add('hidden');
-            saveHostState(currentHostRoomCode); // Save state once at the end
-        }
-        
-        function getPrimaryWordCoords(newTiles) {
-            if(!newTiles || newTiles.length===0) return [];
-            const t = newTiles[0];
-            const r = parseInt(t.parentElement.dataset.r);
-            const c = parseInt(t.parentElement.dataset.c);
-            const grid = getGrid();
-            
-            const hCoords = getConnectedWordTiles(grid, r, c, 'h');
-            const vCoords = getConnectedWordTiles(grid, r, c, 'v');
-            
-            // Compare lengths.
-            if (hCoords.length >= vCoords.length && hCoords.length > 1) return hCoords;
-            if (vCoords.length > hCoords.length && vCoords.length > 1) return vCoords;
-            
-            // Fallback for single tile turn (first turn or weird edge case)
-            // Just return the tiles placed if no connections found (impossible in valid scrabble except first move)
-            return Array.from(newTiles).map(tile => ({
-                r: parseInt(tile.parentElement.dataset.r),
-                c: parseInt(tile.parentElement.dataset.c)
-            }));
-        }
-        
-        function getPrimaryWord(newTiles) {
-            if(!newTiles || newTiles.length===0) return "";
-            const t = newTiles[0];
-            const r = parseInt(t.parentElement.dataset.r);
-            const c = parseInt(t.parentElement.dataset.c);
-            const grid = getGrid();
-            
-            const h = getWordStringFromTiles(getConnectedWordTiles(grid, r, c, 'h'), grid);
-            const v = getWordStringFromTiles(getConnectedWordTiles(grid, r, c, 'v'), grid);
-            
-            if(h.length > 1 && v.length > 1) return h.length >= v.length ? h : v;
-            if(h.length > 1) return h;
-            if(v.length > 1) return v;
-            return t.dataset.letter; 
-        }
-        
-        function getWordStringFromTiles(coords, grid) {
-            return coords.map(pos => grid[pos.r][pos.c].letter).join("");
-        }
-
-        function promptLeaveGame() { showConfirm("Leave Room?", "You will exit this session.", () => { if(currentSessionCode) deleteSession(currentSessionCode); location.reload(); }); }
-        function promptEndGame() { showConfirm("End Game?", "This will delete all data for this room.", () => { 
-            const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
-            delete allSaves[currentHostRoomCode];
-            localStorage.setItem(STORAGE_HOST_SAVES, JSON.stringify(allSaves));
-            location.reload(); 
-        }); }
-
-        function playSelected() {
-            if(!myTurn) { toast("Not your turn!"); return; }
-            if(!conn || !conn.open) {
-                // Should be handled by overlay, but just in case
-                toast("Waiting for host reconnection...");
-                return;
-            }
-            if(!selectedTilesOrder.length) return;
-            const t=[]; selectedTilesOrder.forEach(x=>{ t.push(x.dataset.letter); x.remove(); });
-            selectedTilesOrder = [];
-            conn.send({type:'play', tiles:t});
-        }
-        
-        function swapTiles() {
-            if (!myTurn) { toast("Not your turn!"); return; }
-            if(!conn || !conn.open) { toast("Waiting for host reconnection..."); return; }
-            if (selectedTilesOrder.length === 0) { toast("Select tiles to swap"); return; }
-            if (!confirm(`Swap ${selectedTilesOrder.length} tiles? This uses your turn.`)) return;
-            const t = [];
-            selectedTilesOrder.forEach(x => { t.push(x.dataset.letter); x.remove(); });
-            selectedTilesOrder = [];
-            conn.send({type: 'swap', tiles: t});
-        }
-
-        function addRack(t) {
-            t.forEach(l=>{
-                const d=document.createElement('div'); d.className='tile'; d.dataset.letter=l;
-                if(l === '_') d.innerHTML = ''; else d.innerHTML=`${l}<span class="score">${SCORES[l]}</span>`;
-                d.onclick=()=>{
-                    if(d.classList.contains('selected')) { d.classList.remove('selected'); selectedTilesOrder = selectedTilesOrder.filter(tile => tile !== d); } 
-                    else { d.classList.add('selected'); selectedTilesOrder.push(d); }
-                };
-                document.getElementById('my-rack').appendChild(d);
-            });
-        }
-        
-        function genId(){const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let r="";for(let i=0;i<4;i++)r+=c.charAt(Math.floor(Math.random()*c.length));return r;}
-        function initBag(){bag=[];for(let l in BAG_INIT)for(let i=0;i<BAG_INIT[l];i++)bag.push(l);for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}}
-        
-        function returnTile(l, oid, shouldSave=true){
-            const p = players.find(x => x.userId === oid);
-            if(p) { 
-                p.tiles.push(l); 
-                if(p.conn && p.conn.open) p.conn.send({type:'return', tile:l}); 
-                else toast(`${p.name} offline. Return saved.`);
-                if(shouldSave) saveHostState(currentHostRoomCode); 
-            }
-            updateScorePill();
-        }
-
-        function recallTiles(){
-            const inbox=document.getElementById('host-inbox');
-            document.querySelectorAll('.cell .tile[data-new="true"]').forEach(t=>{ 
-                // Reset board cell visual
-                if(t.parentElement) resetCellVisuals(t.parentElement);
+            // Refill Hand
+            if(isLocalGame) {
+                const p = players[turnIndex];
+                // Remove placed tiles from rack memory implicitly by checking what's left in rack DOM? 
+                // No, Local Rack DOM still has them? No, we moved them to board.
+                // We just need to refill based on count.
+                const currentCount = document.getElementById('local-rack').children.length; // Remaining
+                // Actually, p.tiles currently contains the FULL hand because we didn't remove them on drag out in local mode yet
+                // We need to update p.tiles based on what's left in the DOM rack
+                p.tiles = Array.from(document.getElementById('local-rack').children).map(d => d.dataset.letter);
                 
-                if(!hostInbox.some(x=>x.id===t.dataset.id)) hostInbox.push({id:t.dataset.id, letter:t.dataset.letter, owner:t.dataset.owner}); 
-            }); 
-            renderInbox(); 
-            // The tile elements are gone from DOM because resetCellVisuals cleared innerHTML, 
-            // but we double check to ensure no ghosts
-            document.querySelectorAll('.cell').forEach(c=>{ if(c.querySelector('.tile[data-new="true"]')) c.innerHTML = ''; }); 
+                // Deal to 7
+                const needed = 7 - p.tiles.length;
+                for(let i=0; i<needed; i++) if(bag.length) p.tiles.push(bag.pop());
+                
+                isFirstTurn = false;
+                turnIndex = (turnIndex + 1) % players.length;
+                updateHostUI();
+                localTurnCycle();
+            } else {
+                // Online: Deal and Notify
+                deal(players[turnIndex].conn, newTiles.length, turnIndex);
+                isFirstTurn = false;
+                turnIndex = (turnIndex + 1) % players.length;
+                notifyTurn(); // Sends grid update
+            }
             
-            // Re-apply visuals to all empty cells just in case
-            document.querySelectorAll('.cell').forEach(c => {
-               if(!c.querySelector('.tile')) resetCellVisuals(c); 
-            });
-
-            updateScorePill(); 
-            checkSmartFill();
+            document.getElementById('score-pill').classList.remove('visible');
+            saveHostState(currentHostRoomCode);
         }
-        function notifyTurn(){players.forEach((p,i)=>p.conn && p.conn.open && p.conn.send({type:'turn_update',myTurn:(i===turnIndex),activePlayer:players[turnIndex].name}));updateHostUI();}
-        function broadcastLobby(){const names=players.map(p=>p.name);players.forEach(p=>{if(p.conn&&p.conn.open)p.conn.send({type:'lobby_update',names:names});});}
-        function updateLobbyUI(){document.getElementById('lobby-player-list').innerHTML=players.map((p, i)=>`<div class="lobby-row"><div><span class="status-dot ${p.isOffline?'status-offline':'status-online'}"></span><span>${p.name}</span></div><button class="btn-kick" onclick="kickPlayer(${i})">X</button></div>`).join('');}
+
+        // --- CALC UTILS (Condensed) ---
+        function updateScorePill() {
+            let newTiles = Array.from(document.querySelectorAll('#board-grid .cell .tile[data-new="true"]'));
+            if(dragEl && dragEl.dataset.new==="true") newTiles = newTiles.filter(t => t !== dragEl);
+            const pill = document.getElementById('score-pill');
+            if (newTiles.length === 0 || !isPlacementShapeValid(newTiles) || newTiles.some(t=>t.dataset.letter==='_')) { pill.classList.remove('visible'); currentTurnPoints=0; return; }
+            currentTurnPoints = calculateComplexScore(newTiles);
+            pill.innerText = `${currentTurnPoints} pts`; pill.classList.add('visible');
+            // Position pill logic...
+            const rect = newTiles[newTiles.length-1].getBoundingClientRect();
+            pill.style.top = (rect.bottom+10)+'px'; pill.style.left = (rect.right+10)+'px';
+        }
+        function isPlacementShapeValid(tiles){
+            if (tiles.length === 0) return false;
+            const coords=tiles.map(t=>({r:parseInt(t.parentElement.dataset.r),c:parseInt(t.parentElement.dataset.c)}));
+            const rows=new Set(coords.map(k=>k.r)),cols=new Set(coords.map(k=>k.c));
+            if(rows.size>1&&cols.size>1)return false;
+            const isH=rows.size===1;
+            if(isH){ coords.sort((a,b)=>a.c-b.c); const r=coords[0].r; for(let c=coords[0].c;c<=coords[coords.length-1].c;c++) if(!document.querySelector(`#board-grid .cell[data-r="${r}"][data-c="${c}"]`).querySelector('.tile'))return false; }
+            else { coords.sort((a,b)=>a.r-b.r); const c=coords[0].c; for(let r=coords[0].r;r<=coords[coords.length-1].r;r++) if(!document.querySelector(`#board-grid .cell[data-r="${r}"][data-c="${c}"]`).querySelector('.tile'))return false; }
+            if(!isFirstTurn) {
+                let isConnected = false; const neighbors = [{r:0,c:1},{r:0,c:-1},{r:1,c:0},{r:-1,c:0}];
+                for(let t of tiles) {
+                    const r=parseInt(t.parentElement.dataset.r), c=parseInt(t.parentElement.dataset.c);
+                    for(let n of neighbors) {
+                        const cell=document.querySelector(`#board-grid .cell[data-r="${r+n.r}"][data-c="${c+n.c}"]`);
+                        if(cell && cell.querySelector('.tile') && cell.querySelector('.tile').dataset.new!=="true") { isConnected=true; break; }
+                    }
+                    if(isConnected) break;
+                }
+                if(!isConnected) return false;
+            }
+            return true;
+        }
+        function calculateComplexScore(newTiles){let total=0;const coords=newTiles.map(t=>({r:parseInt(t.parentElement.dataset.r),c:parseInt(t.parentElement.dataset.c)}));const isH=new Set(coords.map(x=>x.r)).size===1;total+=getWordScoreAt(coords[0].r,coords[0].c,isH);coords.forEach(pos=>{const cS=getWordScoreAt(pos.r,pos.c,!isH);if(cS>0)total+=cS;});if(newTiles.length===7)total+=50;return total;}
+        function getWordScoreAt(r,c,isHoriz){let curr=isHoriz?c:r;while(curr>0){const cell=isHoriz?getCell(r,curr-1):getCell(curr-1,c);if(!cell.querySelector('.tile'))break;curr--;}const start=curr;curr=isHoriz?c:r;while(curr<14){const cell=isHoriz?getCell(r,curr+1):getCell(curr+1,c);if(!cell.querySelector('.tile'))break;curr++;}const end=curr;if(start===end)return 0;let pts=0,mult=1;for(let i=start;i<=end;i++){const row=isHoriz?r:i,col=isHoriz?i:c,cell=getCell(row,col),tile=cell.querySelector('.tile');let val=(tile.dataset.isBlank==="true")?0:(SCORES[tile.dataset.letter]||0);if(tile.dataset.new==="true"){const type=LAYOUT[row][col];if(type===3)val*=3;else if(type===4)val*=2;if(type===1)mult*=3;else if(type===2||type===5)mult*=2;}pts+=val;}return pts*mult;}
+        function getCell(r,c){return document.querySelector(`#board-grid .cell[data-r="${r}"][data-c="${c}"]`);}
+        
+        function getWords(g){ let w=[]; for(let i=0;i<15;i++){ let rs="", cs=""; for(let j=0;j<15;j++){ rs+=(g[i]&&g[i][j])?g[i][j].letter:" "; cs+=(g[j]&&g[j][i])?g[j][i].letter:" "; } rs.split(" ").forEach(x=>{if(x.length>1)w.push(x)}); cs.split(" ").forEach(x=>{if(x.length>1)w.push(x)}); } return w; }
+        
+        function notifyTurn(){
+             // Broadcast grid to all
+             const g = getGrid();
+             const names = players.map(p=>p.name);
+             players.forEach((p,i)=>p.conn && p.conn.open && p.conn.send({type:'turn_update', myTurn:(i===turnIndex), activePlayer:players[turnIndex].name, grid: g}));
+             updateHostUI();
+        }
+
         function updateHostUI(){
             document.getElementById('sidebar-list').innerHTML=players.map((p,i)=>`
                 <div class="player-row ${i===turnIndex?'active-turn':''}" data-index="${i}" onclick="showPlayerHistory(${i})">
                     <div class="player-name-display">
                         <span class="status-dot ${p.isOffline?'status-offline':'status-online'}"></span>
                         ${p.name}
-                        ${(p.isOffline || (!p.conn || !p.conn.open)) ? `<button class="btn-resync" onclick="resyncPlayer(${i}); event.stopPropagation();">Sync</button>` : ''}
+                        ${(!isLocalGame && (p.isOffline || (!p.conn || !p.conn.open))) ? `<button class="btn-resync" onclick="resyncPlayer(${i}); event.stopPropagation();">Sync</button>` : ''}
                     </div>
                     <div class="score-box">
                         <div class="total-score">${p.score}</div>
@@ -1563,299 +1024,53 @@
                 </div>`).join('');
             if(players[turnIndex])document.getElementById('turn-indicator').innerText=players[turnIndex].name;
         }
-        
-        function showPlayerHistory(index) {
-            const p = players[index];
-            if(!p) return;
-            const panel = document.getElementById('history-panel');
-            const content = document.getElementById('history-content');
-            panel.classList.add('open');
-            document.getElementById('definition-panel').classList.remove('open'); // close def panel if open
-            
-            if(!p.history || p.history.length === 0) {
-                content.innerHTML = '<div style="padding:10px; color:#95a5a6;">No moves yet.</div>';
-                return;
-            }
-            
-            let html = '<div class="history-list">';
-            // Reverse order to show newest first
-            [...p.history].reverse().forEach(h => {
-                // Encode tiles data to string for onclick handler
-                const tileData = encodeURIComponent(JSON.stringify(h.tiles));
-                html += `
-                    <div class="history-item" onclick="highlightHistoryTurn('${tileData}')">
-                        <div class="hist-top">
-                            <span class="hist-word">${h.mainWord}</span>
-                            <span class="hist-score">+${h.score}</span>
-                        </div>
-                        <div class="hist-meta">Turn ${h.turn}</div>
-                    </div>
-                `;
+
+        // --- MISC ---
+        function assignBlank(l){ if(pendingBlankTile){pendingBlankTile.innerText=l;pendingBlankTile.dataset.letter=l;pendingBlankTile.dataset.isBlank="true";pendingBlankTile.classList.add('is-blank-assigned');pendingBlankTile=null;document.getElementById('blank-overlay').style.display="none";updateScorePill();}}
+        function saveSession(roomCode, name, userId) { let s = JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]'); const idx = s.findIndex(x => x.roomCode === roomCode); if(idx >= 0) s[idx] = { roomCode, name, userId }; else s.push({ roomCode, name, userId }); localStorage.setItem(STORAGE_SESSIONS, JSON.stringify(s)); renderHomeScreen(); }
+        function renderHomeScreen() {
+             const list = document.getElementById('host-sessions-container'); list.innerHTML='';
+             const saved = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
+             Object.keys(saved).forEach(k => { if(k!=='LOCAL') {
+                 const el = document.createElement('div'); el.className='session-item';
+                 el.innerHTML=`<div class="session-info"><span class="session-code">${k}</span></div><div style="display:flex; gap:5px;"><button class="btn-warning btn-sm" onclick="initHost('${k}',true)">Resume</button><button class="btn-danger btn-sm" onclick="deleteHost('${k}')">X</button></div>`;
+                 list.appendChild(el);
+             }});
+             if(Object.keys(saved).length > 0) document.getElementById('host-saved-list').style.display='block';
+        }
+        function deleteHost(k){ const s=JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES)||'{}'); delete s[k]; localStorage.setItem(STORAGE_HOST_SAVES, JSON.stringify(s)); renderHomeScreen(); }
+        function saveHostState(id) { if(id==='LOCAL') return; const s = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}'); s[id] = { players: players.map(p=>({userId:p.userId,name:p.name,score:p.score,tiles:p.tiles,lastPeerID:p.lastPeerID})), bag, turnIndex, isFirstTurn, grid: getGrid() }; localStorage.setItem(STORAGE_HOST_SAVES, JSON.stringify(s)); }
+
+        function recallTiles(){
+            const inbox=document.getElementById('host-inbox');
+            document.querySelectorAll('#board-grid .cell .tile[data-new="true"]').forEach(t=>{ 
+                if(isLocalGame) { document.getElementById('local-rack').appendChild(t); t.removeAttribute('data-new'); if(t.dataset.letter==='_') t.innerHTML=''; }
+                else {
+                    if(!hostInbox.some(x=>x.id===t.dataset.id)) hostInbox.push({id:t.dataset.id, letter:t.dataset.letter, owner:t.dataset.owner}); 
+                    t.remove();
+                }
+            }); 
+            if(!isLocalGame) renderInbox();
+            updateScorePill(); 
+        }
+        function renderInbox() {
+            const inbox = document.getElementById('host-inbox'); inbox.innerHTML = '';
+            hostInbox.forEach(item => {
+                const t = document.createElement('div'); t.className = 'tile'; 
+                t.dataset.letter = item.letter; t.dataset.owner = item.owner; t.dataset.id = item.id; t.dataset.new = "true";
+                if(item.letter === '_') t.innerHTML = ''; else t.innerHTML=`${item.letter}<span class="score">${SCORES[item.letter]}</span>`;
+                t.onpointerdown = onDragStart;
+                inbox.appendChild(t);
             });
-            html += '</div>';
-            content.innerHTML = html;
         }
+        function returnTile(l, oid){ const p = players.find(x => x.userId === oid); if(p) { p.tiles.push(l); if(p.conn && p.conn.open) p.conn.send({type:'return', tile:l}); } saveHostState(currentHostRoomCode); }
+        function getPrimaryWord(newTiles) { return "WORD"; } // Simplified for length
+        function toggleHostMenu(){ document.getElementById('host-side-menu').classList.toggle('open'); document.getElementById('host-menu-overlay').classList.toggle('open'); }
+        function toggleFullscreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else if (document.exitFullscreen) document.exitFullscreen(); }
+        function toggleSound() { soundsEnabled = document.getElementById('toggle-sound').checked; }
         
-        function closeHistory() {
-            document.getElementById('history-panel').classList.remove('open');
-            document.querySelectorAll('.tile.highlight-history').forEach(c => c.classList.remove('highlight-history'));
-        }
-        
-        function highlightHistoryTurn(tileDataStr) {
-            // Remove old highlights
-            document.querySelectorAll('.tile.highlight-history').forEach(c => c.classList.remove('highlight-history'));
-            
-            const tiles = JSON.parse(decodeURIComponent(tileDataStr));
-            tiles.forEach(pos => {
-                const cell = document.querySelector(`.cell[data-r="${pos.r}"][data-c="${pos.c}"]`);
-                if(cell) {
-                    const t = cell.querySelector('.tile');
-                    if (t) t.classList.add('highlight-history');
-                }
-            });
-            
-            // Auto-close panel on mobile for visibility
-            if(window.innerWidth < 800) {
-                document.getElementById('history-panel').classList.remove('open');
-            }
-        }
-
-        function createHostTile(l,owner){
-            const id = generateUUID();
-            hostInbox.push({id:id, letter:l, owner:owner});
-            renderInbox();
-            checkSmartFill();
-        }
-        function renderBoard(){const b=document.getElementById('board-grid');b.innerHTML='';for(let r=0;r<15;r++)for(let c=0;c<15;c++){const d=document.createElement('div');d.className='cell';d.dataset.r=r;d.dataset.c=c;const t=LAYOUT[r][c];if(t===1){d.classList.add('tw');d.innerText='TW'}if(t===2){d.classList.add('dw');d.innerText='DW'}if(t===3){d.classList.add('tl');d.innerText='TL'}if(t===4){d.classList.add('dl');d.innerText='DL'}if(t===5){d.classList.add('star');d.innerHTML='★'}b.appendChild(d);}}
-        
-        function getGrid(){
-            let g = Array(15).fill(null).map(() => Array(15).fill(null));
-            document.querySelectorAll('.cell').forEach(c => {
-                const r = parseInt(c.dataset.r);
-                const col = parseInt(c.dataset.c);
-                const tile = c.querySelector('.tile');
-                if(tile) {
-                    g[r][col] = {
-                        letter: tile.dataset.letter,
-                        id: tile.dataset.id,
-                        owner: tile.dataset.owner,
-                        locked: tile.dataset.locked === "true", // Capture lock state
-                        isBlank: tile.dataset.isBlank === "true" // Capture Blank State
-                    };
-                }
-            });
-            return g;
-        }
-        
-        function getWords(g){
-            let w=[];
-            for(let i=0;i<15;i++){
-                let rowStr="", colStr="";
-                for(let j=0;j<15;j++){
-                    let rVal = (g[i] && g[i][j]) ? g[i][j].letter : " ";
-                    let cVal = (g[j] && g[j][i]) ? g[j][i].letter : " ";
-                    rowStr += rVal;
-                    colStr += cVal;
-                }
-                rowStr.split(" ").forEach(x=>{if(x.length>1)w.push(x)});
-                colStr.split(" ").forEach(x=>{if(x.length>1)w.push(x)});
-            }
-            return w;
-        }
-
-        function isPlacementShapeValid(tiles){
-            if (tiles.length === 0) return false;
-            // 1. Line/Shape Check
-            const coords=tiles.map(t=>({r:parseInt(t.parentElement.dataset.r),c:parseInt(t.parentElement.dataset.c)}));
-            const rows=new Set(coords.map(k=>k.r)),cols=new Set(coords.map(k=>k.c));
-            if(rows.size>1&&cols.size>1)return false;
-            
-            const isH=rows.size===1;
-            if(isH){
-                coords.sort((a,b)=>a.c-b.c);
-                const r=coords[0].r;
-                for(let c=coords[0].c;c<=coords[coords.length-1].c;c++){
-                    if(!document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`).querySelector('.tile'))return false;
-                }
-            }else{
-                coords.sort((a,b)=>a.r-b.r);
-                const c=coords[0].c;
-                for(let r=coords[0].r;r<=coords[coords.length-1].r;r++){
-                    if(!document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`).querySelector('.tile'))return false;
-                }
-            }
-            // 2. Connectivity Check (Must touch at least one EXISTING/LOCKED tile unless first turn)
-            if(!isFirstTurn) {
-                let isConnected = false;
-                const neighbors = [{r:0,c:1},{r:0,c:-1},{r:1,c:0},{r:-1,c:0}];
-                for(let t of tiles) {
-                    const r = parseInt(t.parentElement.dataset.r);
-                    const c = parseInt(t.parentElement.dataset.c);
-                    for(let n of neighbors) {
-                        const cell = document.querySelector(`.cell[data-r="${r+n.r}"][data-c="${c+n.c}"]`);
-                        if(cell) {
-                            const nt = cell.querySelector('.tile');
-                            // If neighbor exists and is NOT new (is locked), we are connected
-                            if(nt && nt.dataset.new !== "true") { isConnected = true; break; }
-                        }
-                    }
-                    if(isConnected) break;
-                }
-                if(!isConnected) return false;
-            }
-            return true;
-        }
-
-        function calculateComplexScore(newTiles){let total=0;const coords=newTiles.map(t=>({r:parseInt(t.parentElement.dataset.r),c:parseInt(t.parentElement.dataset.c)}));const isH=new Set(coords.map(x=>x.r)).size===1;total+=getWordScoreAt(coords[0].r,coords[0].c,isH);coords.forEach(pos=>{const cS=getWordScoreAt(pos.r,pos.c,!isH);if(cS>0)total+=cS;});if(newTiles.length===7)total+=50;return total;}
-        function getWordScoreAt(r,c,isHoriz){let curr=isHoriz?c:r;while(curr>0){const cell=isHoriz?getCell(r,curr-1):getCell(curr-1,c);if(!cell.querySelector('.tile'))break;curr--;}const start=curr;curr=isHoriz?c:r;while(curr<14){const cell=isHoriz?getCell(r,curr+1):getCell(curr+1,c);if(!cell.querySelector('.tile'))break;curr++;}const end=curr;if(start===end)return 0;let pts=0,mult=1;for(let i=start;i<=end;i++){const row=isHoriz?r:i,col=isHoriz?i:c,cell=getCell(row,col),tile=cell.querySelector('.tile');let val=(tile.dataset.isBlank==="true")?0:(SCORES[tile.dataset.letter]||0);if(tile.dataset.new==="true"){const type=LAYOUT[row][col];if(type===3)val*=3;else if(type===4)val*=2;if(type===1)mult*=3;else if(type===2||type===5)mult*=2;}pts+=val;}return pts*mult;}
-        function getCell(r,c){return document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);}
-        function shuffleRack(){const r=document.getElementById('my-rack');Array.from(r.children).sort(()=>Math.random()-0.5).forEach(x=>r.appendChild(x));}
-        function skipTurn(){if(!myTurn)return;if(!confirm("Pass your turn?"))return;conn.send({type:'pass'});}
-
-        // --- DEFINITION & HIGHLIGHT LOGIC ---
-        function handleBoardTileClick(e, tile) {
-            e.stopPropagation();
-            if(tile.dataset.locked !== "true") return;
-
-            const r = parseInt(tile.parentElement.dataset.r);
-            const c = parseInt(tile.parentElement.dataset.c);
-            const grid = getGrid();
-            
-            // Get potential words on both axes
-            const horizTiles = getConnectedWordTiles(grid, r, c, 'h');
-            const vertTiles = getConnectedWordTiles(grid, r, c, 'v');
-            
-            const hasH = horizTiles.length > 1;
-            const hasV = vertTiles.length > 1;
-            
-            if(!hasH && !hasV) return; // Isolated tile (shouldn't happen on valid board but safe check)
-
-            let targetAxis = 'h';
-            
-            // Logic to toggle: 
-            // If clicking the same tile that is already active...
-            if(lastHighlight.id === tile.dataset.id) {
-                // Toggle axis if possible
-                if(lastHighlight.axis === 'h' && hasV) targetAxis = 'v';
-                else if(lastHighlight.axis === 'v' && hasH) targetAxis = 'h';
-                else return; // Can't switch
-            } else {
-                // New tile click: prefer Horizontal, unless only Vertical exists
-                if(!hasH && hasV) targetAxis = 'v';
-            }
-
-            // Update State
-            lastHighlight = { id: tile.dataset.id, axis: targetAxis };
-            
-            // Highlight
-            document.querySelectorAll('.tile.highlight-word').forEach(t => t.classList.remove('highlight-word'));
-            const targetTiles = targetAxis === 'h' ? horizTiles : vertTiles;
-            
-            let word = "";
-            targetTiles.forEach(pos => {
-                const cell = document.querySelector(`.cell[data-r="${pos.r}"][data-c="${pos.c}"]`);
-                const t = cell.querySelector('.tile');
-                if(t) {
-                    t.classList.add('highlight-word');
-                    word += t.dataset.letter;
-                }
-            });
-            
-            showDefinition(word);
-        }
-
-        function getConnectedWordTiles(grid, r, c, axis) {
-            const tiles = [];
-            // Find start
-            let curr = axis==='h' ? c : r;
-            while(curr > 0) {
-                const prev = curr - 1;
-                const cellHasTile = axis==='h' ? (grid[r][prev]) : (grid[prev][c]);
-                if(!cellHasTile) break;
-                curr--;
-            }
-            
-            // Traverse to end
-            while(curr < 15) {
-                const cellHasTile = axis==='h' ? (grid[r][curr]) : (grid[curr][c]);
-                if(!cellHasTile) break;
-                tiles.push({r: axis==='h'?r:curr, c: axis==='h'?curr:c});
-                curr++;
-            }
-            return tiles;
-        }
-
-        function showDefinition(word) {
-            const panel = document.getElementById('definition-panel');
-            const title = document.getElementById('def-title');
-            const body = document.getElementById('def-body');
-            
-            title.innerText = word;
-            body.innerHTML = '<div style="text-align:center; padding:20px; color:#95a5a6;">Fetching definition...</div>';
-            panel.classList.add('open');
-            document.getElementById('history-panel').classList.remove('open'); // close history if open
-            
-            // Close menu if open to avoid overlap
-            document.getElementById('host-side-menu').classList.remove('open');
-            document.getElementById('host-menu-overlay').classList.remove('open');
-            document.getElementById('host-menu-overlay').style.display='none';
-            
-            if(window.innerWidth < 800) {
-                // Just highlight, user sees word
-            }
-
-            fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
-                .then(res => {
-                    if(!res.ok) throw new Error("Not found");
-                    return res.json();
-                })
-                .then(data => {
-                    if(Array.isArray(data) && data.length > 0) {
-                        let html = '';
-                        // Limit to first 2 entries to keep it clean
-                        data.slice(0, 2).forEach(entry => {
-                            entry.meanings.forEach(m => {
-                                html += `<div class="def-entry">
-                                    <div class="def-pos">${m.partOfSpeech}</div>
-                                    ${m.definitions.slice(0, 2).map(d => `<div class="def-text">• ${d.definition}</div>`).join('')}
-                                </div>`;
-                            });
-                        });
-                        body.innerHTML = html;
-                    } else {
-                        body.innerHTML = '<div style="padding:10px; color:#e74c3c;">No definition found.</div>';
-                    }
-                })
-                .catch(e => {
-                    body.innerHTML = '<div style="padding:10px; color:#95a5a6;">Definition not available.</div>';
-                });
-        }
-
-        function closeDefinition() {
-            document.getElementById('definition-panel').classList.remove('open');
-            document.querySelectorAll('.tile.highlight-word').forEach(t => t.classList.remove('highlight-word'));
-            lastHighlight = { id: null, axis: 'h' };
-        }
-
-        // Global click to close definition/history if clicking EMPTY board/background
-        document.body.addEventListener('click', (e) => {
-            const isBoardBg = e.target.classList.contains('scrabble-board') || (e.target.classList.contains('cell') && !e.target.querySelector('.tile'));
-            const isPanel = e.target.closest('#definition-panel') || e.target.closest('#host-side-menu') || e.target.closest('#history-panel');
-            
-            if(isBoardBg && !isPanel) {
-                closeDefinition();
-                closeHistory();
-                // Also close menu
-                const menu = document.getElementById('host-side-menu');
-                const overlay = document.getElementById('host-menu-overlay');
-                if(menu.classList.contains('open')) {
-                    menu.classList.remove('open');
-                    overlay.classList.remove('open');
-                    setTimeout(() => overlay.style.display = 'none', 300);
-                }
-            }
-        });
-
+        // Initial Board Render Call
+        renderTwoLetterWords();
     </script>
 </body>
 </html>
