@@ -49,13 +49,16 @@
         .btn-sm { padding: 8px 15px; font-size: 0.85rem; width: auto; margin: 0; }
         .btn-kick { padding: 4px 8px; font-size: 0.7rem; background: var(--danger); margin-left: 10px; }
         .btn-resync { padding: 4px 8px; font-size: 0.7rem; background: #3498db; margin-left: 5px; color: white; border-radius: 4px; border:none; cursor: pointer; }
+        
+        .close-icon-btn { background: transparent; border: none; font-size: 1.5rem; color: #aaa; cursor: pointer; padding: 0 10px; box-shadow:none; margin:0; }
+        .close-icon-btn:hover { color: white; }
 
         /* MENU DRAWER */
         #host-side-menu { position: fixed; top: 0; left: -320px; width: 300px; height: 100%; background: #222; border-right: 1px solid #444; z-index: 2000; transition: left 0.3s ease; display: flex; flex-direction: column; padding: 20px; box-shadow: 5px 0 30px rgba(0,0,0,0.8); overflow-y: auto; }
         #host-side-menu.open { left: 0; }
         #host-menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1500; display: none; opacity: 0; transition: opacity 0.3s; backdrop-filter: blur(2px); }
         #host-menu-overlay.open { display: block; opacity: 1; }
-        .menu-header { font-size: 1.5rem; font-weight: bold; margin-bottom: 30px; border-bottom: 1px solid #444; padding-bottom: 10px; color: var(--accent); }
+        .menu-header { font-size: 1.5rem; font-weight: bold; margin-bottom: 30px; border-bottom: 1px solid #444; padding-bottom: 10px; color: var(--accent); display:flex; justify-content:space-between; align-items:center; }
         .menu-section { flex-grow: 1; }
         .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 1.1rem; cursor: pointer; padding: 5px; border-radius: 4px; transition: background 0.2s; }
         .toggle-row:hover { background: rgba(255,255,255,0.05); }
@@ -66,6 +69,16 @@
         .stat-item { text-align: center; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 4px; }
         .stat-l { font-weight: bold; color: var(--accent); }
         .stat-v { color: #ccc; font-size: 0.8rem; }
+
+        /* DEFINITION PANEL */
+        #definition-panel { position: fixed; top: 0; left: -350px; width: 320px; height: 100%; background: #2c3e50; border-right: 1px solid #444; z-index: 2500; transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); padding: 25px; box-shadow: 10px 0 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; }
+        #definition-panel.open { left: 0; }
+        .def-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 15px; }
+        .def-word { font-size: 2rem; font-weight: 800; color: var(--accent); text-transform: uppercase; line-height: 1; }
+        .def-content { flex-grow: 1; overflow-y: auto; font-size: 0.95rem; color: #ecf0f1; line-height: 1.5; }
+        .def-entry { margin-bottom: 15px; }
+        .def-pos { font-style: italic; color: #95a5a6; font-size: 0.8rem; margin-bottom: 4px; }
+        .def-text { margin-bottom: 5px; }
 
         /* SESSION LISTS */
         .session-list { margin-top: 10px; width: 320px; max-height: 250px; overflow-y: auto; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid #444; }
@@ -92,12 +105,15 @@
         .star { background: #fab1a0; font-size: 1.5rem; color: #d63031; }
 
         /* TILES */
-        .tile { width: 100%; height: 100%; background: var(--tile-face); border-radius: 3px; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.2); color: #2d3436; display: flex; justify-content: center; align-items: center; font-weight: 700; font-size: 1.3rem; position: relative; cursor: grab; z-index: 20; touch-action: none; }
+        .tile { width: 100%; height: 100%; background: var(--tile-face); border-radius: 3px; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.2); color: #2d3436; display: flex; justify-content: center; align-items: center; font-weight: 700; font-size: 1.3rem; position: relative; cursor: grab; z-index: 20; touch-action: none; transition: transform 0.2s, box-shadow 0.2s; }
         .cell .tile { position: absolute; top:0; left:0; width:100%; height:100%; border-radius: 0; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.1); z-index: 30; }
         .tile[data-new="true"] { background: var(--tile-active); box-shadow: inset 0 -3px 0 #d4a017; color: #000; }
         .tile.is-blank-assigned { color: var(--tile-blank-text); }
         .tile span.score { font-size: 0.55rem; position: absolute; bottom: 2px; right: 2px; font-weight: 600; }
         .tile.dragging { position: fixed; z-index: 99999; width: 55px !important; height: 55px !important; opacity: 0.95; pointer-events: none; box-shadow: 0 15px 30px rgba(0,0,0,0.4); border: 2px solid var(--accent); border-radius: 4px; margin: 0; transform: none; }
+        
+        /* Highlight Effect */
+        .tile.highlight-word { filter: brightness(1.1); box-shadow: inset 0 0 0 3px var(--info) !important; z-index: 40; }
 
         /* HOST UI */
         #score-pill { position: fixed; top: 0; left: 0; background: #2980b9; color: white; padding: 8px 18px; border-radius: 30px; font-weight: 800; font-size: 1.1rem; box-shadow: 0 5px 15px rgba(0,0,0,0.4); pointer-events: none; z-index: 2000; transition: opacity 0.2s; opacity: 0; transform: scale(0.5); border: 2px solid rgba(255,255,255,0.8); white-space: nowrap; }
@@ -161,6 +177,14 @@
             <p style="color:#bdc3c7; margin-bottom:10px; font-size:0.9rem;">Waiting for host...</p>
             <p id="reconnect-msg" style="color:#7f8c8d; font-size:0.8rem;">Do not refresh your page.</p>
         </div>
+    </div>
+
+    <div id="definition-panel">
+        <div class="def-header">
+            <div class="def-word" id="def-title">WORD</div>
+            <button onclick="closeDefinition()" class="close-icon-btn">✕</button>
+        </div>
+        <div class="def-content" id="def-body">Loading...</div>
     </div>
 
     <div id="blank-overlay"><div class="modal"><h3 style="margin-top:0;">Assign Blank Tile</h3><div id="blank-selector"></div></div></div>
@@ -242,7 +266,10 @@
     <div id="screen-host" class="screen">
         <div id="host-menu-overlay" onclick="toggleHostMenu()"></div>
         <div id="host-side-menu">
-            <div class="menu-header">Game Menu</div>
+            <div class="menu-header">
+                <span>Game Menu</span>
+                <button onclick="toggleHostMenu()" class="close-icon-btn">✕</button>
+            </div>
             <div class="menu-section">
                 <label class="toggle-row">
                     <span>Sound Effects</span>
@@ -327,6 +354,7 @@
         let hostInbox = []; // Stores {id, letter, owner}
         let isReconnecting = false;
         let reconnectInterval = null;
+        let lastHighlight = { id: null, axis: 'h' }; // Tracks clicked tile for definitions
         
         // --- STORAGE KEYS ---
         const STORAGE_HOST_SAVES = 'scrabble_host_saves_v2'; // Stores object { 'CODE': stateObj }
@@ -649,6 +677,7 @@
                                 t.onpointerdown = onDragStart;
                             } else {
                                 t.dataset.locked = "true";
+                                t.addEventListener('click', (e) => handleBoardTileClick(e, t));
                             }
 
                             if(data.letter === '_') { t.innerHTML=''; t.dataset.letter='_'; } 
@@ -1259,6 +1288,9 @@
                 t.dataset.locked="true"; 
                 t.style.cursor="default"; 
                 hostInbox = hostInbox.filter(x => x.id !== t.dataset.id);
+                // Bind click listener for definition now that it's locked
+                t.addEventListener('click', (e) => handleBoardTileClick(e, t));
+                t.onpointerdown = null; // Remove drag
             });
 
             // 2. Deal new tiles
@@ -1469,6 +1501,133 @@
         function getCell(r,c){return document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);}
         function shuffleRack(){const r=document.getElementById('my-rack');Array.from(r.children).sort(()=>Math.random()-0.5).forEach(x=>r.appendChild(x));}
         function skipTurn(){if(!myTurn)return;if(!confirm("Pass your turn?"))return;conn.send({type:'pass'});}
+
+        // --- DEFINITION & HIGHLIGHT LOGIC ---
+        function handleBoardTileClick(e, tile) {
+            e.stopPropagation();
+            if(tile.dataset.locked !== "true") return;
+
+            const r = parseInt(tile.parentElement.dataset.r);
+            const c = parseInt(tile.parentElement.dataset.c);
+            const grid = getGrid();
+            
+            // Get potential words on both axes
+            const horizTiles = getConnectedWordTiles(grid, r, c, 'h');
+            const vertTiles = getConnectedWordTiles(grid, r, c, 'v');
+            
+            const hasH = horizTiles.length > 1;
+            const hasV = vertTiles.length > 1;
+            
+            if(!hasH && !hasV) return; // Isolated tile (shouldn't happen on valid board but safe check)
+
+            let targetAxis = 'h';
+            
+            // Logic to toggle: 
+            // If clicking the same tile that is already active...
+            if(lastHighlight.id === tile.dataset.id) {
+                // Toggle axis if possible
+                if(lastHighlight.axis === 'h' && hasV) targetAxis = 'v';
+                else if(lastHighlight.axis === 'v' && hasH) targetAxis = 'h';
+                else return; // Can't switch
+            } else {
+                // New tile click: prefer Horizontal, unless only Vertical exists
+                if(!hasH && hasV) targetAxis = 'v';
+            }
+
+            // Update State
+            lastHighlight = { id: tile.dataset.id, axis: targetAxis };
+            
+            // Highlight
+            document.querySelectorAll('.tile.highlight-word').forEach(t => t.classList.remove('highlight-word'));
+            const targetTiles = targetAxis === 'h' ? horizTiles : vertTiles;
+            
+            let word = "";
+            targetTiles.forEach(pos => {
+                const cell = document.querySelector(`.cell[data-r="${pos.r}"][data-c="${pos.c}"]`);
+                const t = cell.querySelector('.tile');
+                if(t) {
+                    t.classList.add('highlight-word');
+                    word += t.dataset.letter;
+                }
+            });
+            
+            showDefinition(word);
+        }
+
+        function getConnectedWordTiles(grid, r, c, axis) {
+            const tiles = [];
+            // Find start
+            let curr = axis==='h' ? c : r;
+            while(curr > 0) {
+                const prev = curr - 1;
+                const cellHasTile = axis==='h' ? (grid[r][prev]) : (grid[prev][c]);
+                if(!cellHasTile) break;
+                curr--;
+            }
+            
+            // Traverse to end
+            while(curr < 15) {
+                const cellHasTile = axis==='h' ? (grid[r][curr]) : (grid[curr][c]);
+                if(!cellHasTile) break;
+                tiles.push({r: axis==='h'?r:curr, c: axis==='h'?curr:c});
+                curr++;
+            }
+            return tiles;
+        }
+
+        function showDefinition(word) {
+            const panel = document.getElementById('definition-panel');
+            const title = document.getElementById('def-title');
+            const body = document.getElementById('def-body');
+            
+            title.innerText = word;
+            body.innerHTML = '<div style="text-align:center; padding:20px; color:#95a5a6;">Fetching definition...</div>';
+            panel.classList.add('open');
+            
+            // Close menu if open to avoid overlap
+            document.getElementById('host-side-menu').classList.remove('open');
+            document.getElementById('host-menu-overlay').classList.remove('open');
+            document.getElementById('host-menu-overlay').style.display='none';
+
+            fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+                .then(res => {
+                    if(!res.ok) throw new Error("Not found");
+                    return res.json();
+                })
+                .then(data => {
+                    if(Array.isArray(data) && data.length > 0) {
+                        let html = '';
+                        // Limit to first 2 entries to keep it clean
+                        data.slice(0, 2).forEach(entry => {
+                            entry.meanings.forEach(m => {
+                                html += `<div class="def-entry">
+                                    <div class="def-pos">${m.partOfSpeech}</div>
+                                    ${m.definitions.slice(0, 2).map(d => `<div class="def-text">• ${d.definition}</div>`).join('')}
+                                </div>`;
+                            });
+                        });
+                        body.innerHTML = html;
+                    } else {
+                        body.innerHTML = '<div style="padding:10px; color:#e74c3c;">No definition found.</div>';
+                    }
+                })
+                .catch(e => {
+                    body.innerHTML = '<div style="padding:10px; color:#95a5a6;">Definition not available.</div>';
+                });
+        }
+
+        function closeDefinition() {
+            document.getElementById('definition-panel').classList.remove('open');
+            document.querySelectorAll('.tile.highlight-word').forEach(t => t.classList.remove('highlight-word'));
+            lastHighlight = { id: null, axis: 'h' };
+        }
+
+        // Global click to close definition if clicking outside board
+        document.body.addEventListener('click', (e) => {
+            if(!e.target.closest('.scrabble-board') && !e.target.closest('#definition-panel')) {
+                closeDefinition();
+            }
+        });
 
     </script>
 </body>
