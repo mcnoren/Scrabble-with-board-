@@ -125,7 +125,7 @@
         
         /* Highlight Effect */
         .tile.highlight-word { filter: brightness(1.1); box-shadow: inset 0 0 0 3px var(--info) !important; z-index: 40; }
-        .cell.highlight-history { box-shadow: inset 0 0 0 3px #e74c3c !important; z-index: 35; }
+        .tile.highlight-history { box-shadow: inset 0 0 0 3px #e74c3c !important; z-index: 35; }
 
         /* HOST UI */
         #score-pill { position: fixed; top: 0; left: 0; background: #2980b9; color: white; padding: 8px 18px; border-radius: 30px; font-weight: 800; font-size: 1.1rem; box-shadow: 0 5px 15px rgba(0,0,0,0.4); pointer-events: none; z-index: 2000; transition: opacity 0.2s; opacity: 0; transform: scale(0.5); border: 2px solid rgba(255,255,255,0.8); white-space: nowrap; }
@@ -1576,17 +1576,21 @@
         
         function closeHistory() {
             document.getElementById('history-panel').classList.remove('open');
-            document.querySelectorAll('.cell.highlight-history').forEach(c => c.classList.remove('highlight-history'));
+            document.querySelectorAll('.tile.highlight-history').forEach(c => c.classList.remove('highlight-history'));
         }
         
         function highlightHistoryTurn(tileDataStr) {
             // Remove old highlights
-            document.querySelectorAll('.cell.highlight-history').forEach(c => c.classList.remove('highlight-history'));
+            document.querySelectorAll('.tile.highlight-history').forEach(c => c.classList.remove('highlight-history'));
             
             const tiles = JSON.parse(decodeURIComponent(tileDataStr));
             tiles.forEach(pos => {
                 const cell = document.querySelector(`.cell[data-r="${pos.r}"][data-c="${pos.c}"]`);
-                if(cell) cell.classList.add('highlight-history');
+                // Target the tile, not the cell
+                if(cell) {
+                    const t = cell.querySelector('.tile');
+                    if (t) t.classList.add('highlight-history');
+                }
             });
         }
 
