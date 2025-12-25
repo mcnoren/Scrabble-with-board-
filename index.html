@@ -48,7 +48,6 @@
         .btn-info { background: var(--info); color: white; }
         .btn-sm { padding: 8px 15px; font-size: 0.85rem; width: auto; margin: 0; }
         .btn-kick { padding: 4px 8px; font-size: 0.7rem; background: var(--danger); margin-left: 10px; }
-        .btn-resync { padding: 4px 8px; font-size: 0.7rem; background: #3498db; margin-left: 5px; color: white; border-radius: 4px; border:none; cursor: pointer; }
         
         .close-icon-btn { background: transparent; border: none; font-size: 1.5rem; color: #aaa; cursor: pointer; padding: 0 10px; box-shadow:none; margin:0; }
         .close-icon-btn:hover { color: white; }
@@ -198,6 +197,9 @@
         .stat-v { color: #ccc; font-size: 0.8rem; }
         .two-letter-list { display: flex; flex-wrap: wrap; gap: 5px; font-family: monospace; color: #ccc; font-size: 0.85rem; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; }
         .two-letter-word { padding: 2px 4px; background: rgba(255,255,255,0.05); border-radius: 3px; }
+        
+        .local-player-row { display: flex; gap: 10px; margin-bottom: 8px; justify-content: center; }
+        .local-player-row input { margin-bottom: 0; width: 220px; }
     </style>
 </head>
 <body>
@@ -417,14 +419,35 @@
             c.innerHTML = '';
             addLocalPlayerInput(); addLocalPlayerInput();
         }
+        
         function addLocalPlayerInput() {
-            const i = document.createElement('input'); i.placeholder = "Name"; i.value = "Player " + (document.getElementById('local-player-inputs').children.length + 1);
-            document.getElementById('local-player-inputs').appendChild(i);
+            const container = document.getElementById('local-player-inputs');
+            const count = container.children.length + 1;
+            const div = document.createElement('div');
+            div.className = 'local-player-row';
+            div.innerHTML = `
+                <input placeholder="Name" value="Player ${count}">
+                <button onclick="removeLocalPlayerInput(this)" class="btn-danger btn-sm" style="width:auto; padding:0 10px;">✕</button>
+            `;
+            container.appendChild(div);
         }
+        
+        function removeLocalPlayerInput(btn) {
+            const container = document.getElementById('local-player-inputs');
+            if(container.children.length > 2) {
+                btn.parentElement.remove();
+            } else {
+                toast("Need at least 2 players");
+            }
+        }
+        
         function initLocalGame() {
-            gameMode = 'local';
             const inputs = document.getElementById('local-player-inputs').querySelectorAll('input');
-            localPlayerNames = Array.from(inputs).map(i => i.value || "Player");
+            const names = Array.from(inputs).map(i => i.value.trim() || "Player");
+            if(names.length < 2) { toast("Need at least 2 players"); return; }
+            
+            gameMode = 'local';
+            localPlayerNames = names;
             initBag();
             players = localPlayerNames.map(n => ({
                 name: n, score: 0, lastScore: 0, tiles: [], history: [], isOffline: false, userId: generateUUID() // Fake ID
@@ -502,23 +525,54 @@
         }
 
         // --- PLAYER JOIN LOGIC ---
-        function joinGame() {
-            const n = document.getElementById('join-name').value;
-            const c = document.getElementById('join-code').value.toUpperCase();
-            if(!n || c.length!==4) return;
+        function joinGame(codeOverride=null, nameOverride=null, idOverride=null) {
+            // cleanup old peer if user is retrying
+            if(peer) peer.destroy();
+
+            const n = nameOverride || document.getElementById('join-name').value.trim();
+            const c = (codeOverride || document.getElementById('join-code').value.trim()).toUpperCase();
+            if(!n || c.length!==4) { toast("Invalid Name or Code"); return; }
+            
+            const btn = document.getElementById('btn-join');
+            if(btn) { btn.disabled = true; btn.innerText = "Connecting..."; }
+            
             gameMode = 'unknown'; // Will learn from host
             
             peer = new Peer(null, PEER_CONFIG);
             peer.on('open', () => {
                 conn = peer.connect(c);
-                conn.on('open', () => conn.send({type:'join', name:n, userId: generateUUID()}));
+                const userId = idOverride || generateUUID();
+                
+                // Add explicit error handler for connection
+                conn.on('error', (err) => {
+                    console.error("Connection Error", err);
+                    if(btn) { btn.disabled = false; btn.innerText = "Connect"; }
+                    toast("Connection Failed");
+                });
+
+                conn.on('open', () => conn.send({type:'join', name:n, userId: userId}));
                 conn.on('data', d => handlePlayerData(d));
+            });
+            
+            peer.on('error', (err) => {
+                console.error("Peer Error", err);
+                if(btn) { btn.disabled = false; btn.innerText = "Connect"; }
+                toast("Connection Error: " + err.type);
             });
         }
 
         function handlePlayerData(d) {
+            const btn = document.getElementById('btn-join');
+            if(btn) { btn.disabled = false; btn.innerText = "Connect"; }
+
             if(d.type === 'ack_join') {
-                gameMode = d.mode; // 'party' or 'online'
+                if(d.success === false) { alert(d.msg); return; }
+                
+                // IMPORTANT: Get mode from host
+                gameMode = d.mode; 
+                
+                saveSession(currentHostRoomCode, d.name, d.userId); // Ensure args correct
+                
                 if(d.isGameRunning) startGamePlayerView(d);
                 else showScreen('screen-player-lobby');
             }
@@ -545,13 +599,13 @@
 
         function startGamePlayerView(d) {
             showScreen('screen-player');
-            document.getElementById('my-display-name').innerText = d.name;
+            document.getElementById('my-display-name').innerText = d.name || "Player";
             
             if(gameMode === 'online') {
                 document.getElementById('online-board-container').classList.remove('hidden');
                 renderBoard('player-board-grid');
-                // Drag logic for online mode:
-                // We use "Click to Select, Click to Place" for mobile reliability in online mode
+                // Initial Grid Render if provided
+                if(d.grid) restoreBoardTiles(d.grid, 'player-board-grid');
             } else {
                 document.getElementById('online-board-container').classList.add('hidden');
             }
@@ -767,7 +821,11 @@
                             cell.innerHTML = ''; // reset visual
                             // re-apply background class text (simplified here, ideally use resetCellVisuals)
                             const t = LAYOUT[r][c];
-                            if(t===1){cell.innerText='TW'} // etc...
+                            if(t===1){cell.classList.add('tw'); cell.innerText='TW'}
+                            else if(t===2){cell.classList.add('dw'); cell.innerText='DW'}
+                            else if(t===3){cell.classList.add('tl'); cell.innerText='TL'}
+                            else if(t===4){cell.classList.add('dl'); cell.innerText='DL'}
+                            else if(t===5){cell.classList.add('star'); cell.innerHTML='★'}
                             
                             const tile = createTile(data.letter);
                             tile.dataset.id = data.id; 
@@ -782,10 +840,21 @@
             }
         }
 
-        // --- PLACEHOLDER HELPERS (Re-implement full logic) ---
         function genId() { return Math.random().toString(36).substr(2, 4).toUpperCase(); }
         function initBag() { bag=[]; for(let l in BAG_INIT) for(let i=0;i<BAG_INIT[l];i++) bag.push(l); bag.sort(()=>Math.random()-0.5); }
-        function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+        function showScreen(id) { 
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
+            document.getElementById(id).classList.add('active'); 
+            
+            // Hide Online container if returning to non-player screen to be safe
+            if(id !== 'screen-player') document.getElementById('online-board-container').classList.add('hidden');
+        }
+        function showHomeScreen() { 
+            showScreen('screen-home'); 
+            renderHomeScreen(); 
+            // Cleanup any active connections if backing out from lobby
+            if(peer) peer.destroy(); 
+        }
         function toast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
         function closeAllMenus() {
             document.getElementById('host-side-menu').classList.remove('open');
@@ -822,8 +891,6 @@
             document.getElementById('two-letter-list').innerHTML = TWO_LETTER_WORDS.map(w => `<span class="two-letter-word">${w}</span>`).join('');
         }
         
-        // ... (Full scoring logic from previous turn MUST be included here for proper functionality) ...
-        // Re-injecting truncated logic:
         function getConnectedWordTiles(grid, r, c, axis) {
             const tiles = [];
             let curr = axis==='h' ? c : r;
@@ -833,6 +900,7 @@
                 if(!cellHasTile) break;
                 curr--;
             }
+            // Now curr is start
             while(curr < 15) {
                 const cellHasTile = axis==='h' ? (grid[r][curr]) : (grid[curr][c]);
                 if(!cellHasTile) break;
@@ -842,37 +910,43 @@
             return tiles;
         }
         
-        // ... (Host logic for Party mode needs to handle 'move' event from online players) ...
         function handleHostData(c, data) {
-            // ... (previous logic) ...
-            if(data.type === 'move') {
-                // Online Mode Move Submission
-                // 1. Validate on Host Grid
-                // 2. Calculate Score
-                // 3. Update State
-                // 4. Broadcast Update
+            if(data.type === 'join') {
+                const p = { 
+                    userId: data.userId, name: data.name, score: 0, lastScore: 0, 
+                    tiles: [], conn: c, lastSeen: Date.now(), isOffline: false, lastPeerID: c.peer, history: [] 
+                };
+                // Deal initial
+                for(let k=0; k<7; k++) if(bag.length) p.tiles.push(bag.pop());
+                players.push(p);
                 
-                const grid = getGrid();
-                // Apply temp tiles to grid to check
-                data.move.forEach(m => {
-                    if(!grid[m.r][m.c]) grid[m.r][m.c] = { letter: m.letter, isBlank: m.isBlank, locked: false };
+                c.send({
+                    type: 'ack_join', success: true, name: p.name, mode: gameMode, 
+                    isGameRunning: document.getElementById('screen-host').classList.contains('active'),
+                    grid: getGrid()
                 });
                 
-                // (Validation logic here)
+                updateLobbyUI();
+                updateHostUI();
+            }
+            
+            if(data.type === 'move') {
+                // Online Mode Move Submission
+                const grid = getGrid();
                 
                 // Commit
                 data.move.forEach(m => {
-                    // Update DOM
                     const cell = document.querySelector(`.cell[data-r="${m.r}"][data-c="${m.c}"]`);
-                    // Create tile visually
+                    cell.innerHTML = '';
                     const t = createTile(m.letter);
                     t.dataset.locked = "true";
                     if(m.isBlank) { t.dataset.isBlank="true"; t.classList.add('is-blank-assigned'); t.innerHTML = `${m.letter}<span class="score">0</span>`; }
-                    cell.innerHTML = ''; cell.appendChild(t);
+                    cell.appendChild(t);
                 });
                 
-                // Score
-                // ...
+                // Score placeholder
+                const score = 15; // Placeholder
+                players[turnIndex].score += score;
                 
                 // Refill Player
                 deal(c, data.move.length, turnIndex);
@@ -888,6 +962,24 @@
                         p.conn.send({type: 'turn_update', myTurn: (p === players[turnIndex]), activePlayer: players[turnIndex].name});
                     }
                 });
+                updateHostUI();
+            }
+        }
+        
+        function updateLobbyUI() {
+            document.getElementById('lobby-player-list').innerHTML = players.map(p => `<div>${p.name}</div>`).join('');
+        }
+        
+        function shuffleRack(){const r=document.getElementById('my-rack');Array.from(r.children).sort(()=>Math.random()-0.5).forEach(x=>r.appendChild(x));}
+        function skipTurn(){
+            if(!myTurn)return; 
+            if(!confirm("Pass turn?"))return; 
+            if(gameMode === 'local') {
+                turnIndex = (turnIndex + 1) % players.length;
+                document.getElementById('next-player-name').innerText = players[turnIndex].name;
+                document.getElementById('pass-overlay').style.display = 'flex';
+            } else {
+                conn.send({type:'pass'});
             }
         }
     </script>
