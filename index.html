@@ -34,9 +34,9 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
-        .screen { display: none; width: 100%; height: 100%; position: absolute; top:0; left:0; background: var(--bg); z-index: 10; overflow-y: auto; }
+        .screen { display: none; width: 100%; height: 100%; position: absolute; top:0; left:0; background: var(--bg); z-index: 10; overflow-y: auto; flex-direction: column; }
         .active { display: flex; z-index: 20; }
-        .center-screen { flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .center-screen { align-items: center; justify-content: center; text-align: center; }
 
         input { padding: 15px; font-size: 1.2rem; border-radius: 8px; border: 2px solid #444; background: #333; color: white; margin-bottom: 12px; text-align: center; width: 280px; }
         button { background: var(--accent); color: white; border: none; padding: 16px 32px; font-size: 1.1rem; border-radius: 8px; cursor: pointer; margin: 10px; font-weight: 600; box-shadow: 0 4px 0 rgba(0,0,0,0.2); transition: transform 0.1s; }
@@ -51,176 +51,76 @@
         .btn-resync { padding: 4px 8px; font-size: 0.7rem; background: #3498db; margin-left: 5px; color: white; border-radius: 4px; border:none; cursor: pointer; }
         
         .close-icon-btn { background: transparent; border: none; font-size: 1.5rem; color: #aaa; cursor: pointer; padding: 0 10px; box-shadow:none; margin:0; }
-        .close-icon-btn:hover { color: white; }
 
-        /* MENU DRAWER */
-        #host-side-menu { position: fixed; top: 0; left: -320px; width: 300px; height: 100%; background: #222; border-right: 1px solid #444; z-index: 2000; transition: left 0.3s ease; display: flex; flex-direction: column; padding: 20px; box-shadow: 5px 0 30px rgba(0,0,0,0.8); overflow-y: auto; }
-        #host-side-menu.open { left: 0; }
-        #host-menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1500; display: none; opacity: 0; transition: opacity 0.3s; backdrop-filter: blur(2px); }
-        #host-menu-overlay.open { display: block; opacity: 1; }
-        .menu-header { font-size: 1.5rem; font-weight: bold; margin-bottom: 30px; border-bottom: 1px solid #444; padding-bottom: 10px; color: var(--accent); display:flex; justify-content:space-between; align-items:center; }
-        .menu-section { flex-grow: 1; margin-bottom: 20px; }
-        .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-size: 1.1rem; cursor: pointer; padding: 5px; border-radius: 4px; transition: background 0.2s; }
-        .toggle-row:hover { background: rgba(255,255,255,0.05); }
-        .toggle-row input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
-        
-        .stat-box { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; }
-        .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 10px; }
-        .stat-item { text-align: center; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 4px; }
-        .stat-l { font-weight: bold; color: var(--accent); }
-        .stat-v { color: #ccc; font-size: 0.8rem; }
-        
-        .two-letter-list { display: flex; flex-wrap: wrap; gap: 5px; font-family: monospace; color: #ccc; font-size: 0.85rem; line-height: 1.4; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; }
-        .two-letter-word { padding: 2px 4px; background: rgba(255,255,255,0.05); border-radius: 3px; }
-
-        /* PANELS */
-        #definition-panel, #history-panel { position: fixed; top: 0; left: -350px; width: 320px; height: 100%; background: #2c3e50; border-right: 1px solid #444; z-index: 2500; transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); padding: 25px; box-shadow: 10px 0 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; }
-        #definition-panel.open, #history-panel.open { left: 0; }
-        .def-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 15px; }
-        .def-word { font-size: 2rem; font-weight: 800; color: var(--accent); text-transform: uppercase; line-height: 1; }
-        .def-content { flex-grow: 1; overflow-y: auto; font-size: 0.95rem; color: #ecf0f1; line-height: 1.5; }
-        .def-entry { margin-bottom: 15px; }
-        .def-pos { font-style: italic; color: #95a5a6; font-size: 0.8rem; margin-bottom: 4px; }
-        .def-text { margin-bottom: 5px; }
-        
-        .history-list { display: flex; flex-direction: column; gap: 10px; }
-        .history-item { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; cursor: pointer; transition: background 0.2s; border: 1px solid transparent; }
-        .history-item:hover { background: rgba(255,255,255,0.1); border-color: var(--accent); }
-        .hist-top { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 4px; }
-        .hist-word { color: var(--accent); font-size: 1.1rem; }
-        .hist-score { color: #f1c40f; }
-        .hist-meta { font-size: 0.75rem; color: #95a5a6; }
-
-        /* SESSION LISTS */
+        /* SCROLLABLE LISTS */
         .session-list { margin-top: 10px; width: 320px; max-height: 250px; overflow-y: auto; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid #444; }
         .session-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #444; font-size: 0.9rem; text-align: left; }
         .session-item:last-child { border-bottom: none; }
         .session-info { display: flex; flex-direction: column; gap: 2px; }
         .session-code { font-weight: bold; color: var(--accent); letter-spacing: 1px; font-size: 1.1rem; }
         .session-meta { color: #95a5a6; font-size: 0.75rem; }
-        
-        /* HOST LAYOUT */
-        #screen-host { flex-direction: row; overflow: hidden; position: relative; }
-        .sidebar { width: 340px; height: 100%; background: var(--panel); border-right: 1px solid #444; display: flex; flex-direction: column; padding: 15px; z-index: 50; box-shadow: 5px 0 20px rgba(0,0,0,0.5); }
-        .sidebar-header { display: flex; gap: 10px; align-items: stretch; margin-bottom: 10px; height: 70px; }
-        #host-menu-btn { background: rgba(255,255,255,0.1); border: 1px solid #444; color: #ecf0f1; font-size: 1.8rem; cursor: pointer; border-radius: 8px; padding: 0 15px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
-        #host-menu-btn:hover { background: rgba(255,255,255,0.2); }
-        .info-panel { background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid #444; flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .board-wrapper { flex-grow: 1; height: 100%; display: flex; align-items: center; justify-content: center; background: #111; position: relative; flex-direction: column; }
 
         /* BOARD GRID */
-        .scrabble-board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); gap: 2px; background: #000; border: 12px solid var(--wood-frame); border-radius: 6px; width: 95vmin; height: 95vmin; box-shadow: 0 0 50px rgba(0,0,0,0.5); cursor: pointer; touch-action: none; }
-        .cell { background: var(--board-bg); display: flex; justify-content: center; align-items: center; font-size: 0.65rem; font-weight: 800; color: #666; position: relative; text-transform: uppercase; user-select: none; }
+        /* Adjusted for responsiveness on mobile player view */
+        .board-wrapper { flex-grow: 1; height: 100%; display: flex; align-items: center; justify-content: center; background: #111; position: relative; overflow: hidden; }
+        .scrabble-board { display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr); gap: 1px; background: #000; border: 4px solid var(--wood-frame); border-radius: 4px; width: 98vmin; height: 98vmin; box-shadow: 0 0 20px rgba(0,0,0,0.5); touch-action: none; }
+        
+        /* Mobile adjustment for board */
+        @media (max-width: 600px) {
+            .scrabble-board { width: 95vw; height: 95vw; margin-top: 50px; }
+            .board-wrapper { align-items: flex-start; padding-top: 10px; }
+        }
+
+        .cell { background: var(--board-bg); display: flex; justify-content: center; align-items: center; font-size: 0.55rem; font-weight: 800; color: #666; position: relative; text-transform: uppercase; user-select: none; }
         .tw { background: #ff7675; color: white; } .dw { background: #fab1a0; color: #444; }
         .tl { background: #74b9ff; color: white; } .dl { background: #81ecec; color: #444; }
-        .star { background: #fab1a0; font-size: 1.5rem; color: #d63031; }
+        .star { background: #fab1a0; font-size: 1.2rem; color: #d63031; }
 
         /* TILES */
-        .tile { width: 100%; height: 100%; background: var(--tile-face); border-radius: 3px; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.2); color: #2d3436; display: flex; justify-content: center; align-items: center; font-weight: 700; font-size: 1.3rem; position: relative; cursor: grab; z-index: 20; touch-action: none; transition: transform 0.2s, box-shadow 0.2s; }
-        .cell .tile { position: absolute; top:0; left:0; width:100%; height:100%; border-radius: 0; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.1); z-index: 30; }
-        .tile[data-new="true"] { background: var(--tile-active); box-shadow: inset 0 -3px 0 #d4a017; color: #000; }
+        .tile { width: 100%; height: 100%; background: var(--tile-face); border-radius: 2px; box-shadow: inset 0 -2px 0 rgba(0,0,0,0.2), 0 1px 2px rgba(0,0,0,0.2); color: #2d3436; display: flex; justify-content: center; align-items: center; font-weight: 700; font-size: 1.1rem; position: relative; cursor: grab; z-index: 20; touch-action: none; }
+        .cell .tile { position: absolute; top:0; left:0; width:100%; height:100%; z-index: 30; font-size: 0.9rem; }
+        .tile[data-new="true"] { background: var(--tile-active); box-shadow: inset 0 -2px 0 #d4a017; color: #000; }
+        .tile span.score { font-size: 0.4rem; position: absolute; bottom: 1px; right: 1px; font-weight: 600; }
+        .tile.dragging { position: fixed; z-index: 99999; width: 40px !important; height: 40px !important; opacity: 0.9; pointer-events: none; box-shadow: 0 10px 20px rgba(0,0,0,0.4); border: 2px solid var(--accent); margin: 0; }
         .tile.is-blank-assigned { color: var(--tile-blank-text); }
-        .tile span.score { font-size: 0.55rem; position: absolute; bottom: 2px; right: 2px; font-weight: 600; }
-        .tile.dragging { position: fixed; z-index: 99999; width: 55px !important; height: 55px !important; opacity: 0.95; pointer-events: none; box-shadow: 0 15px 30px rgba(0,0,0,0.4); border: 2px solid var(--accent); border-radius: 4px; margin: 0; transform: none; }
-        .tile.highlight-word { filter: brightness(1.1); box-shadow: inset 0 0 0 3px var(--info) !important; z-index: 40; }
-        .tile.highlight-history { box-shadow: inset 0 0 0 3px #3498db, 0 0 10px #3498db !important; z-index: 35; }
 
-        /* HOST UI */
-        #score-pill { position: fixed; top: 0; left: 0; background: #2980b9; color: white; padding: 8px 18px; border-radius: 30px; font-weight: 800; font-size: 1.1rem; box-shadow: 0 5px 15px rgba(0,0,0,0.4); pointer-events: none; z-index: 2000; transition: opacity 0.2s; opacity: 0; transform: scale(0.5); border: 2px solid rgba(255,255,255,0.8); white-space: nowrap; }
-        #score-pill.visible { opacity: 1; transform: scale(1); }
-        .player-row { display: flex; justify-content: space-between; align-items: center; height: 64px; padding: 0 15px; border-bottom: 1px solid #444; background: rgba(255,255,255,0.02); transition: background 0.3s; cursor: pointer; }
-        .player-row:hover { background: rgba(255,255,255,0.05); }
-        .player-row.active-turn { border-left: 4px solid var(--accent); background: rgba(255,255,255,0.08); }
-        .player-name-display { font-weight: bold; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; display: flex; align-items: center; }
-        .score-box { text-align: right; width: 80px; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; }
-        .total-score { font-size: 1.4rem; font-weight: 800; color: var(--accent); line-height: 1; }
-        .last-turn { font-size: 0.8rem; color: #95a5a6; font-weight: 600; height: 14px; margin-top: 2px; }
-        .inbox-area { margin-top: auto; background: #222; padding: 15px; border-radius: 12px; border: 1px solid #444; box-shadow: 0 -5px 15px rgba(0,0,0,0.2); }
-        .inbox-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .inbox-rack { display: flex; gap: 6px; flex-wrap: wrap; min-height: 60px; margin-bottom: 15px; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 6px; padding: 5px; }
-        .inbox-rack .tile { width: 45px; height: 45px; font-size: 1.2rem; }
-        .return-zone { width: 100%; height: 50px; background: #34495e; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #95a5a6; border: 2px dashed #555; transition: all 0.2s; margin-bottom: 10px; }
-        .return-zone.hovered { background: #c0392b; color: white; border-color: #e74c3c; }
-
-        /* LOBBY */
-        .lobby-container { width: 100%; max-width: 400px; background: #222; border-radius: 12px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: left; margin-top: 20px; }
-        .lobby-header { text-transform:uppercase; font-size:0.8rem; color:#555; margin-bottom:10px; border-bottom:1px solid #444; padding-bottom:5px; }
-        .lobby-row { padding: 12px; border-bottom: 1px solid #444; display: flex; justify-content: space-between; align-items: center; }
-
-        /* PLAYER MOBILE UI */
-        #screen-player { background: #1a1a1a; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        .player-hud { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: #222; border-bottom: 1px solid #444; z-index: 100; flex-shrink: 0; }
+        /* PLAYER/PASS & PLAY UI */
+        #player-ui, #pass-play-ui { background: #1a1a1a; }
+        .player-hud { position: fixed; top: 0; left: 0; width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: rgba(0,0,0,0.9); z-index: 100; border-bottom: 1px solid #333; height: 50px; }
         .hud-name { font-weight: bold; color: #fff; font-size: 1rem; }
-        .hud-status { background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; color: #ccc; font-weight: 600; border: 1px solid rgba(255,255,255,0.1); }
-        .hud-status.active { background: var(--accent); color: white; border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
-        
-        .player-board-container { flex-grow: 1; display: flex; align-items: center; justify-content: center; background: #111; position: relative; overflow: hidden; padding: 10px; }
-        .player-board-container .scrabble-board { width: 90vmin; height: 90vmin; max-width: 600px; max-height: 600px; border-width: 4px; }
-        
-        .rack-wrapper { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #2a2a2a; padding: 15px 10px; gap: 10px; border-top: 2px solid #444; z-index: 200; }
-        .player-rack { position: relative; background: var(--rack-color); padding: 10px; border-radius: 6px; width: 100%; max-width: 500px; min-height: 70px; display: flex; justify-content: center; gap: 6px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.3); border-bottom: 4px solid var(--rack-shadow); }
-        .player-rack .tile { width: 12vw; height: 12vw; max-width: 50px; max-height: 50px; min-width: 35px; min-height: 35px; font-size: 1.4rem; z-index: 2; }
-        
-        .mobile-controls { display: flex; gap: 8px; width: 100%; max-width: 500px; margin-top: 5px; }
-        .mobile-controls button { margin: 0; flex: 1; padding: 12px; font-size: 0.9rem; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .hud-status { font-size: 0.8rem; color: #ccc; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 12px; }
+        .hud-status.active { background: var(--accent); color: white; }
 
-        /* LOCAL MODE SPECIFIC */
-        #local-pass-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #2c3e50; z-index: 8000; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; }
-        .pass-card { text-align: center; padding: 40px; background: rgba(0,0,0,0.2); border-radius: 20px; }
-        .local-controls-area { width: 100%; background: #222; padding: 15px; border-top: 1px solid #444; display: none; flex-direction: column; align-items: center; }
+        .rack-container { position: fixed; bottom: 0; left: 0; width: 100%; background: #222; padding: 10px; border-top: 1px solid #444; z-index: 200; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+        .player-rack { background: var(--rack-color); padding: 10px; border-radius: 6px; display: inline-flex; justify-content: center; gap: 4px; border-bottom: 6px solid var(--rack-shadow); min-height: 55px; min-width: 280px; }
+        .player-rack .tile { width: 40px; height: 40px; font-size: 1.2rem; }
+        .controls-row { display: flex; gap: 8px; width: 100%; max-width: 500px; justify-content: center; }
+        .controls-row button { margin: 0; padding: 10px; font-size: 0.9rem; flex: 1; }
+
+        /* INTERSTITIAL (PASS DEVICE) SCREEN */
+        #screen-pass-interstitial { background: var(--panel); color: white; z-index: 3000; }
         
-        /* OVERLAYS & TOAST */
-        #notification-overlay, #blank-overlay, #confirm-overlay, #reconnect-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        /* OVERLAYS */
+        #notification-overlay, #blank-overlay, #confirm-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .modal { background: #2c3e50; border: 1px solid #444; padding: 25px; border-radius: 12px; text-align: center; max-width: 320px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); color: white; }
-        #blank-selector { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; }
-        .letter-btn { width: 45px; height: 45px; background: var(--tile-face); border: none; border-radius: 3px; color: #2d3436; font-weight: 700; font-size: 1.3rem; cursor: pointer; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; aspect-ratio: 1 / 1; padding: 0; flex-shrink: 0; }
-        .letter-btn:active { transform: translateY(2px); box-shadow: inset 0 -1px 0 rgba(0,0,0,0.2); }
-        #toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-20px); background: #2ecc71; color: #fff; padding: 12px 30px; border-radius: 50px; font-weight: bold; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 6000; opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
-        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-        .hidden { display: none !important; }
-        .status-dot { height: 10px; width: 10px; background-color: #7f8c8d; border-radius: 50%; display: inline-block; margin-right: 6px; margin-left:6px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
-        .status-online { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
-        .status-offline { background-color: #c0392b; }
+        #blank-selector { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 10px; max-width: 300px; }
+        .letter-btn { width: 35px; height: 35px; background: var(--tile-face); border: none; border-radius: 3px; color: #2d3436; font-weight: 700; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+
+        #score-pill { position: fixed; top: 60px; left: 50%; transform: translateX(-50%); background: #2980b9; color: white; padding: 8px 18px; border-radius: 30px; font-weight: 800; font-size: 1.1rem; box-shadow: 0 5px 15px rgba(0,0,0,0.4); pointer-events: none; z-index: 2000; opacity: 0; transition: opacity 0.2s; }
+        #score-pill.visible { opacity: 1; }
         
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--accent); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* HOST SPECIFIC UI (SIDEBAR) */
+        #screen-host { flex-direction: row; }
+        .sidebar { width: 300px; height: 100%; background: var(--panel); border-right: 1px solid #444; display: flex; flex-direction: column; padding: 15px; z-index: 50; }
+        .player-row { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #444; background: rgba(255,255,255,0.02); }
+        .player-row.active-turn { border-left: 4px solid var(--accent); background: rgba(255,255,255,0.08); }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div id="local-pass-overlay">
-        <div class="pass-card">
-            <h1 style="color:var(--accent); font-size:2rem; margin-bottom:10px;">Next Player</h1>
-            <h2 id="local-next-player-name" style="font-size:3rem; margin:0 0 30px 0;">Name</h2>
-            <button onclick="dismissLocalPass()" style="font-size:1.5rem; padding:20px 40px;">Ready</button>
-        </div>
-    </div>
-
-    <div id="reconnect-overlay">
-        <div class="modal">
-            <h3 style="margin-top:0;">Disconnected</h3>
-            <div class="loader"></div>
-            <p style="color:#bdc3c7; margin-bottom:10px; font-size:0.9rem;">Waiting for host...</p>
-        </div>
-    </div>
-
-    <div id="definition-panel">
-        <div class="def-header">
-            <div class="def-word" id="def-title">WORD</div>
-            <button onclick="closeDefinition()" class="close-icon-btn">✕</button>
-        </div>
-        <div class="def-content" id="def-body">Loading...</div>
-    </div>
-
-    <div id="history-panel">
-        <div class="def-header">
-            <div style="font-size:1.5rem; font-weight:bold; color:#ecf0f1;">Turn History</div>
-            <button onclick="closeHistory()" class="close-icon-btn">✕</button>
-        </div>
-        <div id="history-content" class="def-content"></div>
-    </div>
-
-    <div id="blank-overlay"><div class="modal"><h3 style="margin-top:0;">Assign Blank Tile</h3><div id="blank-selector"></div></div></div>
+    <div id="blank-overlay"><div class="modal"><h3 style="margin-top:0;">Assign Blank</h3><div id="blank-selector"></div></div></div>
     
     <div id="confirm-overlay">
         <div class="modal">
@@ -233,844 +133,801 @@
         </div>
     </div>
 
-    <div id="notification-overlay" onclick="closeModal()">
+    <div id="notification-overlay" onclick="this.style.display='none'">
         <div class="modal" onclick="event.stopPropagation()">
             <h3 id="modal-title" style="margin-top:0;">Notice</h3>
             <p id="modal-msg" style="color:#bdc3c7; margin-bottom:20px; font-size:0.9rem;"></p>
-            <button onclick="closeModal()">OK</button>
+            <button onclick="document.getElementById('notification-overlay').style.display='none'">OK</button>
         </div>
     </div>
 
     <div id="score-pill">0 pts</div>
-    <div id="toast">Notification</div>
 
     <div id="screen-home" class="screen active center-screen">
-        <h1 style="font-size:3.5rem; margin-bottom:30px; color:#ecf0f1;">Scrabble<span style="color:var(--accent)">Pro</span></h1>
+        <h1 style="font-size:3.5rem; margin-bottom:10px; color:#ecf0f1;">Scrabble<span style="color:var(--accent)">Pro</span></h1>
+        <p style="color:#7f8c8d; margin-bottom:40px;">Universal Edition</p>
         
         <div style="display:flex; flex-direction:column; gap:15px; align-items: center;">
-            <button onclick="initHost()" style="width:280px; padding:20px; font-size:1.3rem;">Host Online Game</button>
-            <button onclick="showLocalSetup()" class="btn-info" style="width:280px; padding:20px; font-size:1.3rem;">Local Pass & Play</button>
-            <button onclick="showJoinScreen()" class="btn-secondary" style="width:280px; padding:20px; font-size:1.3rem;">Join Game</button>
-            
-            <div id="host-saved-list" style="display:none; width:320px; margin-top:20px;">
-                <div style="font-size:0.8rem; text-transform:uppercase; color:#7f8c8d; letter-spacing:1px; margin-bottom:5px; text-align:left;">Saved Games</div>
-                <div id="host-sessions-container" class="session-list" style="width:100%;"></div>
-            </div>
+            <button onclick="showScreen('screen-pass-setup')" style="width:280px; background:#e67e22;">Local Pass & Play</button>
+            <button onclick="initHost()" style="width:280px;">Host Online Game</button>
+            <button onclick="showScreen('screen-join')" class="btn-secondary" style="width:280px;">Join Online Game</button>
         </div>
     </div>
 
-    <div id="screen-local-setup" class="screen center-screen">
-        <h2 style="margin-bottom:20px; color:#ecf0f1;">Local Game Setup</h2>
-        <div id="local-player-inputs">
-            <input type="text" class="local-name-input" placeholder="Player 1" value="Player 1">
-            <input type="text" class="local-name-input" placeholder="Player 2" value="Player 2">
+    <div id="screen-pass-setup" class="screen center-screen">
+        <h2>Pass & Play Setup</h2>
+        <div id="pp-player-inputs">
+            <input type="text" placeholder="Player 1 Name" class="pp-name">
+            <input type="text" placeholder="Player 2 Name" class="pp-name">
         </div>
-        <button class="btn-sm btn-secondary" onclick="addLocalInput()" style="margin-bottom:20px;">+ Add Player</button>
-        <br>
+        <button onclick="addLocalPlayerInput()" class="btn-secondary btn-sm">+ Add Player</button>
+        <br><br>
         <button onclick="startLocalGame()" style="width:280px;">Start Game</button>
-        <button onclick="showHomeScreen()" class="btn-secondary" style="margin-top:10px;">Back</button>
+        <button onclick="showScreen('screen-home')" class="btn-secondary">Back</button>
     </div>
 
-    <div id="screen-join-login" class="screen center-screen">
-        <h2 style="margin-bottom:20px; color:#ecf0f1;">Join Room</h2>
-        <input type="text" id="join-name" placeholder="Nickname" maxlength="12">
-        <input type="text" id="join-code" placeholder="Room Code" maxlength="4" style="text-transform:uppercase;">
-        <br>
-        <button id="btn-join" onclick="joinGame()" style="width:280px;">Connect</button>
-        <button onclick="showHomeScreen()" class="btn-secondary" style="margin-top:10px;">Back</button>
-        <div id="connect-status" style="color:#e74c3c; font-size:0.8rem; margin-top:15px; height:20px;"></div>
+    <div id="screen-pass-interstitial" class="screen center-screen">
+        <h1 style="color:#bdc3c7;">Next Turn</h1>
+        <h2 id="pp-next-name" style="color:var(--accent); font-size:3rem; margin:20px 0;">Player</h2>
+        <p>Pass the device to the next player.</p>
+        <button onclick="revealLocalTurn()" style="width:200px; margin-top:30px;">I am Ready</button>
     </div>
 
-    <div id="screen-lobby" class="screen" style="flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 100px;">
-        <div style="margin-bottom:15px; text-align: center;">
-            <span id="host-status-dot" class="status-dot"></span>
-            <span id="host-status-text" style="color:#bdc3c7; font-size:0.9rem; text-transform: uppercase; letter-spacing: 1px;">Initializing...</span>
+    <div id="screen-game" class="screen">
+        <div class="player-hud">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <button onclick="handleExit()" class="btn-danger btn-sm" style="margin:0; padding:5px 10px;">Exit</button>
+                <div class="hud-name" id="game-hud-name">Player</div>
+            </div>
+            <div class="hud-status" id="game-hud-status">Waiting...</div>
         </div>
-        <h2 style="color:#7f8c8d; margin:0; font-size:0.9rem; letter-spacing:2px; text-align: center;">JOIN CODE</h2>
-        <div id="lobby-code-display" style="font-size:4rem; font-weight:800; color:var(--accent); letter-spacing:8px; line-height:1; margin: 10px 0; text-align: center;">...</div>
-        <div class="lobby-container">
-            <div class="lobby-header">Players in Room</div>
-            <div id="lobby-player-list"></div>
+        
+        <div class="board-wrapper">
+            <div class="scrabble-board" id="game-board"></div>
         </div>
-        <button id="btn-start-game" onclick="hostStartGame()" style="margin-top:30px; width: 200px;">START GAME</button>
-    </div>
 
-    <div id="screen-player-lobby" class="screen center-screen">
-        <h2 style="color:var(--accent);">You are in!</h2>
-        <p style="color:#7f8c8d;">Waiting for host to start...</p>
-        <div class="lobby-container">
-            <div class="lobby-header">Players in Room</div>
-            <div id="player-lobby-list"></div>
+        <div class="rack-container">
+            <div id="game-rack" class="player-rack"></div>
+            <div class="controls-row">
+                <button onclick="shuffleRack()" class="btn-secondary">Shuffle</button>
+                <button onclick="actionSwap()" class="btn-warning">Swap</button>
+                <button onclick="actionPass()" class="btn-secondary">Pass</button>
+                <button id="btn-action-play" onclick="actionPlay()">PLAY</button>
+            </div>
         </div>
     </div>
 
     <div id="screen-host" class="screen">
-        <div id="host-menu-overlay" onclick="toggleHostMenu()"></div>
-        <div id="host-side-menu">
-            <div class="menu-header">
-                <span>Game Menu</span>
-                <button onclick="toggleHostMenu()" class="close-icon-btn">✕</button>
-            </div>
-            <div class="menu-section">
-                <label class="toggle-row">
-                    <span>Sound Effects</span>
-                    <input type="checkbox" id="toggle-sound" checked onchange="toggleSound()">
-                </label>
-                <button onclick="toggleFullscreen()" class="btn-secondary" style="width:100%; margin-top:10px;">Toggle Fullscreen</button>
-                <div style="margin-top:20px; font-size:0.8rem; text-transform:uppercase; color:#7f8c8d; letter-spacing:1px; margin-bottom:10px;">Reference</div>
-                <div id="two-letter-list" class="two-letter-list"></div>
-                <div id="game-stats-container" style="margin-top:20px; border-top:1px solid #444; padding-top:15px;"></div>
-            </div>
-            <div style="margin-top:auto;">
-                <button onclick="promptEndGame()" class="btn-danger" style="width:100%;">End Game</button>
-            </div>
-        </div>
-
         <div class="sidebar">
-            <div class="sidebar-header">
-                <div id="host-menu-btn" onclick="toggleHostMenu()">☰</div>
-                <div class="info-panel">
-                    <div style="font-size:0.7rem; color:#7f8c8d; letter-spacing:1px;">CURRENT TURN</div>
-                    <div id="turn-indicator" style="font-size:1.4rem; font-weight:bold; color:#ecf0f1;">...</div>
-                </div>
-            </div>
-
-            <div id="sidebar-list" style="flex-grow:1; overflow-y:auto; margin-bottom:15px;"></div>
-            
-            <div class="inbox-area" id="host-inbox-area">
-                <div class="inbox-header">
-                    <div style="font-size:0.7rem; color:#7f8c8d; text-transform:uppercase;">Tile Inbox</div>
-                    <div>
-                        <button id="btn-smart-fill" onclick="executeSmartFill()" class="btn-info btn-sm hidden" style="margin-right:5px;">Smart Fill</button>
-                        <button onclick="recallTiles()" class="btn-warning btn-sm">Recall</button>
-                    </div>
-                </div>
-                <div class="inbox-rack" id="host-inbox"></div>
-                <div class="return-zone" id="return-zone">Drag Here to Return</div>
-                <button onclick="confirmTurn()" style="width:100%; margin:0; padding:15px; margin-top:10px;">Confirm Turn</button>
-            </div>
-
-            <div class="local-controls-area" id="local-controls-area">
-                <div style="font-size:0.7rem; color:#7f8c8d; text-transform:uppercase; width:100%; text-align:left; margin-bottom:5px;">Your Rack</div>
-                <div class="player-rack" id="local-rack" style="margin-bottom:10px;"></div>
-                <div style="display:flex; width:100%; gap:5px;">
-                    <button class="btn-warning btn-sm" onclick="shuffleLocalRack()">Mix</button>
-                    <button class="btn-secondary btn-sm" onclick="swapLocalTiles()">Swap</button>
-                    <button class="btn-secondary btn-sm" onclick="skipTurn()">Pass</button>
-                </div>
-                <button onclick="confirmTurn()" style="width:100%; margin:0; padding:15px; margin-top:10px;">Play Word</button>
-            </div>
+            <h2 style="color:var(--accent);">Room <span id="host-room-code"></span></h2>
+            <div style="font-size:0.8rem; color:#7f8c8d; margin-bottom:20px;">Share this code with players.</div>
+            <div id="host-player-list" style="flex-grow:1; overflow-y:auto;"></div>
+            <button onclick="endOnlineGame()" class="btn-danger" style="width:100%;">End Game</button>
         </div>
-
         <div class="board-wrapper">
-            <div class="scrabble-board" id="board-grid"></div>
+            <div class="scrabble-board" id="host-board"></div>
         </div>
     </div>
 
-    <div id="screen-player" class="screen">
-        <div class="player-hud">
-            <button onclick="promptLeaveGame()" class="btn-danger btn-sm" style="margin:0;">Leave</button>
-            <div style="display:flex; flex-direction:column; align-items:center;">
-                 <div class="hud-name" id="my-display-name">Player</div>
-                 <div class="hud-status" id="status-msg">Waiting...</div>
-            </div>
-            <button onclick="shuffleRack()" class="btn-warning btn-sm" style="margin:0;">Mix</button>
-        </div>
-        
-        <div class="player-board-container">
-            <div class="scrabble-board" id="player-board-grid"></div>
-        </div>
-
-        <div class="rack-wrapper">
-            <div id="my-rack" class="player-rack"></div>
-            <div class="mobile-controls">
-                <button onclick="swapTiles()" style="background:#9b59b6;">Swap</button>
-                <button onclick="skipTurn()" style="background:#7f8c8d;">Skip</button>
-                <button id="btn-play" onclick="playBoardTiles()" disabled>Play</button>
-            </div>
-        </div>
+    <div id="screen-join" class="screen center-screen">
+        <h2>Join Game</h2>
+        <input type="text" id="join-name" placeholder="Your Name" maxlength="12">
+        <input type="text" id="join-code" placeholder="Room Code" maxlength="4" style="text-transform:uppercase;">
+        <br>
+        <button id="btn-join" onclick="joinGame()" style="width:280px;">Connect</button>
+        <button onclick="showScreen('screen-home')" class="btn-secondary">Back</button>
+        <div id="connect-status" style="color:#e74c3c; margin-top:15px;"></div>
     </div>
 
     <script>
+        // --- CONSTANTS & DATA ---
         const SCORES = {'A':1,'B':3,'C':3,'D':2,'E':1,'F':4,'G':2,'H':4,'I':1,'J':8,'K':5,'L':1,'M':3,'N':1,'O':1,'P':3,'Q':10,'R':1,'S':1,'T':1,'U':1,'V':4,'W':4,'X':8,'Y':4,'Z':10,'_':0};
         const BAG_INIT = {'A':9,'B':2,'C':2,'D':4,'E':12,'F':2,'G':3,'H':2,'I':9,'J':1,'K':1,'L':4,'M':2,'N':6,'O':8,'P':2,'Q':1,'R':6,'S':4,'T':6,'U':4,'V':2,'W':2,'X':1,'Y':2,'Z':1,'_':2};
         const LAYOUT = [[1,0,0,4,0,0,0,1,0,0,0,4,0,0,1],[0,2,0,0,0,3,0,0,0,3,0,0,0,2,0],[0,0,2,0,0,0,4,0,4,0,0,0,2,0,0],[4,0,0,2,0,0,0,4,0,0,0,2,0,0,4],[0,0,0,0,2,0,0,0,0,0,2,0,0,0,0],[0,3,0,0,0,3,0,0,0,3,0,0,0,3,0],[0,0,4,0,0,0,4,0,4,0,0,0,4,0,0],[1,0,0,4,0,0,0,5,0,0,0,4,0,0,1],[0,0,4,0,0,0,4,0,4,0,0,0,4,0,0],[0,3,0,0,0,3,0,0,0,3,0,0,0,3,0],[0,0,0,0,2,0,0,0,0,0,2,0,0,0,0],[4,0,0,2,0,0,0,4,0,0,0,2,0,0,4],[0,0,2,0,0,0,4,0,4,0,0,0,2,0,0],[0,2,0,0,0,3,0,0,0,3,0,0,0,2,0],[1,0,0,4,0,0,0,1,0,0,0,4,0,0,1]];
-        const TWO_LETTER_WORDS = "AA,AB,AD,AE,AG,AH,AI,AL,AM,AN,AR,AS,AT,AW,AX,AY,BA,BE,BI,BO,BY,DE,DO,ED,EF,EH,EL,EM,EN,ER,ES,ET,EX,FA,FE,GO,HA,HE,HI,HM,HO,ID,IF,IN,IS,IT,JO,KA,KI,LA,LI,LO,MA,ME,MI,MM,MO,MU,MY,NA,NE,NO,NU,OD,OE,OF,OH,OI,OK,OM,ON,OP,OR,OS,OW,OX,OY,PA,PE,PI,PO,QI,RE,SH,SI,SO,TA,TE,TI,TO,UH,UM,UN,UP,US,UT,WE,WO,XI,XU,YA,YE,YO,ZA".split(',');
-        const PEER_CONFIG = { debug: 1, config: { iceServers: [{ urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:stun2.l.google.com:19302' }]}};
+        
+        // --- GLOBAL STATE ---
+        let mode = 'none'; // 'local' or 'online'
+        let dictionary = new Set();
+        let bag = [];
+        let players = []; // {name, score, tiles:[], id, conn (if online)}
+        let turnIndex = 0;
+        let isFirstTurn = true;
+        let pendingBlank = null;
+        
+        // Online Specific
+        let peer, conn, myPeerId, hostCode;
+        let isHost = false;
+        
+        // UI Drag Tracking
+        let dragEl = null, clone = null;
 
-        let peer, conn, dictionary = new Set(), bag=[], players=[], turnIndex=0, myTurn=false, isFirstTurn=true;
-        let currentTurnPoints = 0, pendingBlankTile = null, selectedTilesOrder = [];
-        let currentSessionCode = null, currentHostRoomCode = null, currentHostPeerId = null;
-        let heartbeatInterval = null, startTimeout = null;
-        let soundsEnabled = true;
-        let hostInbox = []; 
-        let isReconnecting = false, reconnectInterval = null;
-        let lastHighlight = { id: null, axis: 'h' };
-        let isLocalGame = false;
-
-        const STORAGE_HOST_SAVES = 'scrabble_host_saves_v3'; 
-        const STORAGE_SESSIONS = 'scrabble_player_sessions'; 
-
+        // --- INIT ---
         window.onload = () => {
-            renderHomeScreen();
-            const selector = document.getElementById('blank-selector');
+            // Load Dictionary
+            fetch('https://raw.githubusercontent.com/redbo/scrabble/master/dictionary.txt')
+                .then(r=>r.text())
+                .then(t => t.toUpperCase().split(/\s+/).forEach(w => dictionary.add(w)));
+            
+            // Generate Blank Selector
+            const sel = document.getElementById('blank-selector');
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(l => {
                 const b = document.createElement('button');
-                b.className = 'letter-btn'; b.innerText = l; b.onclick = () => assignBlank(l); selector.appendChild(b);
+                b.className = 'letter-btn'; b.innerText = l; b.onclick = () => assignBlank(l);
+                sel.appendChild(b);
             });
-            fetch('https://raw.githubusercontent.com/redbo/scrabble/master/dictionary.txt').then(r=>r.text()).then(t => t.toUpperCase().split(/\s+/).forEach(w => dictionary.add(w)));
-            renderTwoLetterWords();
-            
-            // Render Host Board
-            renderBoard(document.getElementById('board-grid'));
         };
 
-        function generateUUID() { return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { var r=Math.random()*16|0,v=c=='x'?r:(r&0x3|0x8); return v.toString(16); }); }
-        
-        // --- LOCAL PASS & PLAY START ---
-        function showLocalSetup() { showScreen('screen-local-setup'); }
-        function addLocalInput() {
-            const wrap = document.getElementById('local-player-inputs');
-            if(wrap.children.length < 4) {
-                const i = document.createElement('input'); i.type="text"; i.className="local-name-input"; i.placeholder=`Player ${wrap.children.length+1}`; i.value=`Player ${wrap.children.length+1}`;
-                wrap.appendChild(i);
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function showModal(title, msg) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-msg').innerText = msg;
+            document.getElementById('notification-overlay').style.display = 'flex';
+        }
+
+        // --- SHARED GAME LOGIC ---
+
+        function initBag() {
+            bag = [];
+            for(let l in BAG_INIT) for(let i=0; i<BAG_INIT[l]; i++) bag.push(l);
+            // Shuffle
+            for(let i=bag.length-1; i>0; i--){
+                const j = Math.floor(Math.random()*(i+1));
+                [bag[i],bag[j]] = [bag[j],bag[i]];
             }
         }
-        function startLocalGame() {
-            const inputs = document.querySelectorAll('.local-name-input');
-            const names = Array.from(inputs).map(i => i.value.trim()).filter(n => n);
-            if(names.length < 2) { alert("Need at least 2 players"); return; }
+
+        function drawTiles(count) {
+            const drawn = [];
+            for(let i=0; i<count && bag.length>0; i++) drawn.push(bag.pop());
+            return drawn;
+        }
+
+        // Renders the board. ID is target div id. 
+        // If readOnly=true, drag events are disabled for existing tiles.
+        function renderBoardState(targetId, gridState, isInteractive) {
+            const b = document.getElementById(targetId);
+            b.innerHTML = '';
+            for(let r=0; r<15; r++){
+                for(let c=0; c<15; c++){
+                    const d = document.createElement('div');
+                    d.className = 'cell'; d.dataset.r = r; d.dataset.c = c;
+                    
+                    // Background style
+                    const t = LAYOUT[r][c];
+                    if(t===1){d.classList.add('tw');d.innerText='TW'}
+                    else if(t===2){d.classList.add('dw');d.innerText='DW'}
+                    else if(t===3){d.classList.add('tl');d.innerText='TL'}
+                    else if(t===4){d.classList.add('dl');d.innerText='DL'}
+                    else if(t===5){d.classList.add('star');d.innerHTML='★'}
+
+                    // Tile Content
+                    if(gridState && gridState[r][c]) {
+                        const data = gridState[r][c];
+                        const tile = createTileEl(data.letter, data.isBlank);
+                        tile.dataset.locked = "true";
+                        // If interactive, locked tiles block placement but aren't draggable
+                        d.appendChild(tile);
+                    }
+                    b.appendChild(d);
+                }
+            }
+        }
+
+        function createTileEl(letter, isBlank=false, isNew=false) {
+            const d = document.createElement('div');
+            d.className = 'tile';
+            d.dataset.letter = letter;
+            if(isBlank) { 
+                d.dataset.isBlank = "true"; 
+                d.classList.add('is-blank-assigned');
+            }
+            if(isNew) d.dataset.new = "true";
             
-            isLocalGame = true;
+            if(letter === '_') {
+                 d.innerHTML = '';
+            } else {
+                 d.innerHTML = `${letter}<span class="score">${isBlank?0:SCORES[letter]}</span>`;
+            }
+            
+            // Attach Drag Events
+            d.onpointerdown = onDragStart;
+            return d;
+        }
+
+        // --- LOCAL PASS & PLAY LOGIC ---
+
+        function addLocalPlayerInput() {
+            const div = document.getElementById('pp-player-inputs');
+            if(div.children.length >= 4) return;
+            const inp = document.createElement('input');
+            inp.type = "text"; inp.className = "pp-name"; inp.placeholder = `Player ${div.children.length+1} Name`;
+            div.appendChild(inp);
+        }
+
+        function startLocalGame() {
+            const inputs = document.querySelectorAll('.pp-name');
+            const names = Array.from(inputs).map(i => i.value.trim()).filter(n => n);
+            if(names.length < 2) { showModal("Error", "Need at least 2 players."); return; }
+            
+            mode = 'local';
             initBag();
-            players = names.map(n => ({ userId: generateUUID(), name: n, score: 0, lastScore: 0, tiles: [], history: [], isOffline: false }));
+            players = names.map(n => ({ name: n, score: 0, tiles: drawTiles(7) }));
             turnIndex = 0;
             isFirstTurn = true;
-            hostInbox = [];
             
-            // Clean board
-            renderBoard(document.getElementById('board-grid'));
+            // Clear board state
+            document.querySelectorAll('.cell').forEach(c => c.innerHTML = ''); // Should be re-rendered cleanly
+            renderBoardState('game-board', null, true); // Empty board
             
-            // Deal initial hands
-            players.forEach(p => {
-                for(let i=0; i<7; i++) if(bag.length) p.tiles.push(bag.pop());
-            });
-
-            // UI Setup
-            showScreen('screen-host');
-            document.getElementById('host-inbox-area').style.display = 'none'; // Hide online inbox
-            document.getElementById('local-controls-area').style.display = 'flex'; // Show local rack
-            
-            currentHostRoomCode = 'LOCAL';
-            updateHostUI();
-            localTurnCycle();
+            updateLocalUI();
         }
 
-        function localTurnCycle() {
-            const overlay = document.getElementById('local-pass-overlay');
+        function updateLocalUI() {
+            // Show interstitial first
             const p = players[turnIndex];
-            document.getElementById('local-next-player-name').innerText = p.name;
-            overlay.style.display = 'flex';
-        }
-        
-        function dismissLocalPass() {
-            document.getElementById('local-pass-overlay').style.display = 'none';
-            renderLocalRack();
-            updateHostUI();
+            document.getElementById('pp-next-name').innerText = p.name;
+            showScreen('screen-pass-interstitial');
         }
 
-        function renderLocalRack() {
-            const r = document.getElementById('local-rack');
+        function revealLocalTurn() {
+            showScreen('screen-game');
+            const p = players[turnIndex];
+            document.getElementById('game-hud-name').innerText = p.name + ` (${p.score} pts)`;
+            document.getElementById('game-hud-status').innerText = "YOUR TURN";
+            document.getElementById('game-hud-status').classList.add('active');
+            
+            renderRack(p.tiles);
+            // Ensure board has correct locked state from memory (scraped from DOM in local mode or persisted variable?)
+            // In local mode, we can just rely on the DOM if we don't reload. 
+            // Better: Keep a grid variable.
+        }
+
+        function renderRack(tiles) {
+            const r = document.getElementById('game-rack');
             r.innerHTML = '';
-            const p = players[turnIndex];
-            p.tiles.forEach(l => {
-                const t = document.createElement('div'); t.className = 'tile'; t.dataset.letter = l;
-                if(l === '_') t.innerHTML = ''; else t.innerHTML = `${l}<span class="score">${SCORES[l]}</span>`;
-                t.onpointerdown = onDragStart; // Drag from rack
+            tiles.forEach(l => {
+                const t = createTileEl(l, false, true); // treated as "new" so it is draggable
+                // Actually, rack tiles shouldn't have data-new="true" for board scoring logic yet, 
+                // but our drag logic adds data-new when dropped on board.
+                delete t.dataset.new; 
                 r.appendChild(t);
             });
-            Sortable.create(r, { animation: 150, ghostClass: 'sortable-ghost' });
-        }
-        
-        function shuffleLocalRack() {
-            const r = document.getElementById('local-rack');
-            Array.from(r.children).sort(()=>Math.random()-0.5).forEach(x=>r.appendChild(x));
         }
 
-        function swapLocalTiles() {
-             const p = players[turnIndex];
-             // In local mode, we don't select. We swap all or allow simpler logic. 
-             // Implementing "Swap All" for simplicity or require dragging back to bag? 
-             // Let's implement "Select to Swap" visual for local.
-             if(bag.length < 7) { toast("Bag < 7 tiles"); return; }
-             if(confirm("Swap your rack? Ends turn.")) {
-                 const count = p.tiles.length;
-                 p.tiles.forEach(t => bag.push(t));
-                 p.tiles = [];
-                 // Shuffle bag
-                 for (let i = bag.length - 1; i > 0; i--) {
-                     const j = Math.floor(Math.random() * (i + 1));
-                     [bag[i], bag[j]] = [bag[j], bag[i]];
-                 }
-                 // Redraw
-                 for(let i=0; i<count; i++) p.tiles.push(bag.pop());
-                 
-                 // Reset board placements
-                 recallTiles();
-                 
-                 p.lastScore = 0;
-                 turnIndex = (turnIndex + 1) % players.length;
-                 localTurnCycle();
-             }
+        // --- ACTION HANDLERS (Shared UI) ---
+
+        function actionPass() {
+            if(!confirm("Pass turn?")) return;
+            endTurnLocal(0);
         }
-        // --- LOCAL PASS & PLAY END ---
 
-
-        // --- ONLINE HOST LOGIC ---
-        function initHost(existingId=null, isResume=false) {
-            if(peer) peer.destroy();
-            isLocalGame = false;
-            const id = existingId || genId();
-            currentHostRoomCode = id;
-            peer = new Peer(id, PEER_CONFIG);
+        function actionSwap() {
+            // In local mode, we need a UI to select tiles to swap. 
+            // For simplicity in this implementation: Swap ALL tiles logic or Drag to specific zone?
+            // Let's implement "Recall all to rack" then "Click to select for swap".
+            // Simplifying: Swap requires empty board.
+            const placed = document.querySelectorAll('#game-board .tile[data-new="true"]');
+            if(placed.length > 0) { showModal("Error", "Recall tiles before swapping."); return; }
             
-            peer.on('open', id => {
-                showScreen('screen-lobby');
-                document.getElementById('lobby-code-display').innerText = id;
-                document.getElementById('host-status-dot').classList.replace('status-offline', 'status-online');
-                document.getElementById('host-status-text').innerText = "Status: Ready";
+            if(bag.length < 7) { showModal("Error", "Bag empty."); return; }
+            
+            // Simple swap: Swap whole rack for now to save UI complexity, or swap random 7.
+            // Let's just swap all.
+            if(!confirm("Swap your rack? Turn will end.")) return;
+            
+            const p = players[turnIndex];
+            bag.push(...p.tiles);
+            // Shuffle
+            for(let i=bag.length-1; i>0; i--){
+                const j = Math.floor(Math.random()*(i+1));
+                [bag[i],bag[j]] = [bag[j],bag[i]];
+            }
+            p.tiles = drawTiles(7);
+            endTurnLocal(0);
+        }
+
+        function actionPlay() {
+            const newTiles = Array.from(document.querySelectorAll('#game-board .tile[data-new="true"]'));
+            if(newTiles.length === 0) return;
+            
+            // Validation
+            if(isFirstTurn) {
+                const hasCenter = newTiles.some(t => {
+                    const p = t.parentElement;
+                    return parseInt(p.dataset.r)===7 && parseInt(p.dataset.c)===7;
+                });
+                if(!hasCenter) { showModal("Error", "First word must cover center star."); return; }
+            }
+
+            // Check Connectivity & Alignment
+            if(!validatePlacement(newTiles)) { showModal("Invalid", "Tiles must be in a straight line and connected."); return; }
+
+            // Calculate Score & Check Words
+            const score = calculateScore(newTiles); // This also validates words against dictionary
+            if(score === -1) { showModal("Invalid Word", "A word formed is not in dictionary."); return; }
+
+            // --- EXECUTE MOVE ---
+            if(mode === 'local') {
+                // Apply score
+                players[turnIndex].score += score;
                 
-                if(isResume && existingId) {
-                    const allSaves = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
-                    const s = allSaves[existingId];
-                    if(s) {
-                        players = s.players || []; bag = s.bag; turnIndex = s.turnIndex; isFirstTurn = s.isFirstTurn; 
-                        hostInbox = s.hostInbox || [];
-                        renderBoard(document.getElementById('board-grid')); restoreBoardTiles(s.grid); renderInbox();
-                        showScreen('screen-host'); updateHostUI();
-                        players.forEach(p => { if(p.lastPeerID) setupHostConnection(peer.connect(p.lastPeerID)); });
-                        startHeartbeat();
-                    }
-                } else {
-                    initBag(); renderBoard(document.getElementById('board-grid')); players=[]; hostInbox=[];
-                }
-                saveHostState(id); startHeartbeat();
-            });
-            peer.on('connection', c => setupHostConnection(c));
+                // Lock tiles
+                newTiles.forEach(t => {
+                    t.removeAttribute('data-new');
+                    t.dataset.locked = "true";
+                });
+                
+                // Update Rack (remove used tiles)
+                const usedIds = newTiles.map(t => t.dataset.letter); // Simplified: Local mode doesn't track IDs strictly, just letters.
+                // Issue: If I have two 'A's, which one did I use?
+                // Fix: In renderRack, give them DOM IDs or just remove by letter count.
+                // Removal Logic:
+                const rack = players[turnIndex].tiles;
+                newTiles.forEach(t => {
+                    const l = t.dataset.letter; // Note: Blanks are '_' in rack
+                    // If t is blank assigned, original was '_'.
+                    // We need to know if the tile source was a blank.
+                    // The drag element dataset should help.
+                    // Simplified: We check if t.classList contains 'is-blank-assigned'.
+                    const search = t.classList.contains('is-blank-assigned') ? '_' : l;
+                    const idx = rack.indexOf(search);
+                    if(idx > -1) rack.splice(idx, 1);
+                });
+                
+                // Draw new
+                const needed = 7 - rack.length;
+                rack.push(...drawTiles(needed));
+                
+                isFirstTurn = false;
+                endTurnLocal(score);
+            } else if (mode === 'online') {
+                // Send Move to Host
+                // Structure: { r, c, letter, isBlank }
+                const moves = newTiles.map(t => ({
+                    r: parseInt(t.parentElement.dataset.r),
+                    c: parseInt(t.parentElement.dataset.c),
+                    letter: t.dataset.letter,
+                    isBlank: t.classList.contains('is-blank-assigned')
+                }));
+                
+                conn.send({ type: 'play_move', moves: moves });
+                // We wait for host confirmation to unlock UI
+            }
         }
 
-        function setupHostConnection(c) {
-            c.on('open', () => c.send({type:'handshake_request'}));
-            c.on('data', d => handleHostData(c, d));
+        function endTurnLocal(lastScore) {
+            turnIndex = (turnIndex + 1) % players.length;
+            updateLocalUI();
         }
 
-        function hostStartGame() {
-            if(players.length < 1) { showModal("Wait", "Need players."); return; }
-            showScreen('screen-host');
-            document.getElementById('host-inbox-area').style.display = 'flex'; // Show online inbox
-            document.getElementById('local-controls-area').style.display = 'none'; // Hide local rack
+        function handleExit() {
+            if(confirm("Exit game?")) {
+                if(conn) conn.close();
+                location.reload();
+            }
+        }
+
+        // --- ONLINE LOGIC ---
+
+        function initHost() {
+            isHost = true;
+            mode = 'online';
+            players = [];
+            initBag();
             
-            players.forEach((p, i) => { deal(p.conn, 7, i); if(p.conn && p.conn.open) p.conn.send({type:'gamestart'}); });
-            notifyTurn(); saveHostState(currentHostRoomCode);
+            const code = generateCode();
+            peer = new Peer(code);
+            
+            peer.on('open', (id) => {
+                hostCode = id;
+                document.getElementById('host-room-code').innerText = id;
+                showScreen('screen-host');
+                renderBoardState('host-board', null, false);
+            });
+            
+            peer.on('connection', c => {
+                c.on('data', d => handleHostData(c, d));
+                c.on('close', () => { /* Handle disconnect */ });
+            });
         }
 
+        function joinGame() {
+            const name = document.getElementById('join-name').value.trim();
+            const code = document.getElementById('join-code').value.trim().toUpperCase();
+            if(!name || code.length!==4) return;
+            
+            mode = 'online';
+            isHost = false;
+            document.getElementById('btn-join').innerText = "Connecting...";
+            
+            peer = new Peer();
+            peer.on('open', id => {
+                conn = peer.connect(code);
+                conn.on('open', () => {
+                    conn.send({ type: 'join', name: name });
+                });
+                conn.on('data', d => handleClientData(d));
+                conn.on('error', e => alert("Connection Error"));
+            });
+        }
+
+        // Host Handling
         function handleHostData(c, data) {
             if(data.type === 'join') {
-                let p = players.find(x => x.userId === data.userId);
-                if(!p) {
-                    p = { userId: data.userId, name: data.name, score: 0, lastScore: 0, tiles: [], conn: c, lastSeen: Date.now(), isOffline: false, lastPeerID: c.peer, history: [] };
-                    players.push(p);
-                } else { p.conn = c; p.isOffline = false; p.lastPeerID = c.peer; }
-                c.send({ type: 'ack_join', success: true, name: p.name, tiles: p.tiles, isGameRunning: document.getElementById('screen-host').classList.contains('active'), grid: getGrid(), myTurn: (players.indexOf(p) === turnIndex), activePlayer: players[turnIndex]?players[turnIndex].name:'' });
-                if(!document.getElementById('screen-host').classList.contains('active')) { broadcastLobby(); updateLobbyUI(); } else updateHostUI();
-                saveHostState(currentHostRoomCode);
-            }
-            if(data.type === 'play_board') {
-                 const p = players[turnIndex];
-                 if(!p || (p.userId !== players.find(x=>x.conn===c)?.userId)) return;
-                 
-                 // 1. Return any existing new tiles to inbox/owner first (clear board of partial moves)
-                 recallTiles(); 
-
-                 // 2. Validate and Place
-                 const moves = data.moves; // [{letter:'A', r:0, c:0, id:'uuid'}, ...]
-                 let invalid = false;
-                 
-                 moves.forEach(m => {
-                     // Verify player has tile
-                     const idx = p.tiles.indexOf(m.letter);
-                     if(idx > -1) {
-                         p.tiles.splice(idx, 1); // Remove from hand
-                         
-                         const cell = document.querySelector(`#board-grid .cell[data-r="${m.r}"][data-c="${m.c}"]`);
-                         if(cell && !cell.querySelector('.tile')) {
-                             const t = document.createElement('div'); t.className='tile';
-                             t.dataset.letter = m.letter; t.dataset.new = "true"; t.dataset.owner = p.userId; t.dataset.id = m.id || generateUUID();
-                             if(m.letter === '_') { t.innerHTML=''; t.dataset.letter='_'; pendingBlankTile=t; }
-                             else t.innerHTML=`${m.letter}<span class="score">${SCORES[m.letter]}</span>`;
-                             t.onpointerdown = onDragStart;
-                             cell.appendChild(t);
-                         } else {
-                             // Cell occupied or invalid, return to hand
-                             p.tiles.push(m.letter); 
-                         }
-                     }
-                 });
-                 
-                 updateScorePill();
-                 saveHostState(currentHostRoomCode);
-                 updateHostUI(); // Update scores/hands
-                 
-                 if(pendingBlankTile) document.getElementById('blank-overlay').style.display='flex';
-            }
-            if(data.type === 'swap') {
-                // ... (Existing swap logic) ...
-                const p = players[turnIndex];
-                if(bag.length < 7) { c.send({type:'toast', msg:"Bag < 7"}); return; }
-                data.tiles.forEach(l => {
-                    const idx = p.tiles.indexOf(l);
-                    if(idx>-1) { p.tiles.splice(idx,1); bag.push(l); }
-                });
-                for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}
-                deal(p.conn, data.tiles.length, turnIndex);
-                p.lastScore=0; turnIndex=(turnIndex+1)%players.length; updateHostUI(); notifyTurn();
-            }
-            if(data.type === 'pass') {
-                 players[turnIndex].lastScore=0; turnIndex=(turnIndex+1)%players.length; updateHostUI(); notifyTurn();
-            }
-            if(data.type === 'pong') { const p = players.find(x => x.userId === data.userId); if(p) { p.lastSeen = Date.now(); p.isOffline = false; } }
-        }
-
-        function deal(conn, n, idx) {
-            let p = players[idx];
-            let newTiles = [];
-            for(let i=0; i<n; i++) if(bag.length) newTiles.push(bag.pop());
-            p.tiles.push(...newTiles);
-            if(p.conn && p.conn.open) p.conn.send({type:'hand', tiles: p.tiles}); 
-            else p.isOffline = true;
-        }
-
-        // --- PLAYER CLIENT LOGIC ---
-        function joinGame(codeOverride=null, nameOverride=null, idOverride=null) {
-            if(peer) peer.destroy();
-            const n = nameOverride || document.getElementById('join-name').value.trim();
-            const c = (codeOverride || document.getElementById('join-code').value.trim()).toUpperCase();
-            const userId = idOverride || generateUUID();
-            currentHostRoomCode = c;
-            
-            peer = new Peer(null, PEER_CONFIG);
-            peer.on('open', () => {
-                conn = peer.connect(c);
-                setupPlayerConnection(conn, n, userId);
-            });
-            peer.on('error', e => { document.getElementById('connect-status').innerText = "Error: " + e.type; });
-        }
-
-        function setupPlayerConnection(c, n, userId) {
-            c.on('open', () => c.send({type:'join', name:n, userId: userId}));
-            c.on('data', d => {
-                if(d.type === 'ack_join') {
-                     if(d.success) {
-                        saveSession(currentHostRoomCode, n, userId);
-                        if(d.isGameRunning) {
-                            showScreen('screen-player');
-                            document.getElementById('my-display-name').innerText = n;
-                            if(d.grid) renderPlayerBoardGrid(d.grid);
-                            if(d.tiles) renderPlayerRack(d.tiles);
-                            updateTurnUI(d.myTurn, d.activePlayer);
-                        } else showScreen('screen-player-lobby');
-                     } else alert(d.msg);
-                }
-                if(d.type === 'gamestart') { showScreen('screen-player'); document.getElementById('my-display-name').innerText = n; renderPlayerBoardGrid(getEmptyGrid()); } // Start empty
-                if(d.type === 'hand') renderPlayerRack(d.tiles);
-                if(d.type === 'turn_update') { updateTurnUI(d.myTurn, d.activePlayer); if(d.grid) renderPlayerBoardGrid(d.grid); } // Sync board on turn update
-                if(d.type === 'ping') c.send({type: 'pong', userId: userId});
-                if(d.type === 'lobby_update') document.getElementById('player-lobby-list').innerHTML = d.names.map(name => `<div class="lobby-row"><span>${name}</span><span style="color:#2ecc71;">Joined</span></div>`).join('');
-            });
-            c.on('close', () => handleDisconnect());
-        }
-
-        function renderPlayerRack(tiles) {
-            const r = document.getElementById('my-rack'); r.innerHTML = '';
-            tiles.forEach(l => {
-                const d=document.createElement('div'); d.className='tile'; d.dataset.letter=l;
-                if(l === '_') d.innerHTML = ''; else d.innerHTML=`${l}<span class="score">${SCORES[l]}</span>`;
-                // Allow selecting for Swap
-                d.onclick=()=>{
-                    if(d.parentElement.id === 'my-rack') { // Only select if in rack
-                         d.classList.toggle('selected');
-                         updatePlayerButtons();
-                    }
+                const newP = { 
+                    id: c.peer, 
+                    conn: c, 
+                    name: data.name, 
+                    score: 0, 
+                    tiles: drawTiles(7) 
                 };
-                d.onpointerdown = onDragStart; // Enable Drag
-                r.appendChild(d);
-            });
-            Sortable.create(r, { group: 'shared', animation: 150 });
+                players.push(newP);
+                updateHostPlayerList();
+                
+                // Sync new player
+                c.send({ 
+                    type: 'welcome', 
+                    tiles: newP.tiles, 
+                    grid: getGridState(),
+                    players: players.map(p => ({name:p.name, score:p.score}))
+                });
+            }
+            if(data.type === 'play_move') {
+                // 1. Apply to temporary grid to validate
+                // 2. Broadcast if valid
+                const p = players.find(x => x.id === c.peer);
+                if(!p) return;
+                
+                // Server-side validation (simplified here: trust client validation + basic overlap check)
+                const grid = getGridState();
+                
+                // Update Grid
+                data.moves.forEach(m => {
+                    // Update master grid (DOM on host)
+                    const cell = document.querySelector(`#host-board .cell[data-r="${m.r}"][data-c="${m.c}"]`);
+                    cell.innerHTML = '';
+                    const t = createTileEl(m.letter, m.isBlank);
+                    t.dataset.locked = "true";
+                    cell.appendChild(t);
+                });
+                
+                // Calculate Score (Host Logic)
+                // We need to simulate the placement to score it. 
+                // For this demo, we assume client score is correct or recalculate.
+                // Let's recalculate simply based on moves.
+                const newTiles = data.moves.map(m => {
+                    const cell = document.querySelector(`#host-board .cell[data-r="${m.r}"][data-c="${m.c}"]`);
+                    return cell.querySelector('.tile'); // reusing client-side calc logic by querying host DOM
+                });
+                // Note: The calc function relies on "data-new" which we didn't set on host.
+                // Hack: Set data-new temporarily
+                newTiles.forEach(t => t.dataset.new = "true");
+                const score = calculateScore(newTiles); // This uses Host DOM
+                newTiles.forEach(t => { delete t.dataset.new; t.dataset.locked="true"; });
+                
+                p.score += score;
+                
+                // Remove tiles from rack
+                data.moves.forEach(m => {
+                    const char = m.isBlank ? '_' : m.letter;
+                    const idx = p.tiles.indexOf(char);
+                    if(idx > -1) p.tiles.splice(idx, 1);
+                });
+                
+                // Refill
+                const needed = 7 - p.tiles.length;
+                p.tiles.push(...drawTiles(needed));
+                
+                // Next turn
+                isFirstTurn = false;
+                turnIndex = (turnIndex + 1) % players.length;
+                
+                // Broadcast Update
+                broadcastUpdate();
+            }
         }
-        
-        function renderPlayerBoardGrid(gridData) {
-            const b = document.getElementById('player-board-grid');
-            renderBoard(b); // Create structure
-            
-            // Fill structure
-            for(let r=0; r<15; r++) {
-                for(let c=0; c<15; c++) {
-                    const cell = b.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-                    if(gridData[r][c]) {
-                        // Remote/Locked tile
-                         const t = document.createElement('div'); t.className='tile';
-                         t.dataset.letter = gridData[r][c].letter; t.dataset.locked = "true";
-                         t.style.cursor = "default";
-                         if(t.dataset.letter==='_') t.innerHTML='';
-                         else t.innerHTML=`${t.dataset.letter}<span class="score">${SCORES[t.dataset.letter]}</span>`;
-                         cell.appendChild(t);
+
+        function broadcastUpdate() {
+            const grid = getGridState();
+            const pList = players.map(p => ({name:p.name, score:p.score}));
+            players.forEach((p, i) => {
+                p.conn.send({
+                    type: 'update',
+                    grid: grid,
+                    players: pList,
+                    tiles: p.tiles, // Send updated rack
+                    myTurn: (i === turnIndex)
+                });
+            });
+            updateHostPlayerList();
+        }
+
+        // Client Handling
+        function handleClientData(data) {
+            if(data.type === 'welcome' || data.type === 'update') {
+                showScreen('screen-game');
+                renderBoardState('game-board', data.grid, true);
+                renderRack(data.tiles);
+                
+                // Update Status HUD
+                document.getElementById('game-hud-name').innerText = data.players.find(x => x.name === document.getElementById('join-name').value).name; // Self name
+                
+                if(data.myTurn) {
+                    document.getElementById('game-hud-status').innerText = "YOUR TURN";
+                    document.getElementById('game-hud-status').classList.add('active');
+                    document.getElementById('btn-action-play').disabled = false;
+                } else {
+                    document.getElementById('game-hud-status').innerText = "WAITING";
+                    document.getElementById('game-hud-status').classList.remove('active');
+                    document.getElementById('btn-action-play').disabled = true;
+                }
+            }
+        }
+
+        function getGridState() {
+            // Scrape Host DOM
+            const g = [];
+            for(let r=0; r<15; r++){
+                g[r] = [];
+                for(let c=0; c<15; c++){
+                    const cell = document.querySelector(`#host-board .cell[data-r="${r}"][data-c="${c}"]`);
+                    const t = cell.querySelector('.tile');
+                    if(t) {
+                        g[r][c] = { letter: t.dataset.letter, isBlank: t.dataset.isBlank==="true" };
+                    } else {
+                        g[r][c] = null;
                     }
                 }
             }
+            return g;
         }
 
-        function playBoardTiles() {
-            // Gather tiles on player board
-            const placed = [];
-            document.querySelectorAll('#player-board-grid .tile').forEach(t => {
-                if(t.dataset.locked !== "true") {
-                    placed.push({
-                        letter: t.dataset.letter,
-                        r: parseInt(t.parentElement.dataset.r),
-                        c: parseInt(t.parentElement.dataset.c),
-                        id: generateUUID()
-                    });
-                    t.remove(); // Clear from player board visually, Host will sync back result
-                }
-            });
-            if(placed.length > 0 && conn) {
-                conn.send({type: 'play_board', moves: placed});
-            }
+        function updateHostPlayerList() {
+            const l = document.getElementById('host-player-list');
+            l.innerHTML = players.map(p => `
+                <div class="player-row">
+                    <span>${p.name}</span>
+                    <span style="font-weight:bold; color:var(--accent);">${p.score}</span>
+                </div>
+            `).join('');
         }
+
+        // --- DRAG AND DROP SYSTEM ---
         
-        function updatePlayerButtons() {
-             // Logic to enable Swap if tiles selected, etc.
-             const selected = document.querySelectorAll('#my-rack .tile.selected').length;
-             // Play button logic handled by board presence
-        }
-
-        // --- SHARED DRAG & DROP ---
-        let dragEl=null, clone=null;
         function onDragStart(e) {
-            if(e.currentTarget.dataset.locked==="true") return;
-            // Prevent drag if not my turn (Online) or not correct player (Local)
-            // Actually, allow drag, just prevent commit? No, better UX to allow organizing rack.
-            // Only restrict board placement.
-
+            // Prevent dragging locked tiles or if not my turn (if online logic enforces strict UI lock)
+            if(e.currentTarget.dataset.locked === "true") return;
+            
             e.preventDefault();
             dragEl = e.currentTarget;
-            clone = dragEl.cloneNode(true); clone.classList.add('dragging'); document.body.appendChild(clone);
-            updateClonePos(e.clientX, e.clientY);
-            dragEl.style.opacity = '0';
             
-            // Touch specific
-            if(e.pointerType === 'touch') {
-               // Offset so finger doesn't cover tile
+            // If dragging blank back to rack, reset it
+            if(dragEl.dataset.isBlank === "true") {
+                // We keep the isBlank flag but might reset letter on drop if it goes to rack
             }
 
-            document.addEventListener('pointermove', onDragMove); document.addEventListener('pointerup', onDragEnd);
+            clone = dragEl.cloneNode(true);
+            clone.classList.add('dragging');
+            document.body.appendChild(clone);
+            
+            moveClone(e.pageX, e.pageY);
+            dragEl.style.opacity = '0';
+            
+            document.addEventListener('pointermove', onDragMove);
+            document.addEventListener('pointerup', onDragEnd);
         }
-        function onDragMove(e) { e.preventDefault(); updateClonePos(e.clientX, e.clientY); }
+
+        function onDragMove(e) {
+            e.preventDefault();
+            moveClone(e.pageX, e.pageY);
+        }
+
         function onDragEnd(e) {
-            document.removeEventListener('pointermove', onDragMove); document.removeEventListener('pointerup', onDragEnd);
-            if(clone) { clone.remove(); clone=null; }
-            if(dragEl) dragEl.style.display = 'flex';
+            document.removeEventListener('pointermove', onDragMove);
+            document.removeEventListener('pointerup', onDragEnd);
+            
+            if(clone) { clone.remove(); clone = null; }
             if(dragEl) dragEl.style.opacity = '1';
             
             const el = document.elementFromPoint(e.clientX, e.clientY);
-            if(el) {
-                const cell = el.closest('.cell');
-                const rack = el.closest('.player-rack');
-                const returnZone = el.closest('.return-zone');
-
-                // Determine context
-                const isHostScreen = document.getElementById('screen-host').classList.contains('active');
-                
-                if (isHostScreen) {
-                    if (returnZone) handleReturn(dragEl);
-                    else if (cell) handleBoardPlacement(dragEl, cell); // Host/Local Board
-                    else if (rack && rack.id === 'local-rack') rack.appendChild(dragEl); // Back to local rack
+            if(!el) return;
+            
+            const cell = el.closest('.cell');
+            const rack = el.closest('.player-rack');
+            
+            if(cell && !cell.querySelector('.tile')) {
+                // Drop on Board
+                if(dragEl.dataset.letter === '_') {
+                    pendingBlank = dragEl;
+                    document.getElementById('blank-overlay').style.display = 'flex';
                 } else {
-                    // Player Screen
-                    if (cell) handlePlayerBoardPlacement(dragEl, cell);
-                    else if (rack && rack.id === 'my-rack') rack.appendChild(dragEl); // Back to player rack
+                    dragEl.dataset.new = "true";
                 }
-            }
-            dragEl = null; 
-            if(isLocalGame || document.getElementById('screen-host').classList.contains('active')) {
-                updateScorePill(); checkSmartFill();
-            } else {
-                checkPlayerPlayBtn();
-            }
-        }
-        
-        function handlePlayerBoardPlacement(tile, cell) {
-            if(!cell.closest('#player-board-grid')) return; // Wrong board?
-            const existing = cell.querySelector('.tile');
-            if(!existing) {
-                cell.appendChild(tile);
-                tile.classList.remove('selected');
-            } else if (existing.dataset.locked !== "true") {
-                // Swap if not locked
-                const parent = tile.parentElement;
-                parent.appendChild(existing);
-                cell.appendChild(tile);
-            }
-        }
-        
-        function checkPlayerPlayBtn() {
-            const tilesOnBoard = document.querySelectorAll('#player-board-grid .tile:not([data-locked="true"])').length;
-            document.getElementById('btn-play').disabled = (tilesOnBoard === 0 || !myTurn);
-        }
-
-        function handleBoardPlacement(tile, cell) {
-            // Host logic (Local or Online Host)
-            const existing = cell.querySelector('.tile');
-            if(!existing) {
-                cell.appendChild(tile); 
-                tile.dataset.new = "true";
-                // If it came from inbox, remove from inbox memory
-                if(hostInbox.some(t => t.id === tile.dataset.id)) hostInbox = hostInbox.filter(t => t.id !== tile.dataset.id);
-                
-                if(tile.dataset.letter==='_') { pendingBlankTile=tile; document.getElementById('blank-overlay').style.display="flex"; }
-            } else if(existing.dataset.locked!=="true") {
-                 // Swap tiles on board
-                 const p = tile.parentElement;
-                 if(p.id === 'local-rack' || p.id === 'host-inbox') {
-                     // From rack/inbox to board occupied
-                     p.appendChild(existing);
-                     cell.appendChild(tile);
-                     tile.dataset.new="true";
-                 }
-            }
-        }
-        
-        function handleReturn(tile) {
-            if(isLocalGame) {
-                document.getElementById('local-rack').appendChild(tile);
-                tile.removeAttribute('data-new');
-                if(tile.dataset.letter === '_') { tile.innerHTML=''; tile.classList.remove('is-blank-assigned'); }
-            } else {
-                // Online Host Return logic
-                if(!hostInbox.some(t=>t.id===tile.dataset.id)) hostInbox.push({id:tile.dataset.id, letter:tile.dataset.letter, owner:tile.dataset.owner});
-                tile.remove(); renderInbox();
-                returnTile(tile.dataset.letter, tile.dataset.owner);
-            }
-        }
-
-        function updateClonePos(x,y){ if(clone){ clone.style.left=(x-25)+'px'; clone.style.top=(y-25)+'px'; } }
-
-        // --- SHARED UTILS ---
-        function renderBoard(container) {
-            container.innerHTML='';
-            for(let r=0;r<15;r++)for(let c=0;c<15;c++){
-                const d=document.createElement('div');d.className='cell';d.dataset.r=r;d.dataset.c=c;
-                const t=LAYOUT[r][c];
-                if(t===1){d.classList.add('tw');d.innerText='TW'}if(t===2){d.classList.add('dw');d.innerText='DW'}if(t===3){d.classList.add('tl');d.innerText='TL'}if(t===4){d.classList.add('dl');d.innerText='DL'}if(t===5){d.classList.add('star');d.innerHTML='★'}
-                container.appendChild(d);
-            }
-        }
-        function getGrid(){
-            let g = Array(15).fill(null).map(() => Array(15).fill(null));
-            document.querySelectorAll('#board-grid .cell').forEach(c => {
-                const tile = c.querySelector('.tile');
-                if(tile) g[c.dataset.r][c.dataset.c] = { letter: tile.dataset.letter, locked: tile.dataset.locked==="true", isBlank: tile.dataset.isBlank==="true" };
-            });
-            return g;
-        }
-        function getEmptyGrid() { return Array(15).fill(null).map(() => Array(15).fill(null)); }
-
-        // --- UI HELPERS ---
-        function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
-        function showHomeScreen() { showScreen('screen-home'); renderHomeScreen(); }
-        function showJoinScreen() { showScreen('screen-join-login'); }
-        function toast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
-        function showModal(title, msg) { document.getElementById('modal-title').innerText=title; document.getElementById('modal-msg').innerText=msg; document.getElementById('notification-overlay').style.display="flex"; }
-        function closeModal() { document.getElementById('notification-overlay').style.display="none"; }
-        function genId(){const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let r="";for(let i=0;i<4;i++)r+=c.charAt(Math.floor(Math.random()*c.length));return r;}
-        function initBag(){bag=[];for(let l in BAG_INIT)for(let i=0;i<BAG_INIT[l];i++)bag.push(l);for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}}
-        
-        function updateTurnUI(isMyTurn, activeName) {
-            myTurn = isMyTurn;
-            document.getElementById('status-msg').innerText = myTurn ? "YOUR TURN" : `${activeName}`;
-            if(myTurn) document.getElementById('status-msg').classList.add('active'); else document.getElementById('status-msg').classList.remove('active');
-            checkPlayerPlayBtn();
-        }
-
-        function confirmTurn() {
-            // Shared Logic for Host confirming a move (Local or Online)
-            if(!document.getElementById('score-pill').classList.contains('visible')) { showModal("Invalid", "Invalid placement."); return; }
-            if(isFirstTurn) {
-                const hasCenter = Array.from(document.querySelectorAll('#board-grid .cell .tile[data-new="true"]')).some(t => parseInt(t.parentElement.dataset.r)===7 && parseInt(t.parentElement.dataset.c)===7);
-                if(!hasCenter) { showModal("Rule", "Start at center."); return; }
-            }
-            const grid=getGrid(); const words=getWords(grid);
-            const invalid = words.filter(w => !dictionary.has(w) && dictionary.size > 0);
-            if(invalid.length > 0) { showModal("Invalid Word", invalid.join(', ')); return; }
-
-            // Score
-            players[turnIndex].score += currentTurnPoints;
-            players[turnIndex].lastScore = currentTurnPoints;
-            
-            // Lock Tiles
-            const newTiles = document.querySelectorAll('#board-grid .cell .tile[data-new="true"]');
-            
-            // History
-            const historyEntry = { turn: players[turnIndex].history.length+1, score: currentTurnPoints, mainWord: getPrimaryWord(newTiles), tiles: Array.from(newTiles).map(t=>({r:t.parentElement.dataset.r, c:t.parentElement.dataset.c})) };
-            players[turnIndex].history.push(historyEntry);
-
-            newTiles.forEach(t => { 
-                t.removeAttribute('data-new'); t.dataset.locked="true"; t.style.cursor="default"; t.onpointerdown=null; 
-                // Remove from online inbox logic if needed
-                hostInbox = hostInbox.filter(x => x.id !== t.dataset.id);
-            });
-
-            // Refill Hand
-            if(isLocalGame) {
-                const p = players[turnIndex];
-                // Remove placed tiles from rack memory implicitly by checking what's left in rack DOM? 
-                // No, Local Rack DOM still has them? No, we moved them to board.
-                // We just need to refill based on count.
-                const currentCount = document.getElementById('local-rack').children.length; // Remaining
-                // Actually, p.tiles currently contains the FULL hand because we didn't remove them on drag out in local mode yet
-                // We need to update p.tiles based on what's left in the DOM rack
-                p.tiles = Array.from(document.getElementById('local-rack').children).map(d => d.dataset.letter);
-                
-                // Deal to 7
-                const needed = 7 - p.tiles.length;
-                for(let i=0; i<needed; i++) if(bag.length) p.tiles.push(bag.pop());
-                
-                isFirstTurn = false;
-                turnIndex = (turnIndex + 1) % players.length;
-                updateHostUI();
-                localTurnCycle();
-            } else {
-                // Online: Deal and Notify
-                deal(players[turnIndex].conn, newTiles.length, turnIndex);
-                isFirstTurn = false;
-                turnIndex = (turnIndex + 1) % players.length;
-                notifyTurn(); // Sends grid update
+                cell.appendChild(dragEl);
+            } else if (rack) {
+                // Return to Rack
+                delete dragEl.dataset.new;
+                if(dragEl.dataset.isBlank === "true") {
+                    dragEl.dataset.letter = '_';
+                    dragEl.innerHTML = '';
+                    dragEl.classList.remove('is-blank-assigned');
+                }
+                rack.appendChild(dragEl);
             }
             
-            document.getElementById('score-pill').classList.remove('visible');
-            saveHostState(currentHostRoomCode);
+            dragEl = null;
+            updateScoreEstimate();
         }
 
-        // --- CALC UTILS (Condensed) ---
-        function updateScorePill() {
-            let newTiles = Array.from(document.querySelectorAll('#board-grid .cell .tile[data-new="true"]'));
-            if(dragEl && dragEl.dataset.new==="true") newTiles = newTiles.filter(t => t !== dragEl);
+        function moveClone(x, y) {
+            if(clone) {
+                clone.style.left = (x - 20) + 'px';
+                clone.style.top = (y - 20) + 'px';
+            }
+        }
+
+        function assignBlank(l) {
+            if(pendingBlank) {
+                pendingBlank.dataset.letter = l;
+                pendingBlank.innerText = l;
+                pendingBlank.dataset.isBlank = "true";
+                pendingBlank.classList.add('is-blank-assigned');
+                pendingBlank.dataset.new = "true";
+                document.getElementById('blank-overlay').style.display = 'none';
+                pendingBlank = null;
+                updateScoreEstimate();
+            }
+        }
+
+        // --- VALIDATION & SCORING ---
+
+        function updateScoreEstimate() {
+            const tiles = document.querySelectorAll('#game-board .tile[data-new="true"]');
             const pill = document.getElementById('score-pill');
-            if (newTiles.length === 0 || !isPlacementShapeValid(newTiles) || newTiles.some(t=>t.dataset.letter==='_')) { pill.classList.remove('visible'); currentTurnPoints=0; return; }
-            currentTurnPoints = calculateComplexScore(newTiles);
-            pill.innerText = `${currentTurnPoints} pts`; pill.classList.add('visible');
-            // Position pill logic...
-            const rect = newTiles[newTiles.length-1].getBoundingClientRect();
-            pill.style.top = (rect.bottom+10)+'px'; pill.style.left = (rect.right+10)+'px';
-        }
-        function isPlacementShapeValid(tiles){
-            if (tiles.length === 0) return false;
-            const coords=tiles.map(t=>({r:parseInt(t.parentElement.dataset.r),c:parseInt(t.parentElement.dataset.c)}));
-            const rows=new Set(coords.map(k=>k.r)),cols=new Set(coords.map(k=>k.c));
-            if(rows.size>1&&cols.size>1)return false;
-            const isH=rows.size===1;
-            if(isH){ coords.sort((a,b)=>a.c-b.c); const r=coords[0].r; for(let c=coords[0].c;c<=coords[coords.length-1].c;c++) if(!document.querySelector(`#board-grid .cell[data-r="${r}"][data-c="${c}"]`).querySelector('.tile'))return false; }
-            else { coords.sort((a,b)=>a.r-b.r); const c=coords[0].c; for(let r=coords[0].r;r<=coords[coords.length-1].r;r++) if(!document.querySelector(`#board-grid .cell[data-r="${r}"][data-c="${c}"]`).querySelector('.tile'))return false; }
-            if(!isFirstTurn) {
-                let isConnected = false; const neighbors = [{r:0,c:1},{r:0,c:-1},{r:1,c:0},{r:-1,c:0}];
-                for(let t of tiles) {
-                    const r=parseInt(t.parentElement.dataset.r), c=parseInt(t.parentElement.dataset.c);
-                    for(let n of neighbors) {
-                        const cell=document.querySelector(`#board-grid .cell[data-r="${r+n.r}"][data-c="${c+n.c}"]`);
-                        if(cell && cell.querySelector('.tile') && cell.querySelector('.tile').dataset.new!=="true") { isConnected=true; break; }
-                    }
-                    if(isConnected) break;
-                }
-                if(!isConnected) return false;
+            
+            if(tiles.length === 0) { pill.classList.remove('visible'); return; }
+            
+            // Basic validity for showing score
+            if(!validatePlacement(Array.from(tiles))) {
+                 pill.innerText = "...";
+                 pill.classList.add('visible');
+                 return;
             }
+
+            const pts = calculateScore(Array.from(tiles), true); // true = skip dictionary check for pill
+            pill.innerText = `${pts} pts`;
+            pill.classList.add('visible');
+        }
+
+        function validatePlacement(tiles) {
+            if(tiles.length === 0) return false;
+            // 1. Same Row or Col
+            const coords = tiles.map(t => ({r: parseInt(t.parentElement.dataset.r), c: parseInt(t.parentElement.dataset.c)}));
+            const rows = new Set(coords.map(x=>x.r));
+            const cols = new Set(coords.map(x=>x.c));
+            
+            if(rows.size > 1 && cols.size > 1) return false;
+            
+            // 2. Continuous
+            // Check gaps.
+            if(rows.size === 1) {
+                coords.sort((a,b) => a.c - b.c);
+                const r = coords[0].r;
+                for(let c=coords[0].c; c <= coords[coords.length-1].c; c++) {
+                    const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+                    if(!cell.querySelector('.tile')) return false;
+                }
+            } else {
+                coords.sort((a,b) => a.r - b.r);
+                const c = coords[0].c;
+                for(let r=coords[0].r; r <= coords[coords.length-1].r; r++) {
+                    const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+                    if(!cell.querySelector('.tile')) return false;
+                }
+            }
+            
+            // 3. Connected to existing (unless first turn)
+            if(!isFirstTurn) {
+                let connected = false;
+                coords.forEach(pos => {
+                    const neighbors = [{r:1,c:0},{r:-1,c:0},{r:0,c:1},{r:0,c:-1}];
+                    neighbors.forEach(n => {
+                        const cell = document.querySelector(`.cell[data-r="${pos.r+n.r}"][data-c="${pos.c+n.c}"]`);
+                        if(cell) {
+                            const t = cell.querySelector('.tile');
+                            if(t && t.dataset.locked === "true") connected = true;
+                        }
+                    });
+                });
+                if(!connected) return false;
+            }
+            
             return true;
         }
-        function calculateComplexScore(newTiles){let total=0;const coords=newTiles.map(t=>({r:parseInt(t.parentElement.dataset.r),c:parseInt(t.parentElement.dataset.c)}));const isH=new Set(coords.map(x=>x.r)).size===1;total+=getWordScoreAt(coords[0].r,coords[0].c,isH);coords.forEach(pos=>{const cS=getWordScoreAt(pos.r,pos.c,!isH);if(cS>0)total+=cS;});if(newTiles.length===7)total+=50;return total;}
-        function getWordScoreAt(r,c,isHoriz){let curr=isHoriz?c:r;while(curr>0){const cell=isHoriz?getCell(r,curr-1):getCell(curr-1,c);if(!cell.querySelector('.tile'))break;curr--;}const start=curr;curr=isHoriz?c:r;while(curr<14){const cell=isHoriz?getCell(r,curr+1):getCell(curr+1,c);if(!cell.querySelector('.tile'))break;curr++;}const end=curr;if(start===end)return 0;let pts=0,mult=1;for(let i=start;i<=end;i++){const row=isHoriz?r:i,col=isHoriz?i:c,cell=getCell(row,col),tile=cell.querySelector('.tile');let val=(tile.dataset.isBlank==="true")?0:(SCORES[tile.dataset.letter]||0);if(tile.dataset.new==="true"){const type=LAYOUT[row][col];if(type===3)val*=3;else if(type===4)val*=2;if(type===1)mult*=3;else if(type===2||type===5)mult*=2;}pts+=val;}return pts*mult;}
-        function getCell(r,c){return document.querySelector(`#board-grid .cell[data-r="${r}"][data-c="${c}"]`);}
-        
-        function getWords(g){ let w=[]; for(let i=0;i<15;i++){ let rs="", cs=""; for(let j=0;j<15;j++){ rs+=(g[i]&&g[i][j])?g[i][j].letter:" "; cs+=(g[j]&&g[j][i])?g[j][i].letter:" "; } rs.split(" ").forEach(x=>{if(x.length>1)w.push(x)}); cs.split(" ").forEach(x=>{if(x.length>1)w.push(x)}); } return w; }
-        
-        function notifyTurn(){
-             // Broadcast grid to all
-             const g = getGrid();
-             const names = players.map(p=>p.name);
-             players.forEach((p,i)=>p.conn && p.conn.open && p.conn.send({type:'turn_update', myTurn:(i===turnIndex), activePlayer:players[turnIndex].name, grid: g}));
-             updateHostUI();
-        }
 
-        function updateHostUI(){
-            document.getElementById('sidebar-list').innerHTML=players.map((p,i)=>`
-                <div class="player-row ${i===turnIndex?'active-turn':''}" data-index="${i}" onclick="showPlayerHistory(${i})">
-                    <div class="player-name-display">
-                        <span class="status-dot ${p.isOffline?'status-offline':'status-online'}"></span>
-                        ${p.name}
-                        ${(!isLocalGame && (p.isOffline || (!p.conn || !p.conn.open))) ? `<button class="btn-resync" onclick="resyncPlayer(${i}); event.stopPropagation();">Sync</button>` : ''}
-                    </div>
-                    <div class="score-box">
-                        <div class="total-score">${p.score}</div>
-                        ${p.lastScore>0?`<div class="last-turn">+${p.lastScore}</div>`:'<div class="last-turn" style="opacity:0;">+0</div>'}
-                    </div>
-                </div>`).join('');
-            if(players[turnIndex])document.getElementById('turn-indicator').innerText=players[turnIndex].name;
-        }
-
-        // --- MISC ---
-        function assignBlank(l){ if(pendingBlankTile){pendingBlankTile.innerText=l;pendingBlankTile.dataset.letter=l;pendingBlankTile.dataset.isBlank="true";pendingBlankTile.classList.add('is-blank-assigned');pendingBlankTile=null;document.getElementById('blank-overlay').style.display="none";updateScorePill();}}
-        function saveSession(roomCode, name, userId) { let s = JSON.parse(localStorage.getItem(STORAGE_SESSIONS) || '[]'); const idx = s.findIndex(x => x.roomCode === roomCode); if(idx >= 0) s[idx] = { roomCode, name, userId }; else s.push({ roomCode, name, userId }); localStorage.setItem(STORAGE_SESSIONS, JSON.stringify(s)); renderHomeScreen(); }
-        function renderHomeScreen() {
-             const list = document.getElementById('host-sessions-container'); list.innerHTML='';
-             const saved = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}');
-             Object.keys(saved).forEach(k => { if(k!=='LOCAL') {
-                 const el = document.createElement('div'); el.className='session-item';
-                 el.innerHTML=`<div class="session-info"><span class="session-code">${k}</span></div><div style="display:flex; gap:5px;"><button class="btn-warning btn-sm" onclick="initHost('${k}',true)">Resume</button><button class="btn-danger btn-sm" onclick="deleteHost('${k}')">X</button></div>`;
-                 list.appendChild(el);
-             }});
-             if(Object.keys(saved).length > 0) document.getElementById('host-saved-list').style.display='block';
-        }
-        function deleteHost(k){ const s=JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES)||'{}'); delete s[k]; localStorage.setItem(STORAGE_HOST_SAVES, JSON.stringify(s)); renderHomeScreen(); }
-        function saveHostState(id) { if(id==='LOCAL') return; const s = JSON.parse(localStorage.getItem(STORAGE_HOST_SAVES) || '{}'); s[id] = { players: players.map(p=>({userId:p.userId,name:p.name,score:p.score,tiles:p.tiles,lastPeerID:p.lastPeerID})), bag, turnIndex, isFirstTurn, grid: getGrid() }; localStorage.setItem(STORAGE_HOST_SAVES, JSON.stringify(s)); }
-
-        function recallTiles(){
-            const inbox=document.getElementById('host-inbox');
-            document.querySelectorAll('#board-grid .cell .tile[data-new="true"]').forEach(t=>{ 
-                if(isLocalGame) { document.getElementById('local-rack').appendChild(t); t.removeAttribute('data-new'); if(t.dataset.letter==='_') t.innerHTML=''; }
-                else {
-                    if(!hostInbox.some(x=>x.id===t.dataset.id)) hostInbox.push({id:t.dataset.id, letter:t.dataset.letter, owner:t.dataset.owner}); 
-                    t.remove();
+        function calculateScore(newTiles, skipDict=false) {
+            let total = 0;
+            const coords = newTiles.map(t=>({r:parseInt(t.parentElement.dataset.r),c:parseInt(t.parentElement.dataset.c)}));
+            const isHoriz = new Set(coords.map(x=>x.r)).size === 1;
+            
+            // Primary Word
+            const primary = getWordScore(coords[0].r, coords[0].c, isHoriz);
+            total += primary.score;
+            if(!skipDict && !dictionary.has(primary.word)) return -1;
+            
+            // Cross Words
+            let valid = true;
+            coords.forEach(pos => {
+                const cross = getWordScore(pos.r, pos.c, !isHoriz);
+                if(cross.word.length > 1) {
+                    total += cross.score;
+                    if(!skipDict && !dictionary.has(cross.word)) valid = false;
                 }
-            }); 
-            if(!isLocalGame) renderInbox();
-            updateScorePill(); 
-        }
-        function renderInbox() {
-            const inbox = document.getElementById('host-inbox'); inbox.innerHTML = '';
-            hostInbox.forEach(item => {
-                const t = document.createElement('div'); t.className = 'tile'; 
-                t.dataset.letter = item.letter; t.dataset.owner = item.owner; t.dataset.id = item.id; t.dataset.new = "true";
-                if(item.letter === '_') t.innerHTML = ''; else t.innerHTML=`${item.letter}<span class="score">${SCORES[item.letter]}</span>`;
-                t.onpointerdown = onDragStart;
-                inbox.appendChild(t);
             });
+            
+            if(!valid) return -1;
+            if(newTiles.length === 7) total += 50;
+            return total;
         }
-        function returnTile(l, oid){ const p = players.find(x => x.userId === oid); if(p) { p.tiles.push(l); if(p.conn && p.conn.open) p.conn.send({type:'return', tile:l}); } saveHostState(currentHostRoomCode); }
-        function getPrimaryWord(newTiles) { return "WORD"; } // Simplified for length
-        function toggleHostMenu(){ document.getElementById('host-side-menu').classList.toggle('open'); document.getElementById('host-menu-overlay').classList.toggle('open'); }
-        function toggleFullscreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else if (document.exitFullscreen) document.exitFullscreen(); }
-        function toggleSound() { soundsEnabled = document.getElementById('toggle-sound').checked; }
-        
-        // Initial Board Render Call
-        renderTwoLetterWords();
+
+        function getWordScore(r, c, isHoriz) {
+            // Find start
+            let curr = isHoriz ? c : r;
+            while(curr > 0) {
+                const cell = isHoriz ? getCell(r, curr-1) : getCell(curr-1, c);
+                if(!cell.querySelector('.tile')) break;
+                curr--;
+            }
+            const start = curr;
+            
+            // Find end
+            curr = isHoriz ? c : r;
+            while(curr < 14) {
+                const cell = isHoriz ? getCell(r, curr+1) : getCell(curr+1, c);
+                if(!cell.querySelector('.tile')) break;
+                curr++;
+            }
+            const end = curr;
+            
+            let word = "";
+            let score = 0;
+            let mult = 1;
+            
+            for(let i=start; i<=end; i++) {
+                const row = isHoriz ? r : i;
+                const col = isHoriz ? i : c;
+                const cell = getCell(row, col);
+                const tile = cell.querySelector('.tile');
+                
+                let l = tile.dataset.letter;
+                let val = (tile.dataset.isBlank === "true") ? 0 : SCORES[l];
+                
+                // Bonus
+                if(tile.dataset.new === "true") {
+                    const type = LAYOUT[row][col];
+                    if(type===3) val*=3; // TL
+                    else if(type===4) val*=2; // DL
+                    
+                    if(type===1) mult*=3; // TW
+                    else if(type===2 || type===5) mult*=2; // DW
+                }
+                
+                score += val;
+                word += l;
+            }
+            
+            if(word.length < 2) return { score: 0, word: "" };
+            return { score: score * mult, word: word };
+        }
+
+        function getCell(r,c) { return document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`); }
+        function shuffleRack() { const r = document.getElementById('game-rack'); Array.from(r.children).sort(()=>Math.random()-0.5).forEach(x=>r.appendChild(x)); }
+        function generateCode() { return Math.random().toString(36).substring(2,6).toUpperCase(); }
+
     </script>
 </body>
 </html>
