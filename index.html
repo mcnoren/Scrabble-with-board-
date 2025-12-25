@@ -125,7 +125,7 @@
         
         /* Highlight Effect */
         .tile.highlight-word { filter: brightness(1.1); box-shadow: inset 0 0 0 3px var(--info) !important; z-index: 40; }
-        .tile.highlight-history { box-shadow: inset 0 0 0 3px #e74c3c !important; z-index: 35; }
+        .tile.highlight-history { box-shadow: inset 0 0 0 3px #3498db, 0 0 10px #3498db !important; z-index: 35; }
 
         /* HOST UI */
         #score-pill { position: fixed; top: 0; left: 0; background: #2980b9; color: white; padding: 8px 18px; border-radius: 30px; font-weight: 800; font-size: 1.1rem; box-shadow: 0 5px 15px rgba(0,0,0,0.4); pointer-events: none; z-index: 2000; transition: opacity 0.2s; opacity: 0; transform: scale(0.5); border: 2px solid rgba(255,255,255,0.8); white-space: nowrap; }
@@ -1373,16 +1373,17 @@
             }
             setTimeout(()=>fly.remove(),1000);
 
-            // Save History
+            // SAVE HISTORY (Coordinates of the FULL word)
             const newTiles = document.querySelectorAll('.cell .tile[data-new="true"]');
+            
+            // Get coordinates of the PRIMARY WORD formed by this move
+            const historyCoords = getPrimaryWordCoords(newTiles);
+            
             const historyEntry = {
                 turn: players[turnIndex].history.length + 1,
                 score: currentTurnPoints,
                 mainWord: getPrimaryWord(newTiles) || "Turn " + (players[turnIndex].history.length + 1),
-                tiles: Array.from(newTiles).map(t => ({
-                    r: parseInt(t.parentElement.dataset.r),
-                    c: parseInt(t.parentElement.dataset.c)
-                }))
+                tiles: historyCoords 
             };
             if(!players[turnIndex].history) players[turnIndex].history = [];
             players[turnIndex].history.push(historyEntry);
@@ -1423,9 +1424,30 @@
             saveHostState(currentHostRoomCode); // Save state once at the end
         }
         
+        function getPrimaryWordCoords(newTiles) {
+            if(!newTiles || newTiles.length===0) return [];
+            const t = newTiles[0];
+            const r = parseInt(t.parentElement.dataset.r);
+            const c = parseInt(t.parentElement.dataset.c);
+            const grid = getGrid();
+            
+            const hCoords = getConnectedWordTiles(grid, r, c, 'h');
+            const vCoords = getConnectedWordTiles(grid, r, c, 'v');
+            
+            // Compare lengths.
+            if (hCoords.length >= vCoords.length && hCoords.length > 1) return hCoords;
+            if (vCoords.length > hCoords.length && vCoords.length > 1) return vCoords;
+            
+            // Fallback for single tile turn (first turn or weird edge case)
+            // Just return the tiles placed if no connections found (impossible in valid scrabble except first move)
+            return Array.from(newTiles).map(tile => ({
+                r: parseInt(tile.parentElement.dataset.r),
+                c: parseInt(tile.parentElement.dataset.c)
+            }));
+        }
+        
         function getPrimaryWord(newTiles) {
             if(!newTiles || newTiles.length===0) return "";
-            // Heuristic: take first new tile, check horizontal word, check vertical. Longest one wins.
             const t = newTiles[0];
             const r = parseInt(t.parentElement.dataset.r);
             const c = parseInt(t.parentElement.dataset.c);
@@ -1437,7 +1459,7 @@
             if(h.length > 1 && v.length > 1) return h.length >= v.length ? h : v;
             if(h.length > 1) return h;
             if(v.length > 1) return v;
-            return t.dataset.letter; // single tile fallback
+            return t.dataset.letter; 
         }
         
         function getWordStringFromTiles(coords, grid) {
@@ -1586,12 +1608,16 @@
             const tiles = JSON.parse(decodeURIComponent(tileDataStr));
             tiles.forEach(pos => {
                 const cell = document.querySelector(`.cell[data-r="${pos.r}"][data-c="${pos.c}"]`);
-                // Target the tile, not the cell
                 if(cell) {
                     const t = cell.querySelector('.tile');
                     if (t) t.classList.add('highlight-history');
                 }
             });
+            
+            // Auto-close panel on mobile for visibility
+            if(window.innerWidth < 800) {
+                document.getElementById('history-panel').classList.remove('open');
+            }
         }
 
         function createHostTile(l,owner){
@@ -1773,6 +1799,10 @@
             document.getElementById('host-side-menu').classList.remove('open');
             document.getElementById('host-menu-overlay').classList.remove('open');
             document.getElementById('host-menu-overlay').style.display='none';
+            
+            if(window.innerWidth < 800) {
+                // Just highlight, user sees word
+            }
 
             fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
                 .then(res => {
