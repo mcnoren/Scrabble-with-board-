@@ -224,7 +224,7 @@
     <div id="notification-overlay" onclick="closeModal()">
         <div class="modal" onclick="event.stopPropagation()">
             <h3 id="modal-title" style="margin-top:0;">Notice</h3>
-            <p id="modal-msg" style="color:#bdc3c7; margin-bottom:20px; font-size:0.9rem;"></p>
+            <div id="modal-msg" style="color:#bdc3c7; margin-bottom:20px; font-size:0.9rem;"></div>
             <button onclick="closeModal()">OK</button>
         </div>
     </div>
@@ -546,7 +546,7 @@
         function showHomeScreen() { showScreen('screen-home'); renderHomeScreen(); }
         function showJoinScreen() { showScreen('screen-join-login'); }
         function toast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
-        function showModal(title, msg) { document.getElementById('modal-title').innerText=title; document.getElementById('modal-msg').innerText=msg; document.getElementById('notification-overlay').style.display="flex"; }
+        function showModal(title, msg) { document.getElementById('modal-title').innerText=title; document.getElementById('modal-msg').innerHTML=msg; document.getElementById('notification-overlay').style.display="flex"; }
         function closeModal() { document.getElementById('notification-overlay').style.display="none"; }
         function showConfirm(title, msg, onYes) {
             document.getElementById('confirm-title').innerText = title; document.getElementById('confirm-msg').innerText = msg;
@@ -1351,6 +1351,65 @@
              }
         }
 
+        function handleGameEnd(winnerIndex) {
+            let totalBonus = 0;
+            let summaryHtml = '<div style="text-align:left; font-size:0.9rem; margin-bottom:15px; background:rgba(0,0,0,0.2); padding:10px; border-radius:6px;">';
+            
+            // 1. Calculate Deductions & Bonus
+            players.forEach((p, i) => {
+                if (i === winnerIndex) return; // Skip the player who went out
+
+                let rackPenalty = 0;
+                // Sum up remaining tiles
+                p.tiles.forEach(l => {
+                    rackPenalty += (l === '_' ? 0 : SCORES[l]); // Blanks are worth 0
+                });
+
+                // Apply Rule: Subtract from loser, Add to winner
+                p.score -= rackPenalty;
+                totalBonus += rackPenalty;
+
+                summaryHtml += `<div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                    <span>${p.name} (Leftovers)</span>
+                    <span style="color:#e74c3c;">-${rackPenalty}</span>
+                </div>`;
+            });
+
+            // 2. Apply Bonus to Winner
+            players[winnerIndex].score += totalBonus;
+            summaryHtml += `<div style="display:flex; justify-content:space-between; border-top:1px solid #555; padding-top:4px; margin-top:4px;">
+                <span style="color:var(--accent); font-weight:bold;">${players[winnerIndex].name} (Bonus)</span>
+                <span style="color:#2ecc71; font-weight:bold;">+${totalBonus}</span>
+            </div></div>`;
+
+            // 3. Sort Final Scores
+            const ranked = [...players].map(p => ({name: p.name, score: p.score})).sort((a,b) => b.score - a.score);
+            
+            summaryHtml += '<h3 style="color:#f1c40f; margin:10px 0;">FINAL STANDINGS</h3>';
+            ranked.forEach((p, i) => {
+                summaryHtml += `<div style="display:flex; justify-content:space-between; font-size:${i===0?'1.2rem':'1rem'}; font-weight:${i===0?'bold':'normal'}; padding:5px 0; border-bottom:1px solid #444;">
+                    <span>${i+1}. ${p.name}</span>
+                    <span>${p.score}</span>
+                </div>`;
+            });
+
+            // 4. Update UI and Save
+            updateHostUI();
+            saveHostState(currentHostRoomCode);
+            
+            // 5. Show Game Over Modal (Injecting HTML into the standard modal)
+            document.getElementById('modal-title').innerText = "GAME OVER";
+            document.getElementById('modal-msg').innerHTML = summaryHtml;
+            document.getElementById('notification-overlay').style.display = "flex";
+
+            // 6. Notify Players
+            players.forEach(p => {
+                if(p.conn && p.conn.open) {
+                    p.conn.send({type: 'toast', msg: 'GAME OVER! Final scores calculated.'});
+                }
+            });
+        }
+
         function confirmTurn() {
             if(!document.getElementById('score-pill').classList.contains('visible')) { showModal("Invalid", "Invalid placement."); return; }
             if(isFirstTurn) {
@@ -1415,6 +1474,14 @@
                 hostInbox = []; 
                 renderInbox();
             }
+
+            // --- NEW: END GAME CHECK ---
+            // If bag is empty AND current player has no tiles left after dealing (because deal failed to find tiles)
+            if (bag.length === 0 && players[turnIndex].tiles.length === 0) {
+                handleGameEnd(turnIndex);
+                return; // Stop the function here so we don't switch turns
+            }
+            // ---------------------------
 
             isFirstTurn = false;
             turnIndex = (turnIndex + 1) % players.length;
