@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scrabble Pro - Multi-Save & Sync</title>
+    <title>Scrabble Pro - Final Fixed</title>
     
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -379,6 +379,7 @@
         let isReconnecting = false;
         let reconnectInterval = null;
         let lastHighlight = { id: null, axis: 'h' }; // Tracks clicked tile for definitions
+        let playerRackSortable = null; // Track sortable instance
         
         // --- STORAGE KEYS ---
         const STORAGE_HOST_SAVES = 'scrabble_host_saves_v2'; // Stores object { 'CODE': stateObj }
@@ -546,7 +547,7 @@
         function showHomeScreen() { showScreen('screen-home'); renderHomeScreen(); }
         function showJoinScreen() { showScreen('screen-join-login'); }
         function toast(msg) { const t=document.getElementById('toast'); t.innerText=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
-        function showModal(title, msg) { document.getElementById('modal-title').innerText=title; document.getElementById('modal-msg').innerHTML=msg; document.getElementById('notification-overlay').style.display="flex"; }
+        function showModal(title, msg) { document.getElementById('modal-title').innerText=title; document.getElementById('modal-msg').innerText=msg; document.getElementById('notification-overlay').style.display="flex"; }
         function closeModal() { document.getElementById('notification-overlay').style.display="none"; }
         function showConfirm(title, msg, onYes) {
             document.getElementById('confirm-title').innerText = title; document.getElementById('confirm-msg').innerText = msg;
@@ -956,7 +957,7 @@
                 if(btn) { btn.disabled = false; btn.innerText = "Connect"; }
                 if(statusEl) {
                     if (err.type === 'peer-unavailable') statusEl.innerText = "Room code not found.";
-                    else statusEl.innerText = "Connection error: " + err.type;
+                    else statusEl.innerText = "Connection error. Try refreshing the page.";
                 }
                 
                 // If we get an error during reconnect loop, ignore and keep trying
@@ -976,6 +977,17 @@
             });
         }
         
+        function makeRackSortable() {
+            const el = document.getElementById('my-rack');
+            if(playerRackSortable) playerRackSortable.destroy();
+            playerRackSortable = Sortable.create(el, { 
+                animation: 150, 
+                ghostClass: 'sortable-ghost',
+                delay: 100, // Helps with touch devices
+                delayOnTouchOnly: true
+            });
+        }
+        
         function setupPlayerConnection(c, n, userId, hostPeerId) {
             conn = c;
             const btn = document.getElementById('btn-join');
@@ -984,7 +996,7 @@
             conn.on('error', (err) => {
                  console.error("Conn Error:", err);
                  if(btn) { btn.disabled = false; btn.innerText = "Connect"; }
-                 if(statusEl) statusEl.innerText = "Connection failed.";
+                 if(statusEl) statusEl.innerText = "Connection failed. Try refreshing the page.";
             });
 
             conn.on('close', () => {
@@ -1016,7 +1028,7 @@
                         document.getElementById('my-display-name').innerText = n;
                         document.getElementById('my-rack').innerHTML = '';
                         if(d.tiles) addRack(d.tiles);
-                        Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
+                        makeRackSortable();
                         updateTurnUI(d.myTurn, d.activePlayer);
                         toast("Sync Complete");
                     } else { showScreen('screen-player-lobby'); }
@@ -1027,7 +1039,7 @@
                 if(d.type==='gamestart') { 
                     showScreen('screen-player'); 
                     document.getElementById('my-display-name').innerText = n;
-                    Sortable.create(document.getElementById('my-rack'), { animation: 150, ghostClass: 'sortable-ghost' });
+                    makeRackSortable();
                     toast("Game Started!");
                 }
                 if(d.type==='hand') {
@@ -1350,7 +1362,7 @@
                  }
              }
         }
-
+        
         function handleGameEnd(winnerIndex) {
             let totalBonus = 0;
             let summaryHtml = '<div style="text-align:left; font-size:0.9rem; margin-bottom:15px; background:rgba(0,0,0,0.2); padding:10px; border-radius:6px;">';
@@ -1397,7 +1409,7 @@
             updateHostUI();
             saveHostState(currentHostRoomCode);
             
-            // 5. Show Game Over Modal (Injecting HTML into the standard modal)
+            // 5. Show Game Over Modal
             document.getElementById('modal-title').innerText = "GAME OVER";
             document.getElementById('modal-msg').innerHTML = summaryHtml;
             document.getElementById('notification-overlay').style.display = "flex";
@@ -1410,6 +1422,7 @@
             });
         }
 
+        // --- UPDATED: Confirm Turn (Checks for Game End) ---
         function confirmTurn() {
             if(!document.getElementById('score-pill').classList.contains('visible')) { showModal("Invalid", "Invalid placement."); return; }
             if(isFirstTurn) {
@@ -1475,13 +1488,12 @@
                 renderInbox();
             }
 
-            // --- NEW: END GAME CHECK ---
-            // If bag is empty AND current player has no tiles left after dealing (because deal failed to find tiles)
+            // --- GAME END CHECK ---
+            // If bag is empty AND player has no tiles left (because bag couldn't refill them)
             if (bag.length === 0 && players[turnIndex].tiles.length === 0) {
                 handleGameEnd(turnIndex);
-                return; // Stop the function here so we don't switch turns
+                return; // Stop function here, game is over.
             }
-            // ---------------------------
 
             isFirstTurn = false;
             turnIndex = (turnIndex + 1) % players.length;
